@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { ChevronRight, User, LogOut } from "lucide-react";
+import { ChevronRight, User, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useState } from "react";
 
 interface NavbarProps {
   userRole?: string;
@@ -26,6 +28,7 @@ const roleColors = {
 
 export const Navbar = ({ userRole = "Guest", userName = "User", onLogout }: NavbarProps) => {
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const getBreadcrumbs = () => {
     const paths = location.pathname.split("/").filter(Boolean);
@@ -54,20 +57,58 @@ export const Navbar = ({ userRole = "Guest", userName = "User", onLogout }: Navb
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-gradient-to-r from-[hsl(var(--nav-gradient-start))] to-[hsl(var(--nav-gradient-end))] shadow-sm">
-      <div className="container mx-auto flex h-14 items-center justify-between px-6">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
+        {/* Mobile Menu */}
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetTrigger asChild className="md:hidden">
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[280px] bg-card">
+            <div className="flex flex-col gap-4 mt-8">
+              <div className="pb-4 border-b">
+                <p className="text-sm font-semibold">{userName}</p>
+                <p className="text-xs text-muted-foreground">{userRole}</p>
+              </div>
+              {breadcrumbs.map((crumb) => (
+                <Link
+                  key={crumb.path}
+                  to={crumb.path}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm font-medium"
+                >
+                  {crumb.label}
+                </Link>
+              ))}
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onLogout?.();
+                }}
+                className="justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-2">
-          <div className="text-xl font-bold text-white">Kithul Flow</div>
+          <div className="text-lg sm:text-xl font-bold text-white">Kithul Flow</div>
         </Link>
 
-        {/* Breadcrumbs - Center */}
-        <div className="hidden md:flex items-center space-x-2 text-sm text-white/90">
+        {/* Breadcrumbs - Center (Desktop) */}
+        <div className="hidden lg:flex items-center space-x-2 text-sm text-white/90 absolute left-1/2 -translate-x-1/2">
           {breadcrumbs.map((crumb, index) => (
             <div key={crumb.path} className="flex items-center">
               {index > 0 && <ChevronRight className="h-4 w-4 mx-1 opacity-60" />}
               <Link
                 to={crumb.path}
-                className={`hover:text-white transition-colors ${
+                className={`hover:text-white transition-colors truncate max-w-[120px] ${
                   index === breadcrumbs.length - 1 ? "font-semibold text-white" : ""
                 }`}
               >
@@ -78,13 +119,13 @@ export const Navbar = ({ userRole = "Guest", userName = "User", onLogout }: Navb
         </div>
 
         {/* User Menu - Right */}
-        <div className="flex items-center space-x-3">
-          <Badge variant="secondary" className="hidden sm:inline-flex bg-white/20 text-white border-white/30">
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <Badge variant="secondary" className="hidden sm:inline-flex bg-white/20 text-white border-white/30 text-xs">
             {userRole}
           </Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-9 w-9 rounded-full bg-white/20 hover:bg-white/30">
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-white/20 hover:bg-white/30">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-white text-primary text-sm font-semibold">
                     {initials}
@@ -97,7 +138,7 @@ export const Navbar = ({ userRole = "Guest", userName = "User", onLogout }: Navb
                 <p className="text-sm font-semibold">{userName}</p>
                 <p className="text-xs text-muted-foreground">{userRole}</p>
               </div>
-              <DropdownMenuItem>
+              <DropdownMenuItem className="md:flex hidden">
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>

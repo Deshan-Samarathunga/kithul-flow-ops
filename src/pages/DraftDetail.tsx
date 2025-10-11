@@ -26,15 +26,15 @@ export default function DraftDetail() {
     <div className="min-h-screen bg-background">
       <Navbar userRole={userRole} userName={userName} onLogout={handleLogout} />
       
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold">Draft : {draft.date}</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold">Draft : {draft.date}</h1>
         </div>
 
         <div className="mb-6">
           <Button
             onClick={() => navigate(`/field-collection/bucket/new?draftId=${draftId}`)}
-            className="bg-cta hover:bg-cta-hover text-cta-foreground"
+            className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add New Bucket
@@ -45,24 +45,25 @@ export default function DraftDetail() {
           {draft.buckets.map((bucket) => (
             <div
               key={bucket.id}
-              className="bg-card border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+              className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm">
                     <span className="font-medium">Farmer: {bucket.farmerName}</span>
-                    <span className="text-muted-foreground">|</span>
+                    <span className="hidden sm:inline text-muted-foreground">|</span>
                     <span>Quantity (L): {bucket.quantity}</span>
-                    <span className="text-muted-foreground">|</span>
+                    <span className="hidden sm:inline text-muted-foreground">|</span>
                     <span>Product: {bucket.productType}</span>
                   </div>
                 </div>
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() =>
                     navigate(`/field-collection/bucket/${bucket.id}/edit?draftId=${draftId}`)
                   }
-                  className="text-cta hover:text-cta-hover"
+                  className="text-cta hover:text-cta-hover w-full sm:w-auto"
                 >
                   Edit
                 </Button>
@@ -74,7 +75,7 @@ export default function DraftDetail() {
         <div className="mt-8 flex justify-end">
           <Button
             onClick={() => toast.success("Report generated successfully")}
-            className="bg-cta hover:bg-cta-hover text-cta-foreground"
+            className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
           >
             <FileText className="h-4 w-4 mr-2" />
             Generate Report

@@ -24,12 +24,12 @@ export default function Labeling() {
     <div className="min-h-screen bg-background">
       <Navbar userRole={userRole} userName={userName} onLogout={handleLogout} />
       
-      <div className="container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold">Labeling</h1>
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <h1 className="text-xl sm:text-2xl font-semibold">Labeling</h1>
           <Button
             onClick={() => toast.success("Report downloaded")}
-            className="bg-cta hover:bg-cta-hover text-cta-foreground"
+            className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
           >
             <FileText className="h-4 w-4 mr-2" />
             Download Report
@@ -40,12 +40,12 @@ export default function Labeling() {
           {labelingData.map((item) => (
             <div
               key={item.id}
-              className="bg-card border rounded-lg p-6 shadow-sm"
+              className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm">
                   <span className="font-medium">{item.date}</span>
-                  <span className="text-muted-foreground">|</span>
+                  <span className="hidden sm:inline text-muted-foreground">|</span>
                   <span>Package: {item.packageId}</span>
                 </div>
                 <StatusBadge status={item.status} />

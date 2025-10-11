@@ -64,13 +64,13 @@ export default function BucketForm() {
     <div className="min-h-screen bg-background">
       <Navbar userRole={userRole} userName={userName} onLogout={handleLogout} />
       
-      <div className="container mx-auto px-6 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
         <Card>
-          <CardContent className="pt-6">
-            <h2 className="text-2xl font-semibold mb-6">New bucket</h2>
+          <CardContent className="p-4 sm:p-6">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-6">New bucket</h2>
             
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="farmer">Farmer *</Label>
                   <Select value={formData.farmer} onValueChange={(v) => setFormData({ ...formData, farmer: v })}>
@@ -166,18 +166,18 @@ export default function BucketForm() {
                 </div>
               </div>
 
-              <div className="border-t pt-6 space-y-4">
-                <div className="flex justify-between text-sm">
+              <div className="border-t pt-6 space-y-4 col-span-1 sm:col-span-2">
+                <div className="flex justify-between text-xs sm:text-sm">
                   <span className="text-muted-foreground">Amount per L - Based on eligibility</span>
                   <span className="font-medium">Rs. {amountPerKg}</span>
                 </div>
-                <div className="flex justify-between text-lg font-semibold">
+                <div className="flex justify-between text-base sm:text-lg font-semibold">
                   <span>Total</span>
                   <span>Rs. {total.toFixed(2)}</span>
                 </div>
               </div>
 
-              <Button type="submit" className="w-full md:w-auto bg-cta hover:bg-cta-hover text-cta-foreground">
+              <Button type="submit" className="w-full sm:w-auto bg-cta hover:bg-cta-hover text-cta-foreground col-span-1 sm:col-span-2">
                 Submit
               </Button>
             </form>

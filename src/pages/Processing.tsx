@@ -20,11 +20,11 @@ export default function Processing() {
     <div className="min-h-screen bg-background">
       <Navbar userRole={userRole} userName={userName} onLogout={handleLogout} />
       
-      <div className="container mx-auto px-6 py-8">
-        <h1 className="text-2xl font-semibold mb-6">Batches</h1>
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <h1 className="text-xl sm:text-2xl font-semibold mb-6">Batches</h1>
 
         <SecondaryToolbar>
-          <Button className="bg-cta hover:bg-cta-hover text-cta-foreground">
+          <Button className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Add new Batch
           </Button>
@@ -34,20 +34,21 @@ export default function Processing() {
           {mockBatches.map((batch) => (
             <div
               key={batch.id}
-              className="bg-card border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+              className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm">
                   <span className="font-medium">{batch.date}</span>
-                  <span className="text-muted-foreground">|</span>
-                  <span>Batch number: {batch.batchNumber}</span>
+                  <span className="hidden sm:inline text-muted-foreground">|</span>
+                  <span>Batch: {batch.batchNumber}</span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <StatusBadge status={batch.status} />
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={() => navigate(`/processing/batch/${batch.id}`)}
-                    className="text-cta hover:text-cta-hover"
+                    className="text-cta hover:text-cta-hover flex-1 sm:flex-none"
                   >
                     {batch.status === "ready" ? "View" : "Edit"}
                   </Button>

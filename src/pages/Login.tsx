@@ -50,21 +50,21 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-cta/10 p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-2">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-cta/10 p-4 sm:p-6">
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="space-y-2 pb-6">
           <div className="flex items-center justify-center mb-2">
-            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-cta flex items-center justify-center">
-              <span className="text-white font-bold text-xl">KF</span>
+            <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary to-cta flex items-center justify-center shadow-md">
+              <span className="text-white font-bold text-2xl">KF</span>
             </div>
           </div>
-          <CardTitle className="text-2xl text-center">Kithul Flow</CardTitle>
-          <CardDescription className="text-center">
+          <CardTitle className="text-2xl sm:text-3xl text-center">Kithul Flow</CardTitle>
+          <CardDescription className="text-center text-sm sm:text-base">
             Sign in to access your dashboard
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="username">Username / Email</Label>
               <Input
@@ -73,7 +73,7 @@ export default function Login() {
                 placeholder="Enter your username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="focus:ring-cta"
+                className="focus:ring-cta h-11"
               />
             </div>
             
@@ -85,14 +85,14 @@ export default function Login() {
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="focus:ring-cta"
+                className="focus:ring-cta h-11"
               />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <Select value={role} onValueChange={setRole}>
-                <SelectTrigger id="role" className="focus:ring-cta">
+                <SelectTrigger id="role" className="focus:ring-cta h-11">
                   <SelectValue placeholder="Select your role" />
                 </SelectTrigger>
                 <SelectContent>
@@ -105,7 +105,7 @@ export default function Login() {
               </Select>
             </div>
 
-            <Button type="submit" className="w-full bg-cta hover:bg-cta-hover text-cta-foreground">
+            <Button type="submit" className="w-full bg-cta hover:bg-cta-hover text-cta-foreground h-11 text-base font-medium shadow-sm hover:shadow-md transition-shadow">
               Sign In
             </Button>
           </form>
