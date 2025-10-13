@@ -1,10 +1,11 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ChevronRight, User, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -28,6 +29,7 @@ const roleColors = {
 
 export const Navbar = ({ userRole = "Guest", userName = "User", onLogout }: NavbarProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const getBreadcrumbs = () => {
@@ -85,6 +87,17 @@ export const Navbar = ({ userRole = "Guest", userName = "User", onLogout }: Navb
                 variant="ghost"
                 onClick={() => {
                   setMobileMenuOpen(false);
+                  navigate("/profile");
+                }}
+                className="justify-start"
+              >
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setMobileMenuOpen(false);
                   onLogout?.();
                 }}
                 className="justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -138,11 +151,11 @@ export const Navbar = ({ userRole = "Guest", userName = "User", onLogout }: Navb
                 <p className="text-sm font-semibold">{userName}</p>
                 <p className="text-xs text-muted-foreground">{userRole}</p>
               </div>
-              <DropdownMenuItem className="md:flex hidden">
+              <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onLogout} className="text-destructive">
+              <DropdownMenuItem onClick={onLogout} className="text-destructive cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
               </DropdownMenuItem>

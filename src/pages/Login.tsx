@@ -23,6 +23,7 @@ export default function Login() {
     // For demo: admin/admin goes to admin, others to field-collection
     const role = userId === "admin" ? "Administrator" : "Field Collection";
     
+    sessionStorage.setItem("userId", userId);
     sessionStorage.setItem("userRole", role);
     sessionStorage.setItem("userName", userId);
     

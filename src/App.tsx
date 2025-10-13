@@ -12,6 +12,8 @@ import BatchDetail from "./pages/BatchDetail";
 import Packaging from "./pages/Packaging";
 import Labeling from "./pages/Labeling";
 import Admin from "./pages/Admin";
+import Profile from "./pages/Profile";
+import AddEmployee from "./pages/AddEmployee";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +35,8 @@ const App = () => (
           <Route path="/packaging" element={<Packaging />} />
           <Route path="/labeling" element={<Labeling />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/admin/add-employee" element={<AddEmployee />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
