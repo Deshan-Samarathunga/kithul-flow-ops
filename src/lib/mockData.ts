@@ -32,9 +32,8 @@ export interface Batch {
   id: string;
   batchNumber: string;
   date: string;
-  status: "in-progress" | "completed" | "ready";
-  qualityPassed: Bucket[];
-  qualityFailed: Bucket[];
+  status: "in-progress" | "completed";
+  selectedBuckets: string[];
 }
 
 export const mockFarmers: Farmer[] = [
@@ -139,23 +138,20 @@ export const mockBatches: Batch[] = [
     batchNumber: "01",
     date: "2025/06/16",
     status: "in-progress",
-    qualityPassed: [mockBuckets[1]],
-    qualityFailed: [mockBuckets[0]],
+    selectedBuckets: ["b1"],
   },
   {
     id: "batch2",
     batchNumber: "02",
     date: "2025/06/15",
     status: "completed",
-    qualityPassed: [mockBuckets[0], mockBuckets[1]],
-    qualityFailed: [],
+    selectedBuckets: ["b1", "b2"],
   },
   {
     id: "batch3",
     batchNumber: "03",
     date: "2025/06/14",
-    status: "ready",
-    qualityPassed: [mockBuckets[0], mockBuckets[1], mockBuckets[2]],
-    qualityFailed: [],
+    status: "in-progress",
+    selectedBuckets: [],
   },
 ];

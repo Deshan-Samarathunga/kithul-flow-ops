@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 
-type StatusType = "in-progress" | "completed" | "ready";
+type StatusType = "in-progress" | "completed";
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -15,10 +15,6 @@ const statusConfig = {
   completed: {
     label: "Completed",
     className: "bg-status-completedBg text-status-completed border-status-completed/20",
-  },
-  ready: {
-    label: "Ready for delivery",
-    className: "bg-status-readyBg text-status-ready border-status-ready/20",
   },
 };
 

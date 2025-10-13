@@ -6,7 +6,7 @@ import { FileText } from "lucide-react";
 import { toast } from "sonner";
 
 const packagingData = [
-  { id: "1", date: "2025/06/16", batchNumber: "03", status: "ready" as const },
+  { id: "1", date: "2025/06/16", batchNumber: "03", status: "in-progress" as const },
   { id: "2", date: "2025/06/15", batchNumber: "02", status: "completed" as const },
 ];
 

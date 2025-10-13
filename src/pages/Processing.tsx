@@ -50,7 +50,7 @@ export default function Processing() {
                     onClick={() => navigate(`/processing/batch/${batch.id}`)}
                     className="text-cta hover:text-cta-hover flex-1 sm:flex-none"
                   >
-                    {batch.status === "ready" ? "View" : "Edit"}
+                    View
                   </Button>
                 </div>
               </div>

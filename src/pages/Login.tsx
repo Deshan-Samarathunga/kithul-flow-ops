@@ -4,36 +4,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-
-const roles = [
-  "Administrator",
-  "Field Collection",
-  "Processing",
-  "Packaging",
-  "Labeling",
-];
 
 export default function Login() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
+  const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("");
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!username || !password || !role) {
+    if (!userId || !password) {
       toast.error("Please fill in all fields");
       return;
     }
 
-    // Store user info in sessionStorage
-    sessionStorage.setItem("userRole", role);
-    sessionStorage.setItem("userName", username);
+    // Mock authentication - In production, validate against database
+    // For demo: admin/admin goes to admin, others to field-collection
+    const role = userId === "admin" ? "Administrator" : "Field Collection";
     
-    toast.success(`Welcome, ${username}!`);
+    sessionStorage.setItem("userRole", role);
+    sessionStorage.setItem("userName", userId);
+    
+    toast.success(`Welcome, ${userId}!`);
     
     // Route based on role
     if (role === "Administrator") {
@@ -66,13 +59,13 @@ export default function Login() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="username">Username / Email</Label>
+              <Label htmlFor="userId">User ID</Label>
               <Input
-                id="username"
+                id="userId"
                 type="text"
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your user ID"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
                 className="focus:ring-cta h-11"
               />
             </div>
@@ -87,22 +80,6 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="focus:ring-cta h-11"
               />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger id="role" className="focus:ring-cta h-11">
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <Button type="submit" className="w-full bg-cta hover:bg-cta-hover text-cta-foreground h-11 text-base font-medium shadow-sm hover:shadow-md transition-shadow">
