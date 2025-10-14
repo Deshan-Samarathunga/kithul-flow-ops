@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -8,61 +8,154 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { Camera } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const userRole = sessionStorage.getItem("userRole") || "Guest";
-  const userName = sessionStorage.getItem("userName") || "User";
-  const userId = sessionStorage.getItem("userId") || "";
+  const { user, token, logout, updateUser } = useAuth();
 
-  const [formData, setFormData] = useState({
-    name: userName,
-    phone: "",
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-    profilePicture: ""
-  });
+  const userRole = user?.role || "Guest";
+  const userId = user?.userId || "";
+  const apiBase = useMemo(() => {
+    const raw = import.meta.env.VITE_API_URL || "";
+    return raw.endsWith("/") ? raw.slice(0, -1) : raw;
+  }, []);
+
+  const [name, setName] = useState(user?.name ?? "");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const toAbsolute = useCallback(
+    (path?: string | null) => {
+      if (!path) return null;
+      try {
+        return new URL(path, apiBase).toString();
+      } catch {
+        return null;
+      }
+    },
+    [apiBase]
+  );
+
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(
+    toAbsolute(user?.profileImage ?? null)
+  );
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setName(user?.name ?? "");
+    setAvatarPreview(toAbsolute(user?.profileImage ?? null));
+  }, [user, toAbsolute]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview && avatarPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
 
   const handleLogout = () => {
-    sessionStorage.clear();
+    logout();
     navigate("/");
-  };
-
-  const handleSave = () => {
-    if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
-      toast.error("New passwords do not match");
-      return;
-    }
-
-    if (formData.newPassword && !formData.currentPassword) {
-      toast.error("Please enter your current password");
-      return;
-    }
-
-    // Update session storage
-    if (formData.name) {
-      sessionStorage.setItem("userName", formData.name);
-    }
-
-    toast.success("Profile updated successfully");
-    navigate(-1);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, profilePicture: reader.result as string });
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    setAvatarFile(file);
+    if (avatarPreview && avatarPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarPreview);
+    }
+    const nextPreview = URL.createObjectURL(file);
+    setAvatarPreview(nextPreview);
+  };
+
+  const handleSave = async () => {
+    if (!token) {
+      toast.error("Your session has expired. Please log in again.");
+      handleLogout();
+      return;
+    }
+
+    if (newPassword && newPassword.length < 8) {
+      toast.error("New password must be at least 8 characters long");
+      return;
+    }
+
+    if (newPassword && newPassword !== confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+
+    if (newPassword && !currentPassword) {
+      toast.error("Please enter your current password");
+      return;
+    }
+
+    const form = new FormData();
+    form.append("name", name.trim());
+    if (currentPassword) form.append("currentPassword", currentPassword);
+    if (newPassword) form.append("newPassword", newPassword);
+    if (avatarFile) form.append("avatar", avatarFile);
+
+    setSaving(true);
+    try {
+      const res = await fetch(`${apiBase}/api/profile`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: form,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update profile");
+      }
+
+      const updated = (await res.json()) as {
+        id: number;
+        userId: string;
+        name?: string | null;
+        role?: string | null;
+        profileImage?: string | null;
       };
-      reader.readAsDataURL(file);
+
+      updateUser({
+        id: updated.id,
+        userId: updated.userId,
+        name: updated.name ?? null,
+        role: updated.role ?? null,
+        profileImage: updated.profileImage ?? null,
+      });
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setAvatarFile(null);
+      setAvatarPreview(toAbsolute(updated.profileImage ?? null));
+
+      toast.success("Profile updated successfully");
+    } catch (error: any) {
+      toast.error(error?.message || "Unable to save changes");
+    } finally {
+      setSaving(false);
     }
   };
 
+  const displayName = name || user?.userId || "User";
+
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} onLogout={handleLogout} />
+      <Navbar userRole={userRole} userName={displayName} userAvatar={avatarPreview || undefined} onLogout={handleLogout} />
       
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-2xl">
         <h1 className="text-xl sm:text-2xl font-semibold mb-6">Profile Settings</h1>
@@ -73,9 +166,14 @@ export default function Profile() {
             <div className="flex flex-col items-center gap-4">
               <div className="relative">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={formData.profilePicture} />
+                  <AvatarImage
+                    key={avatarPreview || "avatar-fallback"}
+                    src={avatarPreview || undefined}
+                    alt={displayName}
+                    className="h-full w-full object-cover"
+                  />
                   <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                    {userName.charAt(0).toUpperCase()}
+                    {displayName.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <label htmlFor="profile-picture" className="absolute bottom-0 right-0 bg-cta hover:bg-cta-hover text-cta-foreground rounded-full p-2 cursor-pointer shadow-md">
@@ -119,20 +217,8 @@ export default function Profile() {
               <Input
                 id="name"
                 placeholder="Enter your name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-
-            {/* Phone */}
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="Enter phone number"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
               />
             </div>
 
@@ -147,8 +233,8 @@ export default function Profile() {
                     id="currentPassword"
                     type="password"
                     placeholder="Enter current password"
-                    value={formData.currentPassword}
-                    onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
                   />
                 </div>
 
@@ -158,8 +244,8 @@ export default function Profile() {
                     id="newPassword"
                     type="password"
                     placeholder="Enter new password"
-                    value={formData.newPassword}
-                    onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
                   />
                 </div>
 
@@ -169,8 +255,8 @@ export default function Profile() {
                     id="confirmPassword"
                     type="password"
                     placeholder="Confirm new password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                   />
                 </div>
               </div>
@@ -181,13 +267,15 @@ export default function Profile() {
               <Button
                 onClick={handleSave}
                 className="flex-1 bg-cta hover:bg-cta-hover text-cta-foreground"
+                disabled={saving}
               >
-                Save Changes
+                {saving ? "Saving..." : "Save Changes"}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate(-1)}
                 className="flex-1"
+                disabled={saving}
               >
                 Cancel
               </Button>
@@ -198,3 +286,4 @@ export default function Profile() {
     </div>
   );
 }
+

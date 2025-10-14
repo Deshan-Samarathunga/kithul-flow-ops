@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { SecondaryToolbar } from "@/components/SecondaryToolbar";
@@ -9,15 +9,22 @@ import { Plus, Search, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { mockDrafts } from "@/lib/mockData";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 
 export default function FieldCollection() {
   const navigate = useNavigate();
-  const userRole = sessionStorage.getItem("userRole") || "Guest";
-  const userName = sessionStorage.getItem("userName") || "User";
+  const { user, logout } = useAuth();
+  const userRole = user?.role || "Guest";
+  const userName = user?.name || user?.userId || "User";
+  const apiBase = useMemo(() => {
+    const raw = import.meta.env.VITE_API_URL || "";
+    return raw.endsWith("/") ? raw.slice(0, -1) : raw;
+  }, []);
+  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
   const [searchQuery, setSearchQuery] = useState("");
   
   const handleLogout = () => {
-    sessionStorage.clear();
+    logout();
     navigate("/");
   };
 
@@ -26,7 +33,7 @@ export default function FieldCollection() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} onLogout={handleLogout} />
+      <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
       
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <Tabs defaultValue="sap" className="w-full">
@@ -259,3 +266,4 @@ export default function FieldCollection() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -8,13 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { mockFarmers } from "@/lib/mockData";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 
 export default function BucketForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const draftId = searchParams.get("draftId");
-  const userRole = sessionStorage.getItem("userRole") || "Guest";
-  const userName = sessionStorage.getItem("userName") || "User";
+  const { user, logout } = useAuth();
+
+  const userRole = user?.role || "Guest";
+  const userName = user?.name || user?.userId || "User";
+  const apiBase = useMemo(() => {
+    const raw = import.meta.env.VITE_API_URL || "";
+    return raw.endsWith("/") ? raw.slice(0, -1) : raw;
+  }, []);
+  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
 
   const [formData, setFormData] = useState({
     farmer: "",
@@ -27,14 +35,13 @@ export default function BucketForm() {
   });
 
   const handleLogout = () => {
-    sessionStorage.clear();
+    logout();
     navigate("/");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validation
+
     if (!formData.farmer || !formData.quantity || !formData.collectionTime) {
       toast.error("Please fill in all required fields");
       return;
@@ -62,13 +69,13 @@ export default function BucketForm() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} onLogout={handleLogout} />
-      
+      <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
         <Card>
           <CardContent className="p-4 sm:p-6">
             <h2 className="text-xl sm:text-2xl font-semibold mb-6">New bucket</h2>
-            
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-2">

@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
@@ -16,6 +16,7 @@ import { useState } from "react";
 interface NavbarProps {
   userRole?: string;
   userName?: string;
+  userAvatar?: string | null;
   onLogout?: () => void;
 }
 
@@ -27,15 +28,30 @@ const roleColors = {
   Labeling: "bg-pink-100 text-pink-800",
 };
 
-export const Navbar = ({ userRole = "Guest", userName = "User", onLogout }: NavbarProps) => {
+export const Navbar = ({ userRole = "Guest", userName = "User", userAvatar, onLogout }: NavbarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
+
+  const rolePrimaryRoutes: Record<string, { path: string; label: string }> = {
+    administrator: { path: "/admin", label: "Admin" },
+    "field collection": { path: "/field-collection", label: "Field Collection" },
+    processing: { path: "/processing", label: "Processing" },
+    packaging: { path: "/packaging", label: "Packaging" },
+    labeling: { path: "/labeling", label: "Labeling" },
+    labelling: { path: "/labeling", label: "Labeling" },
+  };
+
   const getBreadcrumbs = () => {
+    const lowerRole = userRole?.toLowerCase?.();
+    const primary = lowerRole ? rolePrimaryRoutes[lowerRole] : undefined;
     const paths = location.pathname.split("/").filter(Boolean);
-    const crumbs = [{ label: "Home", path: "/" }];
-    
+    const crumbs: Array<{ label: string; path: string }> = [];
+
+    if (primary) {
+      crumbs.push(primary);
+    }
+
     let currentPath = "";
     paths.forEach((segment) => {
       currentPath += `/${segment}`;
@@ -43,13 +59,33 @@ export const Navbar = ({ userRole = "Guest", userName = "User", onLogout }: Navb
         .split("-")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ");
+      if (primary && currentPath === primary.path) return;
       crumbs.push({ label, path: currentPath });
     });
-    
+
     return crumbs;
   };
 
   const breadcrumbs = getBreadcrumbs();
+  let avatarSrc = userAvatar || undefined;
+  if (!avatarSrc) {
+    try {
+      const saved = localStorage.getItem("auth");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const raw = parsed?.user?.profileImage ?? parsed?.user?.profile_image ?? null;
+        if (raw) {
+          avatarSrc = raw;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  if (avatarSrc?.startsWith("/")) {
+    const base = import.meta.env.VITE_API_URL || "";
+    avatarSrc = new URL(avatarSrc, base).toString();
+  }
   const initials = userName
     .split(" ")
     .map((n) => n[0])
@@ -140,6 +176,9 @@ export const Navbar = ({ userRole = "Guest", userName = "User", onLogout }: Navb
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-white/20 hover:bg-white/30">
                 <Avatar className="h-8 w-8">
+                  {avatarSrc ? (
+                  <AvatarImage src={avatarSrc} alt={userName} className="object-cover" />
+                ) : null}
                   <AvatarFallback className="bg-white text-primary text-sm font-semibold">
                     {initials}
                   </AvatarFallback>
@@ -166,3 +205,4 @@ export const Navbar = ({ userRole = "Guest", userName = "User", onLogout }: Navb
     </nav>
   );
 };
+
