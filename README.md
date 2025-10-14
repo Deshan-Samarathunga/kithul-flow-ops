@@ -71,3 +71,15 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Seed login credentials
+
+Run `cd server && npm run seed:admin` to provision default accounts. Use the following user IDs to sign in:
+
+| Role               | User ID     | Password     |
+| ------------------ | ----------- | ------------ |
+| Administrator      | `admin01`   | `Admin#123`  |
+| Field Collection   | `field01`   | `Field#123`  |
+| Processing         | `process01` | `Process#123` |
+| Packaging          | `package01` | `Package#123` |
+| Labeling           | `label01`   | `Label#123`  |

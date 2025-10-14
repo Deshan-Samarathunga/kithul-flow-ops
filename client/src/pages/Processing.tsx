@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { SecondaryToolbar } from "@/components/SecondaryToolbar";
@@ -5,20 +6,27 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Plus } from "lucide-react";
 import { mockBatches } from "@/lib/mockData";
+import { useAuth } from "@/lib/auth";
 
 export default function Processing() {
   const navigate = useNavigate();
-  const userRole = sessionStorage.getItem("userRole") || "Guest";
-  const userName = sessionStorage.getItem("userName") || "User";
+  const { user, logout } = useAuth();
+  const userRole = user?.role || "Guest";
+  const userName = user?.name || user?.userId || "User";
+  const apiBase = useMemo(() => {
+    const raw = import.meta.env.VITE_API_URL || "";
+    return raw.endsWith("/") ? raw.slice(0, -1) : raw;
+  }, []);
+  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
 
   const handleLogout = () => {
-    sessionStorage.clear();
+    logout();
     navigate("/");
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} onLogout={handleLogout} />
+      <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
       
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <h1 className="text-xl sm:text-2xl font-semibold mb-6">Batches</h1>
@@ -61,3 +69,7 @@ export default function Processing() {
     </div>
   );
 }
+
+
+
+

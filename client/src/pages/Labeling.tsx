@@ -1,9 +1,11 @@
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 
 const labelingData = [
   { id: "1", date: "2025/06/16", packageId: "PKG-03", status: "in-progress" as const },
@@ -12,17 +14,23 @@ const labelingData = [
 
 export default function Labeling() {
   const navigate = useNavigate();
-  const userRole = sessionStorage.getItem("userRole") || "Guest";
-  const userName = sessionStorage.getItem("userName") || "User";
+  const { user, logout } = useAuth();
+  const userRole = user?.role || "Guest";
+  const userName = user?.name || user?.userId || "User";
+  const apiBase = useMemo(() => {
+    const raw = import.meta.env.VITE_API_URL || "";
+    return raw.endsWith("/") ? raw.slice(0, -1) : raw;
+  }, []);
+  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
 
   const handleLogout = () => {
-    sessionStorage.clear();
+    logout();
     navigate("/");
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} onLogout={handleLogout} />
+      <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
       
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -57,3 +65,8 @@ export default function Labeling() {
     </div>
   );
 }
+
+
+
+
+
