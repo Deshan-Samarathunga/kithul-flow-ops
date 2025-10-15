@@ -7,24 +7,28 @@ export interface Farmer {
   hasFreezer: boolean;
 }
 
+export interface CollectionCenter {
+  id: string;
+  name: string;
+  location: string;
+  contactNumber: string;
+}
+
 export interface Bucket {
   id: string;
-  farmerId: string;
-  farmerName: string;
+  collectionCenterId: string;
+  canId: string;
   productType: string;
-  brixValue?: number;
   phValue?: number;
   quantity: number;
-  collectionTime: "Morning" | "Evening";
-  qrCode: string;
-  amountPerKg: number;
+  amountPerL: number;
   total: number;
 }
 
 export interface Draft {
   id: string;
   date: string;
-  buckets: Bucket[];
+  collectionCenters: { centerId: string; buckets: Bucket[] }[];
   status: "draft" | "submitted";
 }
 
@@ -35,6 +39,27 @@ export interface Batch {
   status: "in-progress" | "completed";
   selectedBuckets: string[];
 }
+
+export const mockCollectionCenters: CollectionCenter[] = [
+  {
+    id: "cc1",
+    name: "Gunapala Center",
+    location: "Colombo Road, Galle",
+    contactNumber: "+94 77 123 4567",
+  },
+  {
+    id: "cc2",
+    name: "Rathnapala Center",
+    location: "Kandy Road, Kurunegala",
+    contactNumber: "+94 77 345 6789",
+  },
+  {
+    id: "cc3",
+    name: "Somapala Center",
+    location: "Matara Road, Hikkaduwa",
+    contactNumber: "+94 77 234 5678",
+  },
+];
 
 export const mockFarmers: Farmer[] = [
   {
@@ -66,41 +91,32 @@ export const mockFarmers: Farmer[] = [
 export const mockBuckets: Bucket[] = [
   {
     id: "b1",
-    farmerId: "1",
-    farmerName: "Gunapala",
+    collectionCenterId: "cc1",
+    canId: "CAN001",
     productType: "Toddy",
-    brixValue: 23,
     phValue: 5,
     quantity: 10,
-    collectionTime: "Morning",
-    qrCode: "QR001",
-    amountPerKg: 100,
+    amountPerL: 100,
     total: 1000,
   },
   {
     id: "b2",
-    farmerId: "3",
-    farmerName: "Rathnapala",
+    collectionCenterId: "cc1",
+    canId: "CAN002",
     productType: "Toddy",
-    brixValue: 22,
     phValue: 5.2,
     quantity: 12,
-    collectionTime: "Morning",
-    qrCode: "QR002",
-    amountPerKg: 100,
+    amountPerL: 100,
     total: 1200,
   },
   {
     id: "b3",
-    farmerId: "2",
-    farmerName: "Somapala",
+    collectionCenterId: "cc2",
+    canId: "CAN003",
     productType: "Toddy",
-    brixValue: 24,
     phValue: 4.8,
     quantity: 12,
-    collectionTime: "Evening",
-    qrCode: "QR003",
-    amountPerKg: 100,
+    amountPerL: 100,
     total: 1200,
   },
 ];
@@ -109,25 +125,37 @@ export const mockDrafts: Draft[] = [
   {
     id: "d1",
     date: "2025/06/16",
-    buckets: [mockBuckets[0], mockBuckets[1], mockBuckets[2]],
+    collectionCenters: [
+      { centerId: "cc1", buckets: [mockBuckets[0], mockBuckets[1]] },
+      { centerId: "cc2", buckets: [mockBuckets[2]] },
+    ],
     status: "draft",
   },
   {
     id: "d2",
     date: "2025/06/15",
-    buckets: [mockBuckets[0], mockBuckets[1], mockBuckets[2]],
+    collectionCenters: [
+      { centerId: "cc1", buckets: [mockBuckets[0], mockBuckets[1]] },
+      { centerId: "cc2", buckets: [mockBuckets[2]] },
+    ],
     status: "draft",
   },
   {
     id: "d3",
     date: "2025/06/14",
-    buckets: [mockBuckets[0], mockBuckets[1], mockBuckets[2]],
+    collectionCenters: [
+      { centerId: "cc1", buckets: [mockBuckets[0], mockBuckets[1]] },
+      { centerId: "cc2", buckets: [mockBuckets[2]] },
+    ],
     status: "draft",
   },
   {
     id: "d4",
     date: "2025/06/13",
-    buckets: [mockBuckets[0], mockBuckets[1], mockBuckets[2]],
+    collectionCenters: [
+      { centerId: "cc1", buckets: [mockBuckets[0], mockBuckets[1]] },
+      { centerId: "cc2", buckets: [mockBuckets[2]] },
+    ],
     status: "submitted",
   },
 ];

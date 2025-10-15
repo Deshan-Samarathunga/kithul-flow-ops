@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText } from "lucide-react";
-import { mockDrafts } from "@/lib/mockData";
+import { FileText } from "lucide-react";
+import { mockDrafts, mockCollectionCenters } from "@/lib/mockData";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
@@ -45,20 +45,20 @@ export default function DraftDetail() {
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold">Draft {draft.date}</h1>
-            <p className="text-sm text-muted-foreground">Buckets: {draft.buckets.length}</p>
+            <h1 className="text-xl sm:text-2xl font-semibold">Draft : {draft.date}</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
               onClick={() => {
                 toast.success("Draft reopened");
               }}
+              className="flex-1 sm:flex-none"
             >
               Reopen
             </Button>
             <Button
-              className="bg-cta hover:bg-cta-hover text-cta-foreground"
+              className="bg-cta hover:bg-cta-hover text-cta-foreground flex-1 sm:flex-none"
               onClick={() => toast.success("Draft submitted successfully")}
             >
               Submit Draft
@@ -67,32 +67,52 @@ export default function DraftDetail() {
         </div>
 
         <div className="space-y-4">
-          {draft.buckets.map((bucket) => (
-            <div key={bucket.id} className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="space-y-1">
-                  <h3 className="font-semibold text-sm sm:text-base">{bucket.farmerName}</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">{bucket.productType}</p>
-                </div>
-                <div className="flex items-center gap-2">
+          {draft.collectionCenters.map((center) => {
+            const centerInfo = mockCollectionCenters.find((c) => c.id === center.centerId);
+            if (!centerInfo) return null;
+            
+            const totalQuantity = center.buckets.reduce((sum, bucket) => sum + bucket.quantity, 0);
+
+            return (
+              <div
+                key={center.centerId}
+                className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => navigate(`/field-collection/draft/${draftId}/center/${center.centerId}`)}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="space-y-1 flex-1">
+                    <h3 className="font-semibold text-sm sm:text-base">
+                      Collection Center: {centerInfo.name}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Quantity (L): {totalQuantity} | Product: Toddy
+                    </p>
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => toast.success(`Bucket ${bucket.qrCode} updated`)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/field-collection/draft/${draftId}/center/${center.centerId}`);
+                    }}
+                    className="w-full sm:w-auto"
                   >
-                    <Plus className="h-4 w-4 mr-1" /> Add Bucket
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toast.success("Bucket report generated")}
-                  >
-                    <FileText className="h-4 w-4 mr-1" /> Report
+                    View
                   </Button>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <Button
+            variant="outline"
+            onClick={() => toast.success("Report generated")}
+            className="w-full sm:w-auto"
+          >
+            <FileText className="h-4 w-4 mr-2" /> Generate Report
+          </Button>
         </div>
       </div>
     </div>
