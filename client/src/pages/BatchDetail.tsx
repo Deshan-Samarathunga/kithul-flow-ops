@@ -73,7 +73,7 @@ export default function BatchDetail() {
                 />
                 <label htmlFor={bucket.id} className="flex-1 cursor-pointer">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm">
-                    <span className="font-medium">Farmer: {bucket.farmerName}</span>
+                    <span className="font-medium">{bucket.collectionCenterName ? `Collection Center: ${bucket.collectionCenterName}` : `Farmer: ${bucket.farmerName}`}</span>
                     <span className="hidden sm:inline text-muted-foreground">|</span>
                     <span>Quantity: {bucket.quantity} kg</span>
                     <span className="hidden sm:inline text-muted-foreground">|</span>

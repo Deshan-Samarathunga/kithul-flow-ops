@@ -1,20 +1,32 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { mockFarmers } from "@/lib/mockData";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { DataService } from "@/lib/dataService";
 
 export default function BucketForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const draftId = searchParams.get("draftId");
+  const productTypeParam = searchParams.get("productType");
+  const centerId = searchParams.get("centerId");
   const { user, logout } = useAuth();
+
+  // Define the 4 collection centers mapping
+  const collectionCenters = {
+    "center001": { name: "Galle Collection Center", agent: "John Silva" },
+    "center002": { name: "Kurunegala Collection Center", agent: "Mary Perera" }, 
+    "center003": { name: "Hikkaduwa Collection Center", agent: "David Fernando" },
+    "center004": { name: "Matara Collection Center", agent: "Sarah Jayawardena" }
+  };
+
+  const centerInfo = collectionCenters[centerId as keyof typeof collectionCenters] || { name: "Galle Collection Center", agent: "John Silva" };
+  const centerName = centerInfo.name;
 
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
@@ -24,14 +36,12 @@ export default function BucketForm() {
   }, []);
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
 
+  const productType = productTypeParam === "treacle" ? "Treacle" : "Sap";
+  const productTypeLower = productTypeParam === "treacle" ? "treacle" : "sap";
   const [formData, setFormData] = useState({
-    farmer: "",
-    productType: "Toddy",
     brixValue: "",
     phValue: "",
     quantity: "",
-    collectionTime: "",
-    qrCode: "",
   });
 
   const handleLogout = () => {
@@ -39,10 +49,10 @@ export default function BucketForm() {
     navigate("/");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.farmer || !formData.quantity || !formData.collectionTime) {
+    if (!formData.quantity) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -60,16 +70,62 @@ export default function BucketForm() {
       return;
     }
 
-    toast.success("Bucket added successfully");
-    navigate(`/field-collection/draft/${draftId}`);
+    try {
+      // Create bucket data
+      const bucketData = {
+        draftId: draftId,
+        collectionCenterId: centerId || 'center001',
+        productType: productTypeLower as 'sap' | 'treacle',
+        brixValue: brix,
+        phValue: ph,
+        quantity: parseFloat(formData.quantity),
+      };
+
+      await DataService.createBucket(bucketData);
+      
+      toast.success("Bucket added successfully");
+      navigate(`/field-collection/draft/${draftId}/center/${centerId || 'center001'}?productType=${productTypeLower}`);
+    } catch (error) {
+      console.error('Error creating bucket:', error);
+      toast.error('Failed to add bucket');
+    }
   };
 
-  const amountPerKg = 100;
-  const total = parseFloat(formData.quantity || "0") * amountPerKg;
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+      <Navbar 
+        userRole={userRole} 
+        userName={userName} 
+        userAvatar={userAvatar} 
+        onLogout={handleLogout}
+        breadcrumb={
+          <div className="flex items-center space-x-2 text-sm text-white">
+            <Link 
+              to={`/field-collection?productType=${productTypeLower}`}
+              className="hover:text-orange-200"
+            >
+              Field Collection
+            </Link>
+            <span className="mx-2">&gt;</span>
+            <Link 
+              to={`/field-collection/draft/${draftId}?productType=${productTypeLower}`}
+              className="hover:text-orange-200"
+            >
+              {productType} collection draft
+            </Link>
+            <span className="mx-2">&gt;</span>
+            <Link 
+              to={`/field-collection/draft/${draftId}/center/${encodeURIComponent(centerId || 'center001')}?productType=${productTypeLower}`}
+              className="hover:text-orange-200"
+            >
+              {centerName} cans
+            </Link>
+            <span className="mx-2">&gt;</span>
+            <span className="text-black font-semibold">add new can</span>
+          </div>
+        }
+      />
 
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
         <Card>
@@ -79,24 +135,8 @@ export default function BucketForm() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="farmer">Farmer *</Label>
-                  <Select value={formData.farmer} onValueChange={(v) => setFormData({ ...formData, farmer: v })}>
-                    <SelectTrigger id="farmer">
-                      <SelectValue placeholder="Select farmer or Scan QR" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockFarmers.map((farmer) => (
-                        <SelectItem key={farmer.id} value={farmer.id}>
-                          {farmer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="productType">Product type</Label>
-                  <Input id="productType" value={formData.productType} disabled />
+                  <Input id="productType" value={productType} disabled />
                 </div>
 
                 <div className="space-y-2">
@@ -139,50 +179,8 @@ export default function BucketForm() {
                     onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="qrCode">QR code</Label>
-                  <Input
-                    id="qrCode"
-                    placeholder="Enter QR code"
-                    value={formData.qrCode}
-                    onChange={(e) => setFormData({ ...formData, qrCode: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="collectionTime">Collection time *</Label>
-                  <Select
-                    value={formData.collectionTime}
-                    onValueChange={(v) => setFormData({ ...formData, collectionTime: v })}
-                  >
-                    <SelectTrigger id="collectionTime">
-                      <SelectValue placeholder="Select time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Morning">Morning</SelectItem>
-                      <SelectItem value="Evening">Evening</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="h-32 border-2 border-dashed border-border rounded-lg flex items-center justify-center text-muted-foreground">
-                    {"{Scan QR code}"}
-                  </div>
-                </div>
               </div>
 
-              <div className="border-t pt-6 space-y-4 col-span-1 sm:col-span-2">
-                <div className="flex justify-between text-xs sm:text-sm">
-                  <span className="text-muted-foreground">Amount per L - Based on eligibility</span>
-                  <span className="font-medium">Rs. {amountPerKg}</span>
-                </div>
-                <div className="flex justify-between text-base sm:text-lg font-semibold">
-                  <span>Total</span>
-                  <span>Rs. {total.toFixed(2)}</span>
-                </div>
-              </div>
 
               <Button type="submit" className="w-full sm:w-auto bg-cta hover:bg-cta-hover text-cta-foreground col-span-1 sm:col-span-2">
                 Submit

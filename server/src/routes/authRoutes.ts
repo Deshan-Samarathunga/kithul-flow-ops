@@ -68,7 +68,7 @@ router.post("/register", async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO public.users (user_id, password_hash, name, role)
        VALUES ($1, $2, $3, $4)
-       RETURNING id, user_id, name, role, created_at, profile_image, is_active`,
+       RETURNING id, user_id, name, role, created_at, profile_image`,
       [userId, hash, name ?? null, chosenRole]
     );
 
@@ -80,7 +80,7 @@ router.post("/register", async (req, res) => {
       role: created.role,
       createdAt: created.created_at,
       profileImage: created.profile_image ?? null,
-      isActive: created.is_active ?? true,
+      isActive: true,
     });
   } catch (e: any) {
     if (e?.code === "23505") {
@@ -107,13 +107,12 @@ router.post("/login", async (req, res) => {
     const { userId, password } = parsed.data;
 
     const { rows } = await pool.query(
-      `SELECT id, user_id, name, role, password_hash, profile_image, is_active
+      `SELECT id, user_id, name, role, password_hash, profile_image
          FROM public.users WHERE user_id = $1`,
       [userId]
     );
     const user = rows[0];
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
-    if (!user.is_active) return res.status(403).json({ error: "Account disabled" });
 
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
@@ -132,7 +131,7 @@ router.post("/login", async (req, res) => {
         name: user.name,
         role: user.role,
         profileImage: user.profile_image ?? null,
-        isActive: user.is_active ?? true,
+        isActive: true,
       },
     });
   } catch (e) {
@@ -150,7 +149,7 @@ router.get("/me", async (req, res) => {
 
     const payload = jwt.verify(token, getJwtSecret()) as { id: number };
     const { rows } = await pool.query(
-      "SELECT id, user_id, name, role, created_at, profile_image, is_active FROM public.users WHERE id = $1",
+      "SELECT id, user_id, name, role, created_at, profile_image FROM public.users WHERE id = $1",
       [payload.id]
     );
     const user = rows[0];
@@ -162,7 +161,7 @@ router.get("/me", async (req, res) => {
       role: user.role,
       createdAt: user.created_at,
       profileImage: user.profile_image ?? null,
-      isActive: user.is_active ?? true,
+      isActive: true,
     });
   } catch (e) {
     console.error("ME ERROR:", e);

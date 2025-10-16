@@ -7,6 +7,7 @@ import path from "path";
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import fieldCollectionRoutes from "./routes/fieldCollectionRoutes.js";
 import { auth, requireRole } from "./middleware/authMiddleware.js";
 import { pool } from "./db.js";
 
@@ -105,6 +106,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/field-collection", fieldCollectionRoutes);
 
 app.get("/api/admin/stats", auth, requireRole("Administrator"), (_req, res) => {
   res.json({ secret: "admin-only numbers" });
