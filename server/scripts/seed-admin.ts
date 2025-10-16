@@ -44,13 +44,12 @@ async function main() {
     const hash = await bcrypt.hash(user.password, 12);
 
     const { rows } = await pool.query(
-      `INSERT INTO public.users (user_id, password_hash, name, role, is_active)
-       VALUES ($1, $2, $3, $4, TRUE)
+      `INSERT INTO public.users (user_id, password_hash, name, role)
+       VALUES ($1, $2, $3, $4)
        ON CONFLICT (user_id) DO UPDATE
          SET password_hash = EXCLUDED.password_hash,
              name = EXCLUDED.name,
-             role = EXCLUDED.role,
-             is_active = TRUE
+             role = EXCLUDED.role
        RETURNING id, user_id, role`,
       [user.userId, hash, user.name, user.role]
     );

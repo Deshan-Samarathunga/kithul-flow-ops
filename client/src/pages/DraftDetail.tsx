@@ -1,15 +1,16 @@
-import { useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useMemo, useState, useEffect } from "react";
+import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText } from "lucide-react";
-import { mockDrafts } from "@/lib/mockData";
+import { Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { DataService } from "@/lib/dataService";
 
 export default function DraftDetail() {
   const navigate = useNavigate();
   const { draftId } = useParams();
+  const [searchParams] = useSearchParams();
   const { user, logout } = useAuth();
 
   const userRole = user?.role || "Guest";
@@ -20,12 +21,141 @@ export default function DraftDetail() {
   }, []);
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
 
-  const draft = mockDrafts.find((d) => d.id === draftId);
+  const [draft, setDraft] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [completedCenters, setCompletedCenters] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const loadDraft = async () => {
+      if (!draftId) {
+        setError("No draft ID provided.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const fetchedDraft = await DataService.getDraft(draftId);
+        setDraft(fetchedDraft);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load draft');
+        toast.error('Failed to load draft');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadDraft();
+  }, [draftId]);
+
+  // Load completed centers from backend
+  useEffect(() => {
+    const loadCompletedCenters = async () => {
+      if (!draftId) return;
+
+      try {
+        const completedCentersData = await DataService.getCompletedCenters(draftId);
+        const completedSet = new Set(completedCentersData.map(center => center.center_id));
+        setCompletedCenters(completedSet);
+      } catch (err) {
+        console.error('Failed to load completed centers:', err);
+        // Don't show error toast for this, just log it
+      }
+    };
+    loadCompletedCenters();
+  }, [draftId]);
 
   const handleLogout = () => {
     logout();
     navigate("/");
   };
+
+  const handleSubmitDraft = async () => {
+    if (!draftId) return;
+    
+    try {
+      setLoading(true);
+      await DataService.submitDraft(draftId);
+      
+      toast.success('Draft submitted successfully');
+      
+      // Navigate back to field collection page
+      navigate('/field-collection');
+      
+    } catch (error) {
+      console.error('Error submitting draft:', error);
+      toast.error('Failed to submit draft');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitCenter = async (centerId: string) => {
+    try {
+      setLoading(true);
+      
+      // Call API to submit center
+      await DataService.submitCenter(draftId!, centerId);
+      
+      // Add center to completed set
+      setCompletedCenters(prev => new Set([...prev, centerId]));
+      
+      toast.success('Center submitted successfully');
+      
+    } catch (error) {
+      console.error('Error submitting center:', error);
+      toast.error('Failed to submit center');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReopenCenter = async (centerId: string) => {
+    try {
+      setLoading(true);
+      
+      // Call API to reopen center
+      await DataService.reopenCenter(draftId!, centerId);
+      
+      // Remove center from completed set
+      setCompletedCenters(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(centerId);
+        return newSet;
+      });
+      
+      toast.success('Center reopened successfully');
+      
+    } catch (error) {
+      console.error('Error reopening center:', error);
+      toast.error('Failed to reopen center');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+        <div className="container mx-auto px-4 sm:px-6 py-10">
+          <p className="text-sm text-muted-foreground">Loading draft...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+        <div className="container mx-auto px-4 sm:px-6 py-10">
+          <p className="text-sm text-destructive">Error: {error}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!draft) {
     return (
@@ -38,61 +168,242 @@ export default function DraftDetail() {
     );
   }
 
+  // Define the 4 collection centers
+  const collectionCenters = [
+    {
+      id: "center001",
+      name: "Galle Collection Center",
+      location: "Galle, Southern Province",
+      centerAgent: "John Silva",
+      phone: "+94-91-2345678"
+    },
+    {
+      id: "center002", 
+      name: "Kurunegala Collection Center",
+      location: "Kurunegala, North Western Province",
+      centerAgent: "Mary Perera",
+      phone: "+94-37-2345678"
+    },
+    {
+      id: "center003",
+      name: "Hikkaduwa Collection Center", 
+      location: "Hikkaduwa, Southern Province",
+      centerAgent: "David Fernando",
+      phone: "+94-91-3456789"
+    },
+    {
+      id: "center004",
+      name: "Matara Collection Center",
+      location: "Matara, Southern Province", 
+      centerAgent: "Sarah Jayawardena",
+      phone: "+94-41-2345678"
+    }
+  ];
+
+  // group buckets by center name (fallback to farmerName)
+  const centers = draft?.buckets?.reduce<Record<string, { name: string; buckets: any[] }>>((acc, b) => {
+    const key = b.collectionCenterName ?? b.farmerName;
+    if (!acc[key]) acc[key] = { name: key, buckets: [] };
+    acc[key].buckets.push(b);
+    return acc;
+  }, {} as any) ?? {};
+
+  const centerList = Object.values(centers);
+
+  
+  
+
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+      <Navbar 
+        userRole={userRole} 
+        userName={userName} 
+        userAvatar={userAvatar} 
+        onLogout={handleLogout}
+        breadcrumb={
+          <div className="flex items-center space-x-2 text-sm text-white">
+            <Link 
+              to={`/field-collection`}
+              className="hover:text-orange-200"
+            >
+              Field Collection
+            </Link>
+            <span className="mx-2">&gt;</span>
+            <span className="text-black font-semibold">Collection draft</span>
+          </div>
+        }
+      />
 
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold">Draft {draft.date}</h1>
-            <p className="text-sm text-muted-foreground">Buckets: {draft.buckets.length}</p>
+            <h1 className="text-xl sm:text-2xl font-semibold">Draft {new Date(draft.date).toISOString().split('T')[0]}</h1>
+            <p className="text-sm text-muted-foreground">Buckets: {draft.bucket_count || 0}</p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                toast.success("Draft reopened");
-              }}
-            >
-              Reopen
-            </Button>
-            <Button
-              className="bg-cta hover:bg-cta-hover text-cta-foreground"
-              onClick={() => toast.success("Draft submitted successfully")}
-            >
-              Submit Draft
-            </Button>
-          </div>
+          {draft.status === "draft" && (
+            <div className="flex gap-2">
+              <Button
+                className="bg-cta hover:bg-cta-hover text-cta-foreground"
+                onClick={handleSubmitDraft}
+                disabled={loading}
+              >
+                Submit Draft
+              </Button>
+            </div>
+          )}
         </div>
 
-        <div className="space-y-4">
-          {draft.buckets.map((bucket) => (
-            <div key={bucket.id} className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="space-y-1">
-                  <h3 className="font-semibold text-sm sm:text-base">{bucket.farmerName}</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">{bucket.productType}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toast.success(`Bucket ${bucket.qrCode} updated`)}
-                  >
-                    <Plus className="h-4 w-4 mr-1" /> Add Bucket
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toast.success("Bucket report generated")}
-                  >
-                    <FileText className="h-4 w-4 mr-1" /> Report
-                  </Button>
+  <div className="space-y-6">
+          {/* Always show both Active and Completed Centers for draft status */}
+          {draft.status === "draft" && (
+            <>
+              {/* Active Centers */}
+              <div>
+                <h2 className="text-lg sm:text-xl font-semibold mb-4">Active Centers</h2>
+                <div className="space-y-4">
+                  {collectionCenters
+                    .filter(center => !completedCenters.has(center.id))
+                    .map((center) => {
+                      // Find if this center has any buckets
+                      const centerBuckets = centerList.find(c => c.name === center.name)?.buckets || [];
+                      const bucketCount = centerBuckets.length;
+                      
+                      return (
+                        <div key={center.id} className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div className="space-y-1">
+                              <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
+                              <p className="text-xs sm:text-sm text-muted-foreground">{center.location}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Center Agent: {center.centerAgent}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Active buckets: {bucketCount}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  navigate(`/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`);
+                                }}
+                                className="flex-1 sm:flex-none"
+                              >
+                                Continue
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleSubmitCenter(center.id)}
+                                disabled={loading}
+                                className="bg-cta hover:bg-cta-hover text-cta-foreground flex-1 sm:flex-none"
+                              >
+                                Submit
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
+
+              {/* Completed Centers */}
+              <div className="pt-8 border-t">
+                <h2 className="text-lg sm:text-xl font-semibold mb-4">Completed Centers</h2>
+                <div className="space-y-4">
+                  {collectionCenters
+                    .filter(center => completedCenters.has(center.id))
+                    .map((center) => {
+                      // Find if this center has any buckets
+                      const centerBuckets = centerList.find(c => c.name === center.name)?.buckets || [];
+                      const bucketCount = centerBuckets.length;
+                      
+                      return (
+                        <div key={`completed-${center.id}`} className="bg-muted/50 border rounded-lg p-4 sm:p-6">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div className="space-y-1">
+                              <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
+                              <p className="text-xs sm:text-sm text-muted-foreground">{center.location}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Center Agent: {center.centerAgent}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Completed buckets: {bucketCount}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  navigate(`/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`);
+                                }}
+                                className="flex-1 sm:flex-none"
+                              >
+                                View
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleReopenCenter(center.id)}
+                                disabled={loading}
+                                className="flex-1 sm:flex-none"
+                              >
+                                Reopen
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {collectionCenters.filter(center => completedCenters.has(center.id)).length === 0 && (
+                    <div className="text-center text-muted-foreground py-8">
+                      No completed centers yet
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Show only Completed Centers for submitted drafts */}
+          {draft.status === "submitted" && (
+            <div>
+              <h2 className="text-lg sm:text-xl font-semibold mb-4">Completed Centers</h2>
+              <div className="space-y-4">
+                {collectionCenters
+                  .filter(center => completedCenters.has(center.id))
+                  .map((center) => {
+                    // Find if this center has any buckets
+                    const centerBuckets = centerList.find(c => c.name === center.name)?.buckets || [];
+                    const bucketCount = centerBuckets.length;
+                    
+                    return (
+                      <div key={center.id} className="bg-muted/50 border rounded-lg p-4 sm:p-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <div className="space-y-1">
+                            <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
+                            <p className="text-xs sm:text-sm text-muted-foreground">{center.location}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">Center Agent: {center.centerAgent}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">Completed buckets: {bucketCount}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                navigate(`/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`);
+                              }}
+                              className="flex-1 sm:flex-none"
+                            >
+                              View
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {collectionCenters.filter(center => completedCenters.has(center.id)).length === 0 && (
+                  <div className="text-center text-muted-foreground py-8">
+                    No completed centers yet
+                  </div>
+                )}
+              </div>
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

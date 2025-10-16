@@ -18,6 +18,7 @@ interface NavbarProps {
   userName?: string;
   userAvatar?: string | null;
   onLogout?: () => void;
+  breadcrumb?: React.ReactNode;
 }
 
 const roleColors = {
@@ -28,7 +29,7 @@ const roleColors = {
   Labeling: "bg-pink-100 text-pink-800",
 };
 
-export const Navbar = ({ userRole = "Guest", userName = "User", userAvatar, onLogout }: NavbarProps) => {
+export const Navbar = ({ userRole = "Guest", userName = "User", userAvatar, onLogout, breadcrumb }: NavbarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -152,19 +153,23 @@ export const Navbar = ({ userRole = "Guest", userName = "User", userAvatar, onLo
 
         {/* Breadcrumbs - Center (Desktop) */}
         <div className="hidden lg:flex items-center space-x-2 text-sm text-white/90 absolute left-1/2 -translate-x-1/2">
-          {breadcrumbs.map((crumb, index) => (
-            <div key={crumb.path} className="flex items-center">
-              {index > 0 && <ChevronRight className="h-4 w-4 mx-1 opacity-60" />}
-              <Link
-                to={crumb.path}
-                className={`hover:text-white transition-colors truncate max-w-[120px] ${
-                  index === breadcrumbs.length - 1 ? "font-semibold text-white" : ""
-                }`}
-              >
-                {crumb.label}
-              </Link>
-            </div>
-          ))}
+          {breadcrumb ? (
+            breadcrumb
+          ) : (
+            breadcrumbs.map((crumb, index) => (
+              <div key={crumb.path} className="flex items-center">
+                {index > 0 && <ChevronRight className="h-4 w-4 mx-1 opacity-60" />}
+                <Link
+                  to={crumb.path}
+                  className={`hover:text-white transition-colors truncate max-w-[120px] ${
+                    index === breadcrumbs.length - 1 ? "font-semibold text-black" : ""
+                  }`}
+                >
+                  {crumb.label}
+                </Link>
+              </div>
+            ))
+          )}
         </div>
 
         {/* User Menu - Right */}

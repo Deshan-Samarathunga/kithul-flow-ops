@@ -11,6 +11,8 @@ export interface Bucket {
   id: string;
   farmerId: string;
   farmerName: string;
+  collectionCenterId?: string;
+  collectionCenterName?: string;
   productType: string;
   brixValue?: number;
   phValue?: number;
@@ -68,6 +70,8 @@ export const mockBuckets: Bucket[] = [
     id: "b1",
     farmerId: "1",
     farmerName: "Gunapala",
+    collectionCenterId: "c1",
+    collectionCenterName: "Galle Collection Center",
     productType: "Toddy",
     brixValue: 23,
     phValue: 5,
@@ -81,6 +85,8 @@ export const mockBuckets: Bucket[] = [
     id: "b2",
     farmerId: "3",
     farmerName: "Rathnapala",
+    collectionCenterId: "c2",
+    collectionCenterName: "Kurunegala Collection Center",
     productType: "Toddy",
     brixValue: 22,
     phValue: 5.2,
@@ -94,6 +100,8 @@ export const mockBuckets: Bucket[] = [
     id: "b3",
     farmerId: "2",
     farmerName: "Somapala",
+    collectionCenterId: "c3",
+    collectionCenterName: "Hikkaduwa Collection Center",
     productType: "Toddy",
     brixValue: 24,
     phValue: 4.8,

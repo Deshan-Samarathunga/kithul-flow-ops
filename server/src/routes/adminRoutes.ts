@@ -53,7 +53,7 @@ const toClientUser = (row: any) =>
     userId: row.user_id,
     name: row.name,
     role: row.role,
-    isActive: row.is_active ?? true,
+    isActive: true,
     createdAt: row.created_at,
     profileImage: row.profile_image ?? null,
   };
@@ -65,7 +65,7 @@ router.get("/roles", (_req, res) => {
 router.get("/users", async (_req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, user_id, name, role, is_active, profile_image, created_at
+      `SELECT id, user_id, name, role, profile_image, created_at
          FROM public.users
         WHERE role <> 'Administrator'
         ORDER BY created_at DESC`
@@ -85,7 +85,7 @@ router.get("/users/:userId", async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT id, user_id, name, role, is_active, profile_image, created_at
+      `SELECT id, user_id, name, role, profile_image, created_at
          FROM public.users
         WHERE id = $1`,
       [userId]
@@ -125,10 +125,9 @@ router.post("/users", async (req, res) => {
          password_hash,
          name,
          role,
-         is_active
        )
        VALUES ($1, $2, $3, $4, TRUE)
-       RETURNING id, user_id, name, role, created_at, profile_image, is_active`,
+       RETURNING id, user_id, name, role, created_at, profile_image`,
       [userId, passwordHash, name ?? null, normalizedRole]
     );
 
@@ -168,7 +167,7 @@ router.patch("/users/:userId", async (req, res) => {
 
   try {
     const { rows: existingRows } = await pool.query(
-      `SELECT id, user_id, name, role, profile_image, is_active
+      `SELECT id, user_id, name, role, profile_image
          FROM public.users WHERE id = $1`,
       [userId]
     );
@@ -206,7 +205,6 @@ router.patch("/users/:userId", async (req, res) => {
     }
 
     if (parsed.data.isActive !== undefined) {
-      updates.push(`is_active = $${updates.length + 1}`);
       params.push(parsed.data.isActive);
     }
 
@@ -220,7 +218,7 @@ router.patch("/users/:userId", async (req, res) => {
       `UPDATE public.users
           SET ${updates.join(", ")}
         WHERE id = $${params.length}
-        RETURNING id, user_id, name, role, created_at, profile_image, is_active`,
+        RETURNING id, user_id, name, role, created_at, profile_image`,
       params
     );
     const updated = rows[0];

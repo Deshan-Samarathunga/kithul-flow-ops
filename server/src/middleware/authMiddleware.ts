@@ -22,7 +22,7 @@ export function auth(req: Request, res: Response, next: NextFunction) {
 }
 
 export function requireRole(...roles: string[]) {
-  const allow = new Set(roles.map((r) => r.toLowerCase()));
+  const allow = new Set(roles.map((r) => String(r).toLowerCase()));
   return (req: Request, res: Response, next: NextFunction) => {
     const role = String((req as any).user?.role || "").toLowerCase();
     if (!allow.has(role)) return res.status(403).json({ error: "Forbidden" });
