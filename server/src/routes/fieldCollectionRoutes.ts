@@ -195,7 +195,7 @@ router.post("/drafts", auth, requireRole("Field Collection", "Administrator"), a
     res.status(201).json(rows[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation error", details: error.issues });
+      return res.status(400).json({ error: "Validation error", details: error.errors });
     }
     console.error("Error creating draft:", error);
     res.status(500).json({ error: "Failed to create draft" });
@@ -208,8 +208,8 @@ router.put("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
     const { draftId } = req.params;
     const validatedData = updateDraftSchema.parse(req.body);
     
-    const updateFields: string[] = [];
-    const params: any[] = [];
+    const updateFields = [];
+    const params = [];
     let paramCount = 0;
     
     if (validatedData.status !== undefined) {
@@ -241,7 +241,7 @@ router.put("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
     res.json(rows[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation error", details: error.issues });
+      return res.status(400).json({ error: "Validation error", details: error.errors });
     }
     console.error("Error updating draft:", error);
     res.status(500).json({ error: "Failed to update draft" });
@@ -411,7 +411,7 @@ router.post("/buckets", auth, requireRole("Field Collection", "Administrator"), 
     res.status(201).json(rows[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation error", details: error.issues });
+      return res.status(400).json({ error: "Validation error", details: error.errors });
     }
     
     console.error("Error creating bucket:", error);
@@ -437,8 +437,8 @@ router.put("/buckets/:bucketId", auth, requireRole("Field Collection", "Administ
     const { bucketId } = req.params;
     const validatedData = updateBucketSchema.parse(req.body);
     
-    const updateFields: string[] = [];
-    const params: any[] = [];
+    const updateFields = [];
+    const params = [];
     let paramCount = 0;
     
     Object.entries(validatedData).forEach(([key, value]) => {
@@ -472,7 +472,7 @@ router.put("/buckets/:bucketId", auth, requireRole("Field Collection", "Administ
     res.json(rows[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation error", details: error.issues });
+      return res.status(400).json({ error: "Validation error", details: error.errors });
     }
     console.error("Error updating bucket:", error);
     res.status(500).json({ error: "Failed to update bucket" });
