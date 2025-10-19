@@ -124,9 +124,9 @@ router.post("/users", async (req, res) => {
          user_id,
          password_hash,
          name,
-         role,
+         role
        )
-       VALUES ($1, $2, $3, $4, TRUE)
+       VALUES ($1, $2, $3, $4)
        RETURNING id, user_id, name, role, created_at, profile_image`,
       [userId, passwordHash, name ?? null, normalizedRole]
     );

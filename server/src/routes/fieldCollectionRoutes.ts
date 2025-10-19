@@ -52,8 +52,8 @@ router.get("/drafts", auth, requireRole("Field Collection", "Administrator"), as
         d.created_at,
         d.updated_at
       FROM drafts d
-      LEFT JOIN buckets b ON d.id = b.draft_id
-      LEFT JOIN users u ON d.created_by = u.id
+      LEFT JOIN buckets b ON d.id::bigint = b.draft_id
+      LEFT JOIN users u ON d.created_by = u.user_id
     `;
     
     const conditions = [];
@@ -105,7 +105,7 @@ router.get("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
         d.created_at,
         d.updated_at
       FROM drafts d
-      LEFT JOIN users u ON d.created_by = u.id
+      LEFT JOIN users u ON d.created_by = u.user_id
       WHERE d.draft_id = $1
     `;
     
@@ -131,7 +131,7 @@ router.get("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
         cc.location
       FROM buckets b
       JOIN collection_centers cc ON b.collection_center_id = cc.id
-      WHERE b.draft_id = $1
+      WHERE b.draft_id = $1::bigint
       ORDER BY cc.center_name, b.bucket_id
     `;
     
@@ -174,7 +174,7 @@ router.get("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
 router.post("/drafts", auth, requireRole("Field Collection", "Administrator"), async (req, res) => {
   try {
     const validatedData = createDraftSchema.parse(req.body);
-    const userId = (req as any).user.id;
+    const user = (req as any).user;
     
     const draftId = `d${Date.now()}`;
     const date = validatedData.date || new Date().toISOString().split('T')[0];
@@ -189,13 +189,13 @@ router.post("/drafts", auth, requireRole("Field Collection", "Administrator"), a
       draftId,
       date,
       validatedData.productType || 'sap', // Default to sap if not provided
-      userId
+      user.userId // Use userId (string) instead of id (integer)
     ]);
     
     res.status(201).json(rows[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation error", details: error.errors });
+      return res.status(400).json({ error: "Validation error", details: error.issues });
     }
     console.error("Error creating draft:", error);
     res.status(500).json({ error: "Failed to create draft" });
@@ -208,8 +208,8 @@ router.put("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
     const { draftId } = req.params;
     const validatedData = updateDraftSchema.parse(req.body);
     
-    const updateFields = [];
-    const params = [];
+    const updateFields: string[] = [];
+    const params: any[] = [];
     let paramCount = 0;
     
     if (validatedData.status !== undefined) {
@@ -241,7 +241,7 @@ router.put("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
     res.json(rows[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation error", details: error.errors });
+      return res.status(400).json({ error: "Validation error", details: error.issues });
     }
     console.error("Error updating draft:", error);
     res.status(500).json({ error: "Failed to update draft" });
@@ -332,7 +332,7 @@ router.get("/drafts/:draftId/centers/:centerId/buckets", auth, requireRole("Fiel
         d.date as draft_date
       FROM buckets b
       JOIN collection_centers cc ON b.collection_center_id = cc.id
-      JOIN drafts d ON b.draft_id = d.id
+      JOIN drafts d ON b.draft_id = d.id::bigint
       WHERE d.draft_id = $1 AND (cc.center_id = $2 OR cc.center_name = $2)
       ORDER BY b.bucket_id
     `;
@@ -360,10 +360,12 @@ router.post("/buckets", auth, requireRole("Field Collection", "Administrator"), 
     
     // Map string center IDs to integer IDs
     const centerIdMapping: { [key: string]: number } = {
-      'center001': 1, // Galle Collection Center
-      'center002': 2, // Kurunegala Collection Center
-      'center003': 3, // Hikkaduwa Collection Center
-      'center004': 4  // Matara Collection Center
+      'center001': 53, // Galle Collection Center
+      'center002': 54, // Kurunegala Collection Center
+      'center003': 55, // Hikkaduwa Collection Center
+      'center004': 56, // Matara Collection Center
+      'center005': 57, // Colombo Collection Center
+      'center006': 58  // Kandy Collection Center
     };
     
     const collectionCenterId = centerIdMapping[validatedData.collectionCenterId];
@@ -411,7 +413,7 @@ router.post("/buckets", auth, requireRole("Field Collection", "Administrator"), 
     res.status(201).json(rows[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation error", details: error.errors });
+      return res.status(400).json({ error: "Validation error", details: error.issues });
     }
     
     console.error("Error creating bucket:", error);
@@ -437,8 +439,8 @@ router.put("/buckets/:bucketId", auth, requireRole("Field Collection", "Administ
     const { bucketId } = req.params;
     const validatedData = updateBucketSchema.parse(req.body);
     
-    const updateFields = [];
-    const params = [];
+    const updateFields: string[] = [];
+    const params: any[] = [];
     let paramCount = 0;
     
     Object.entries(validatedData).forEach(([key, value]) => {
@@ -472,7 +474,7 @@ router.put("/buckets/:bucketId", auth, requireRole("Field Collection", "Administ
     res.json(rows[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation error", details: error.errors });
+      return res.status(400).json({ error: "Validation error", details: error.issues });
     }
     console.error("Error updating bucket:", error);
     res.status(500).json({ error: "Failed to update bucket" });
