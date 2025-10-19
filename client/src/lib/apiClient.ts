@@ -3,6 +3,42 @@ const rawBase = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://
 const normalizedBase = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
 const API_BASE_URL = `${normalizedBase}/api`;
 
+export type ProcessingBucketDto = {
+  id: string;
+  quantity: number;
+  productType: string;
+  brixValue: number | null;
+  phValue: number | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  assignedBatchId: string | null;
+  draft: {
+    id: string;
+    date: string | null;
+    status: string;
+  };
+  collectionCenter: {
+    id: string;
+    name: string;
+    location: string | null;
+  };
+};
+
+export type ProcessingBatchDto = {
+  id: string;
+  batchNumber: string;
+  scheduledDate: string | null;
+  productType: string;
+  status: string;
+  notes?: string | null;
+  createdBy?: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  bucketCount: number;
+  totalQuantity: number;
+  bucketIds?: string[];
+};
+
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
@@ -209,6 +245,48 @@ class ApiClient {
 
   async getCollectionCenters() {
     return this.request<any[]>('/field-collection/centers');
+  }
+
+  // Processing API
+  async getProcessingBuckets(params?: { status?: string; forBatch?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.append('status', params.status);
+    if (params?.forBatch) searchParams.append('forBatch', params.forBatch);
+    const query = searchParams.toString();
+    const endpoint = `/processing/buckets${query ? `?${query}` : ''}`;
+    return this.request<{ buckets: ProcessingBucketDto[] }>(endpoint);
+  }
+
+  async getProcessingBatches() {
+    return this.request<{ batches: ProcessingBatchDto[] }>(`/processing/batches`);
+  }
+
+  async createProcessingBatch(payload?: { scheduledDate?: string; productType?: string; notes?: string }) {
+    return this.request<ProcessingBatchDto>(`/processing/batches`, {
+      method: 'POST',
+      body: JSON.stringify(payload ?? {}),
+    });
+  }
+
+  async getProcessingBatch(batchId: string) {
+    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}`);
+  }
+
+  async updateProcessingBatch(
+    batchId: string,
+    payload: { status?: string; scheduledDate?: string; productType?: string; notes?: string }
+  ) {
+    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateProcessingBatchBuckets(batchId: string, bucketIds: string[]) {
+    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/buckets`, {
+      method: 'PUT',
+      body: JSON.stringify({ bucketIds }),
+    });
   }
 
   // Health check

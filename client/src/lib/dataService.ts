@@ -159,6 +159,53 @@ export class DataService {
     }
   }
 
+  static async getProcessingBuckets(status: string = 'active', batchId?: string) {
+    try {
+      const response = await apiClient.getProcessingBuckets({ status, forBatch: batchId });
+      return response.buckets;
+    } catch (error) {
+      console.error('Error fetching processing buckets:', error);
+      throw error;
+    }
+  }
+
+  static async getProcessingBatches() {
+    try {
+      const response = await apiClient.getProcessingBatches();
+      return response.batches;
+    } catch (error) {
+      console.error('Error fetching processing batches:', error);
+      throw error;
+    }
+  }
+
+  static async createProcessingBatch(data?: { scheduledDate?: string; productType?: string; notes?: string }) {
+    try {
+      return await apiClient.createProcessingBatch(data);
+    } catch (error) {
+      console.error('Error creating processing batch:', error);
+      throw error;
+    }
+  }
+
+  static async getProcessingBatch(batchId: string) {
+    try {
+      return await apiClient.getProcessingBatch(batchId);
+    } catch (error) {
+      console.error('Error fetching processing batch:', error);
+      throw error;
+    }
+  }
+
+  static async updateProcessingBatchBuckets(batchId: string, bucketIds: string[]) {
+    try {
+      return await apiClient.updateProcessingBatchBuckets(batchId, bucketIds);
+    } catch (error) {
+      console.error('Error updating processing batch buckets:', error);
+      throw error;
+    }
+  }
+
   // Health check
   static async healthCheck() {
     try {
