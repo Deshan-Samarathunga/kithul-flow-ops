@@ -1,5 +1,7 @@
 // API Client for Kithul Flow Application
-const API_BASE_URL = 'http://localhost:5000/api';
+const rawBase = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:5000";
+const normalizedBase = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
+const API_BASE_URL = `${normalizedBase}/api`;
 
 class ApiClient {
   private baseURL: string;
@@ -53,8 +55,28 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Network error' }));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
+      let message = `HTTP ${response.status}`;
+      try {
+        const errorJson = await response.json();
+        if (errorJson && typeof errorJson === 'object') {
+          message = errorJson.error || message;
+        }
+      } catch {
+        const errorText = await response.text().catch(() => '');
+        if (errorText) {
+          message = errorText;
+        }
+      }
+      throw new Error(message);
+    }
+
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+      return undefined as T;
     }
 
     return response.json();

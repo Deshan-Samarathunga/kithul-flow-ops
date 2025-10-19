@@ -347,89 +347,96 @@ router.get("/drafts/:draftId/centers/:centerId/buckets", auth, requireRole("Fiel
 
 // Create a new bucket
 router.post("/buckets", auth, requireRole("Field Collection", "Administrator"), async (req, res) => {
+  const client = await pool.connect();
   try {
     const validatedData = createBucketSchema.parse(req.body);
-    
-    // Get draft ID from draft_id
-    const draftQuery = `SELECT id FROM drafts WHERE draft_id = $1`;
-    const { rows: draftRows } = await pool.query(draftQuery, [validatedData.draftId]);
-    
-    if (draftRows.length === 0) {
+
+    const draftResult = await client.query<{ id: string }>("SELECT id FROM drafts WHERE draft_id = $1", [
+      validatedData.draftId,
+    ]);
+    const draftRow = draftResult.rows[0];
+    if (!draftRow) {
       return res.status(404).json({ error: "Draft not found" });
     }
-    
-    // Map string center IDs to integer IDs
-    const centerIdMapping: { [key: string]: number } = {
-      'center001': 53, // Galle Collection Center
-      'center002': 54, // Kurunegala Collection Center
-      'center003': 55, // Hikkaduwa Collection Center
-      'center004': 56, // Matara Collection Center
-      'center005': 57, // Colombo Collection Center
-      'center006': 58  // Kandy Collection Center
-    };
-    
-    const collectionCenterId = centerIdMapping[validatedData.collectionCenterId];
-    if (!collectionCenterId) {
+
+    const centerResult = await client.query<{ id: number; center_id: string }>(
+      `SELECT id, center_id FROM collection_centers
+         WHERE center_id = $1
+            OR CAST(id AS TEXT) = $1
+            OR LOWER(center_name) = LOWER($1)
+         LIMIT 1`,
+      [validatedData.collectionCenterId]
+    );
+    const centerRow = centerResult.rows[0];
+    if (!centerRow) {
       return res.status(400).json({ error: "Invalid collection center ID" });
     }
-    
+
     const bucketId = `b${Date.now()}`;
-    
-    // First, try to disable triggers temporarily
+
+    await client.query("BEGIN");
     try {
-      await pool.query('SET session_replication_role = replica;');
-      console.log('Disabled triggers for this session');
+      await client.query("SET LOCAL session_replication_role = replica");
     } catch (triggerError) {
-      console.log('Could not disable triggers:', triggerError);
+      console.log("Could not disable triggers:", triggerError);
     }
-    
-    const query = `
-      INSERT INTO buckets (
-        bucket_id, draft_id, collection_center_id, product_type,
-        brix_value, ph_value, quantity
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
-    `;
-    
-    const { rows } = await pool.query(query, [
-      bucketId,
-      draftRows[0].id,
-      collectionCenterId,
-      validatedData.productType,
-      validatedData.brixValue || null,
-      validatedData.phValue || null,
-      validatedData.quantity
-    ]);
-    
-    // Re-enable triggers
-    try {
-      await pool.query('SET session_replication_role = DEFAULT;');
-      console.log('Re-enabled triggers for this session');
-    } catch (triggerError) {
-      console.log('Could not re-enable triggers:', triggerError);
-    }
-    
-    res.status(201).json(rows[0]);
+
+    const insertResult = await client.query(
+      `
+        INSERT INTO buckets (
+          bucket_id,
+          draft_id,
+          collection_center_id,
+          product_type,
+          brix_value,
+          ph_value,
+          quantity
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *
+      `,
+      [
+        bucketId,
+        draftRow.id,
+        centerRow.id,
+        validatedData.productType,
+        validatedData.brixValue ?? null,
+        validatedData.phValue ?? null,
+        validatedData.quantity,
+      ]
+    );
+
+    await client.query("COMMIT");
+    res.status(201).json(insertResult.rows[0]);
   } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("ROLLBACK FAILED:", rollbackError);
+    }
+
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: "Validation error", details: error.issues });
     }
-    
+
     console.error("Error creating bucket:", error);
-    
-    // Check if it's a trigger-related error
-    if (error instanceof Error && error.message.includes('total_amount')) {
-      console.error("TRIGGER ERROR DETECTED: The database trigger is still active and trying to access removed columns.");
+
+    if (error instanceof Error && error.message.includes("total_amount")) {
+      console.error(
+        "TRIGGER ERROR DETECTED: The database trigger is still active and trying to access removed columns."
+      );
       console.error("Please run the SQL script in db/007_force_remove_triggers.sql to fix this issue.");
-      return res.status(500).json({ 
-        error: "Database trigger error", 
-        details: "The calculate_total_amount trigger is still active. Please contact your database administrator to run the trigger removal script.",
-        fix: "Run the SQL commands in db/007_force_remove_triggers.sql in your PostgreSQL client"
+      return res.status(500).json({
+        error: "Database trigger error",
+        details:
+          "The calculate_total_amount trigger is still active. Please contact your database administrator to run the trigger removal script.",
+        fix: "Run the SQL commands in db/007_force_remove_triggers.sql in your PostgreSQL client",
       });
     }
-    
+
     res.status(500).json({ error: "Failed to create bucket" });
+  } finally {
+    client.release();
   }
 });
 
