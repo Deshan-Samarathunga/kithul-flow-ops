@@ -211,6 +211,10 @@ class ApiClient {
     return this.request<any[]>('/field-collection/centers');
   }
 
+  async getFieldCollectors() {
+    return this.request<any[]>('/field-collection/field-collectors');
+  }
+
   // Health check
   async healthCheck() {
     return this.request<{ ok: boolean; service: string; time: string }>('/health');

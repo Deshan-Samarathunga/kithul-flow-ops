@@ -126,11 +126,14 @@ router.get("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
         b.brix_value,
         b.ph_value,
         b.quantity,
+        b.field_collector_id,
+        u.name as field_collector_name,
         cc.center_id,
         cc.center_name,
         cc.location
       FROM buckets b
       JOIN collection_centers cc ON b.collection_center_id = cc.id
+      LEFT JOIN users u ON b.field_collector_id = u.user_id
       WHERE b.draft_id = $1::bigint
       ORDER BY cc.center_name, b.bucket_id
     `;
@@ -154,6 +157,8 @@ router.get("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
         brixValue: bucket.brix_value,
         phValue: bucket.ph_value,
         quantity: bucket.quantity,
+        fieldCollectorId: bucket.field_collector_id,
+        fieldCollectorName: bucket.field_collector_name,
         collectionCenterId: bucket.center_id,
         collectionCenterName: bucket.center_name
       });
@@ -328,11 +333,14 @@ router.get("/drafts/:draftId/centers/:centerId/buckets", auth, requireRole("Fiel
         b.brix_value,
         b.ph_value,
         b.quantity,
+        b.field_collector_id,
+        u.name as field_collector_name,
         cc.center_name,
         d.date as draft_date
       FROM buckets b
       JOIN collection_centers cc ON b.collection_center_id = cc.id
       JOIN drafts d ON b.draft_id = d.id::bigint
+      LEFT JOIN users u ON b.field_collector_id = u.user_id
       WHERE d.draft_id = $1 AND (cc.center_id = $2 OR cc.center_name = $2)
       ORDER BY b.bucket_id
     `;
@@ -350,6 +358,7 @@ router.post("/buckets", auth, requireRole("Field Collection", "Administrator"), 
   const client = await pool.connect();
   try {
     const validatedData = createBucketSchema.parse(req.body);
+    const user = (req as any).user;
 
     const draftResult = await client.query<{ id: string }>("SELECT id FROM drafts WHERE draft_id = $1", [
       validatedData.draftId,
@@ -390,9 +399,10 @@ router.post("/buckets", auth, requireRole("Field Collection", "Administrator"), 
           product_type,
           brix_value,
           ph_value,
-          quantity
+          quantity,
+          field_collector_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
       `,
       [
@@ -403,6 +413,7 @@ router.post("/buckets", auth, requireRole("Field Collection", "Administrator"), 
         validatedData.brixValue ?? null,
         validatedData.phValue ?? null,
         validatedData.quantity,
+        user.userId, // Add field collector tracking
       ]
     );
 
@@ -450,10 +461,21 @@ router.put("/buckets/:bucketId", auth, requireRole("Field Collection", "Administ
     const params: any[] = [];
     let paramCount = 0;
     
+    // Map camelCase to snake_case for database columns
+    const fieldMapping: Record<string, string> = {
+      brixValue: 'brix_value',
+      phValue: 'ph_value',
+      qrCode: 'qr_code',
+      farmerId: 'farmer_id',
+      farmerName: 'farmer_name',
+      collectionTime: 'collection_time'
+    };
+
     Object.entries(validatedData).forEach(([key, value]) => {
       if (value !== undefined) {
         paramCount++;
-        updateFields.push(`${key} = $${paramCount}`);
+        const dbField = fieldMapping[key] || key;
+        updateFields.push(`${dbField} = $${paramCount}`);
         params.push(value);
       }
     });
@@ -533,6 +555,28 @@ router.get("/centers", auth, requireRole("Field Collection", "Administrator"), a
   } catch (error) {
     console.error("Error fetching collection centers:", error);
     res.status(500).json({ error: "Failed to fetch collection centers" });
+  }
+});
+
+// Get all field collectors
+router.get("/field-collectors", auth, requireRole("Field Collection", "Administrator"), async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        user_id,
+        name,
+        role,
+        created_at
+      FROM users
+      WHERE role = 'Field Collection'
+      ORDER BY name
+    `;
+    
+    const { rows } = await pool.query(query);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error fetching field collectors:", error);
+    res.status(500).json({ error: "Failed to fetch field collectors" });
   }
 });
 
