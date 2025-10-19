@@ -4,7 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { SecondaryToolbar } from "@/components/SecondaryToolbar";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import DataService from "@/lib/dataService";
 import type { ProcessingBatchDto } from "@/lib/apiClient";
@@ -17,6 +17,7 @@ export default function Processing() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState<boolean>(false);
+  const [completingBatchId, setCompletingBatchId] = useState<string | null>(null);
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
   const apiBase = useMemo(() => {
@@ -60,6 +61,20 @@ export default function Processing() {
       toast.error("Unable to create a new batch. Please try again.");
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleMarkFinished = async (batchId: string, batchNumber: string) => {
+    setCompletingBatchId(batchId);
+    try {
+      await DataService.completeProcessingBatch(batchId);
+      toast.success(`Batch ${batchNumber} marked finished`);
+      await loadBatches();
+    } catch (err) {
+      console.error("Failed to complete processing batch", err);
+      toast.error("Unable to mark the batch as finished. Please try again.");
+    } finally {
+      setCompletingBatchId(null);
     }
   };
 
@@ -140,6 +155,24 @@ export default function Processing() {
                       status={resolveBadgeStatus(batch.status)}
                       label={formatStatusLabel(batch.status)}
                     />
+                    {batch.status !== "completed" && batch.status !== "cancelled" && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="flex-1 sm:flex-none"
+                        onClick={() => void handleMarkFinished(batch.id, batch.batchNumber)}
+                        disabled={completingBatchId === batch.id}
+                      >
+                        {completingBatchId === batch.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Marking…
+                          </>
+                        ) : (
+                          "Mark Finished"
+                        )}
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

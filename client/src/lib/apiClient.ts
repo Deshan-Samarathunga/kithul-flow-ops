@@ -39,6 +39,21 @@ export type ProcessingBatchDto = {
   bucketIds?: string[];
 };
 
+export type PackagingBatchDto = {
+  id: string;
+  packagingId: string;
+  processingBatchId: string;
+  batchNumber: string;
+  productType: string;
+  scheduledDate: string | null;
+  packagingStatus: string;
+  processingStatus: string;
+  startedAt: string | null;
+  updatedAt: string | null;
+  bucketCount: number;
+  totalQuantity: number;
+};
+
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
@@ -287,6 +302,17 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify({ bucketIds }),
     });
+  }
+
+  async completeProcessingBatch(batchId: string) {
+    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/complete`, {
+      method: 'POST',
+    });
+  }
+
+  // Packaging API
+  async getPackagingBatches() {
+    return this.request<{ batches: PackagingBatchDto[] }>(`/packaging/batches`);
   }
 
   // Health check

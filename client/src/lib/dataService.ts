@@ -206,6 +206,25 @@ export class DataService {
     }
   }
 
+  static async completeProcessingBatch(batchId: string) {
+    try {
+      return await apiClient.completeProcessingBatch(batchId);
+    } catch (error) {
+      console.error('Error completing processing batch:', error);
+      throw error;
+    }
+  }
+
+  static async getPackagingBatches() {
+    try {
+      const response = await apiClient.getPackagingBatches();
+      return response.batches;
+    } catch (error) {
+      console.error('Error fetching packaging batches:', error);
+      throw error;
+    }
+  }
+
   // Health check
   static async healthCheck() {
     try {

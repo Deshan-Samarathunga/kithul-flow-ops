@@ -487,4 +487,69 @@ router.put(
 	}
 );
 
+router.post(
+	"/batches/:batchId/complete",
+	auth,
+	requireRole("Processing", "Administrator"),
+	async (req, res) => {
+		const { batchId } = req.params;
+		const client = await pool.connect();
+		try {
+			await client.query("BEGIN");
+			const { rows } = await client.query(
+				`SELECT id, batch_id, batch_number, status FROM processing_batches WHERE batch_id = $1 FOR UPDATE`,
+				[batchId]
+			);
+			if (rows.length === 0) {
+				await client.query("ROLLBACK");
+				return res.status(404).json({ error: "Batch not found" });
+			}
+
+			const batchRow = rows[0];
+			if (batchRow.status === "cancelled") {
+				await client.query("ROLLBACK");
+				return res.status(400).json({ error: "Cannot complete a cancelled batch" });
+			}
+
+			if (batchRow.status !== "completed") {
+				await client.query(
+					`UPDATE processing_batches SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+					[batchRow.id]
+				);
+			}
+
+			const packagingId = `pkg${Date.now()}`;
+			const insertPackaging = await client.query(
+				`INSERT INTO packaging_batches (packaging_id, processing_batch_id, status)
+				 VALUES ($1, $2, 'pending')
+				 ON CONFLICT (processing_batch_id) DO NOTHING
+				 RETURNING packaging_id`,
+				[packagingId, batchRow.id]
+			);
+
+			if (insertPackaging.rows.length === 0) {
+				await client.query(
+					`UPDATE packaging_batches SET updated_at = CURRENT_TIMESTAMP WHERE processing_batch_id = $1`,
+					[batchRow.id]
+				);
+			}
+
+			await client.query("COMMIT");
+
+			const updated = await fetchProcessingBatch(batchId);
+			if (!updated) {
+				return res.status(404).json({ error: "Batch not found" });
+			}
+
+			res.json(updated);
+		} catch (error) {
+			await client.query("ROLLBACK").catch(() => undefined);
+			console.error("Error completing processing batch:", error);
+			res.status(500).json({ error: "Failed to complete batch" });
+		} finally {
+			client.release();
+		}
+	}
+);
+
 export default router;

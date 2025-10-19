@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -22,6 +23,7 @@ export default function BatchDetail() {
   const [isBucketLoading, setIsBucketLoading] = useState<boolean>(true);
   const [selectedBuckets, setSelectedBuckets] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [bucketSearch, setBucketSearch] = useState<string>("");
 
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
@@ -154,6 +156,31 @@ export default function BatchDetail() {
     return copy;
   }, [availableBuckets]);
 
+  const filteredBuckets = useMemo(() => {
+    const term = bucketSearch.trim().toLowerCase();
+    if (!term) {
+      return sortedBuckets;
+    }
+
+    return sortedBuckets.filter((bucket) => {
+      const values = [
+        bucket.id,
+        bucket.collectionCenter?.name,
+        bucket.collectionCenter?.location,
+        bucket.productType,
+        bucket.draft?.id,
+        bucket.draft?.status,
+        bucket.draft?.date,
+        bucket.quantity?.toString(),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return values.includes(term);
+    });
+  }, [bucketSearch, sortedBuckets]);
+
   const selectedBucketsSummary = useMemo(() => {
     return selectedBuckets.reduce(
       (acc, bucketId) => {
@@ -172,6 +199,9 @@ export default function BatchDetail() {
   }, [availableBuckets, selectedBuckets]);
 
   const selectionLimitReached = selectedBuckets.length >= MAX_BUCKET_SELECTION;
+  const noBucketsAvailable = !isBucketLoading && !bucketError && sortedBuckets.length === 0;
+  const noSearchMatches =
+    !isBucketLoading && !bucketError && sortedBuckets.length > 0 && filteredBuckets.length === 0;
 
   if (!batchId) {
     return <div className="p-6">No batch selected.</div>;
@@ -215,6 +245,14 @@ export default function BatchDetail() {
             <div className="space-y-4">
               <h2 className="text-base sm:text-lg font-semibold">Available Buckets</h2>
 
+              <div className="max-w-sm">
+                <Input
+                  value={bucketSearch}
+                  onChange={(event) => setBucketSearch(event.target.value)}
+                  placeholder="Search buckets by ID, center, product, or draft"
+                />
+              </div>
+
               {isBucketLoading && (
                 <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
                   Loading buckets…
@@ -227,14 +265,20 @@ export default function BatchDetail() {
                 </div>
               )}
 
-              {!isBucketLoading && !bucketError && sortedBuckets.length === 0 && (
+              {noBucketsAvailable && (
                 <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
                   No active buckets available.
                 </div>
               )}
 
+              {noSearchMatches && (
+                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+                  No buckets match your search. Adjust the filters to see more buckets.
+                </div>
+              )}
+
               {!isBucketLoading && !bucketError &&
-                sortedBuckets.map((bucket) => {
+                filteredBuckets.map((bucket) => {
                   const isChecked = selectedBuckets.includes(bucket.id);
                   const disableSelection = selectionLimitReached && !isChecked;
 
