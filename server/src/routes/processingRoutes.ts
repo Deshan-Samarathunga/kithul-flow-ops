@@ -488,7 +488,7 @@ router.put(
 );
 
 router.post(
-	"/batches/:batchId/complete",
+	"/batches/:batchId/submit",
 	auth,
 	requireRole("Processing", "Administrator"),
 	async (req, res) => {
@@ -508,7 +508,7 @@ router.post(
 			const batchRow = rows[0];
 			if (batchRow.status === "cancelled") {
 				await client.query("ROLLBACK");
-				return res.status(400).json({ error: "Cannot complete a cancelled batch" });
+				return res.status(400).json({ error: "Cannot submit a cancelled batch" });
 			}
 
 			if (batchRow.status !== "completed") {
@@ -544,8 +544,61 @@ router.post(
 			res.json(updated);
 		} catch (error) {
 			await client.query("ROLLBACK").catch(() => undefined);
-			console.error("Error completing processing batch:", error);
-			res.status(500).json({ error: "Failed to complete batch" });
+			console.error("Error submitting processing batch:", error);
+			res.status(500).json({ error: "Failed to submit batch" });
+		} finally {
+			client.release();
+		}
+	}
+);
+
+router.post(
+	"/batches/:batchId/reopen",
+	auth,
+	requireRole("Processing", "Administrator"),
+	async (req, res) => {
+		const { batchId } = req.params;
+		const client = await pool.connect();
+		try {
+			await client.query("BEGIN");
+			const { rows } = await client.query(
+				`SELECT id, batch_id, batch_number, status FROM processing_batches WHERE batch_id = $1 FOR UPDATE`,
+				[batchId]
+			);
+			if (rows.length === 0) {
+				await client.query("ROLLBACK");
+				return res.status(404).json({ error: "Batch not found" });
+			}
+
+			const batchRow = rows[0];
+			if (batchRow.status === "cancelled") {
+				await client.query("ROLLBACK");
+				return res.status(400).json({ error: "Cannot reopen a cancelled batch" });
+			}
+
+			if (batchRow.status !== "completed") {
+				await client.query("ROLLBACK");
+				return res.status(400).json({ error: "Only completed batches can be reopened" });
+			}
+
+			await client.query(
+				`UPDATE processing_batches SET status = 'in-progress', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+				[batchRow.id]
+			);
+			await client.query(`DELETE FROM packaging_batches WHERE processing_batch_id = $1`, [batchRow.id]);
+
+			await client.query("COMMIT");
+
+			const updated = await fetchProcessingBatch(batchId);
+			if (!updated) {
+				return res.status(404).json({ error: "Batch not found" });
+			}
+
+			res.json(updated);
+		} catch (error) {
+			await client.query("ROLLBACK").catch(() => undefined);
+			console.error("Error reopening processing batch:", error);
+			res.status(500).json({ error: "Failed to reopen batch" });
 		} finally {
 			client.release();
 		}

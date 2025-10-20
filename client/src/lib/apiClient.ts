@@ -304,8 +304,14 @@ class ApiClient {
     });
   }
 
-  async completeProcessingBatch(batchId: string) {
-    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/complete`, {
+  async submitProcessingBatch(batchId: string) {
+    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/submit`, {
+      method: 'POST',
+    });
+  }
+
+  async reopenProcessingBatch(batchId: string) {
+    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/reopen`, {
       method: 'POST',
     });
   }

@@ -206,11 +206,20 @@ export class DataService {
     }
   }
 
-  static async completeProcessingBatch(batchId: string) {
+  static async submitProcessingBatch(batchId: string) {
     try {
-      return await apiClient.completeProcessingBatch(batchId);
+      return await apiClient.submitProcessingBatch(batchId);
     } catch (error) {
-      console.error('Error completing processing batch:', error);
+      console.error('Error submitting processing batch:', error);
+      throw error;
+    }
+  }
+
+  static async reopenProcessingBatch(batchId: string) {
+    try {
+      return await apiClient.reopenProcessingBatch(batchId);
+    } catch (error) {
+      console.error('Error reopening processing batch:', error);
       throw error;
     }
   }
