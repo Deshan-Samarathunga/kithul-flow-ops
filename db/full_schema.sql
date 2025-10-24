@@ -1,8 +1,9 @@
--- Complete database schema for Kithul Flow Ops
--- Executes end-to-end table creation for SAP and Treacle product lanes
+-- Kithul Flow Ops complete PostgreSQL schema
+-- Execute this file on a clean database to provision every table, index,
+-- constraint, and trigger used across all application modules.
 
 ------------------------------------------------------------------------
--- Core reference tables
+-- Core reference tables shared by every module
 ------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS public.users (
@@ -12,7 +13,8 @@ CREATE TABLE IF NOT EXISTS public.users (
   name TEXT,
   role TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  profile_image TEXT
+  profile_image TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 CREATE INDEX IF NOT EXISTS users_role_idx ON public.users (role);
@@ -29,18 +31,23 @@ CREATE TABLE IF NOT EXISTS public.collection_centers (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-INSERT INTO public.collection_centers (center_id, center_name, location, center_agent, contact_phone) VALUES
+COMMENT ON TABLE public.users IS 'User accounts for the Kithul Flow Ops system.';
+COMMENT ON TABLE public.collection_centers IS 'Collection centers where kithul products are gathered.';
+
+------------------------------------------------------------------------
+-- Optional seed data for reference tables
+------------------------------------------------------------------------
+
+INSERT INTO public.collection_centers (center_id, center_name, location, center_agent, contact_phone)
+VALUES
   ('center001', 'Galle Collection Center', 'Galle', 'John Silva', '+94 77 123 4567'),
   ('center002', 'Kurunegala Collection Center', 'Kurunegala', 'Mary Perera', '+94 77 234 5678'),
   ('center003', 'Hikkaduwa Collection Center', 'Hikkaduwa', 'David Fernando', '+94 77 345 6789'),
   ('center004', 'Matara Collection Center', 'Matara', 'Sarah Jayawardena', '+94 77 456 7890')
 ON CONFLICT (center_id) DO NOTHING;
 
-COMMENT ON TABLE public.users IS 'User accounts for the Kithul Flow Ops system';
-COMMENT ON TABLE public.collection_centers IS 'Collection centers where kithul products are gathered';
-
 ------------------------------------------------------------------------
--- Field collection: drafts and buckets split per product
+-- Field collection (drafts, buckets, center completion tracking)
 ------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS public.sap_drafts (
@@ -128,7 +135,6 @@ CREATE TABLE IF NOT EXISTS public.treacle_buckets (
 
 CREATE INDEX IF NOT EXISTS idx_sap_buckets_draft_id ON public.sap_buckets (draft_id);
 CREATE INDEX IF NOT EXISTS idx_sap_buckets_center_id ON public.sap_buckets (collection_center_id);
-
 CREATE INDEX IF NOT EXISTS idx_treacle_buckets_draft_id ON public.treacle_buckets (draft_id);
 CREATE INDEX IF NOT EXISTS idx_treacle_buckets_center_id ON public.treacle_buckets (collection_center_id);
 
@@ -173,7 +179,6 @@ CREATE TABLE IF NOT EXISTS public.treacle_center_completions (
 
 CREATE INDEX IF NOT EXISTS idx_sap_center_completions_draft_center
   ON public.sap_center_completions (draft_id, center_id);
-
 CREATE INDEX IF NOT EXISTS idx_treacle_center_completions_draft_center
   ON public.treacle_center_completions (draft_id, center_id);
 
@@ -181,7 +186,7 @@ COMMENT ON TABLE public.sap_center_completions IS 'Completion tracking for SAP f
 COMMENT ON TABLE public.treacle_center_completions IS 'Completion tracking for Treacle field collection centers.';
 
 ------------------------------------------------------------------------
--- Processing stage per product
+-- Processing (batches and bucket assignments)
 ------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS public.sap_processing_batches (
@@ -236,7 +241,6 @@ CREATE INDEX IF NOT EXISTS idx_sap_processing_batches_status
   ON public.sap_processing_batches (status);
 CREATE INDEX IF NOT EXISTS idx_sap_processing_batches_sched
   ON public.sap_processing_batches (scheduled_date DESC);
-
 CREATE INDEX IF NOT EXISTS idx_treacle_processing_batches_status
   ON public.treacle_processing_batches (status);
 CREATE INDEX IF NOT EXISTS idx_treacle_processing_batches_sched
@@ -283,7 +287,6 @@ CREATE INDEX IF NOT EXISTS idx_sap_processing_batch_buckets_batch_id
   ON public.sap_processing_batch_buckets (processing_batch_id);
 CREATE INDEX IF NOT EXISTS idx_sap_processing_batch_buckets_bucket_id
   ON public.sap_processing_batch_buckets (bucket_id);
-
 CREATE INDEX IF NOT EXISTS idx_treacle_processing_batch_buckets_batch_id
   ON public.treacle_processing_batch_buckets (processing_batch_id);
 CREATE INDEX IF NOT EXISTS idx_treacle_processing_batch_buckets_bucket_id
@@ -328,7 +331,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.enforce_processing_bucket_limit_generic();
 
 ------------------------------------------------------------------------
--- Packaging stage per product
+-- Packaging (downstream workflow from processing)
 ------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS public.sap_packaging_batches (
@@ -387,7 +390,7 @@ COMMENT ON TABLE public.sap_packaging_batches IS 'Packaging workflow for SAP pro
 COMMENT ON TABLE public.treacle_packaging_batches IS 'Packaging workflow for Treacle production.';
 
 ------------------------------------------------------------------------
--- Labeling stage per product
+-- Labeling (final workflow stage)
 ------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS public.sap_labeling_batches (
@@ -440,8 +443,8 @@ COMMENT ON TABLE public.sap_labeling_batches IS 'Labeling data captured for SAP 
 COMMENT ON TABLE public.treacle_labeling_batches IS 'Labeling data captured for Treacle packaging runs.';
 
 ------------------------------------------------------------------------
--- Summary
+-- End of schema
 ------------------------------------------------------------------------
 
--- Running this script on an empty PostgreSQL database creates the full set of
--- SAP and Treacle workflow tables along with shared references and triggers.
+-- Executing this script provides a fresh database that matches the
+-- expectations of the current Express API and client application.

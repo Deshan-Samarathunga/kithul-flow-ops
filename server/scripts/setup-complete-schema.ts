@@ -19,7 +19,7 @@ async function setupCompleteSchema() {
     console.log('Setting up complete database schema...');
     
     // Read the schema file
-    const schemaPath = path.join(process.cwd(), '..', 'db', '005_create_complete_schema.sql');
+  const schemaPath = path.join(process.cwd(), '..', 'db', 'full_schema.sql');
     const schemaSQL = fs.readFileSync(schemaPath, 'utf8');
     
     // Execute the schema
@@ -42,11 +42,11 @@ async function setupCompleteSchema() {
     const bucketColumns = await pool.query(`
       SELECT column_name, data_type, is_nullable
       FROM information_schema.columns 
-      WHERE table_name = 'buckets' 
+      WHERE table_schema = 'public' AND table_name = 'sap_buckets' 
       ORDER BY ordinal_position
     `);
-    
-    console.log('\n📦 Buckets table columns:');
+
+    console.log('\n📦 sap_buckets columns:');
     bucketColumns.rows.forEach(col => {
       console.log(`  - ${col.column_name}: ${col.data_type} ${col.is_nullable === 'NO' ? '(NOT NULL)' : '(nullable)'}`);
     });
