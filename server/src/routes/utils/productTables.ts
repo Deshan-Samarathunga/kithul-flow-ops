@@ -3,16 +3,12 @@ export type ProductSlug = (typeof SUPPORTED_PRODUCTS)[number];
 
 const TABLES = {
   drafts: {
-    sap: "sap_drafts",
-    treacle: "treacle_drafts",
+    sap: "field_collection_drafts",
+    treacle: "field_collection_drafts",
   },
   buckets: {
     sap: "sap_buckets",
     treacle: "treacle_buckets",
-  },
-  centerCompletions: {
-    sap: "sap_center_completions",
-    treacle: "treacle_center_completions",
   },
   processingBatches: {
     sap: "sap_processing_batches",

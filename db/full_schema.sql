@@ -34,59 +34,25 @@ CREATE TABLE IF NOT EXISTS public.collection_centers (
 COMMENT ON TABLE public.users IS 'User accounts for the Kithul Flow Ops system.';
 COMMENT ON TABLE public.collection_centers IS 'Collection centers where kithul products are gathered.';
 
-------------------------------------------------------------------------
--- Optional seed data for reference tables
-------------------------------------------------------------------------
+ALTER TABLE IF EXISTS public.field_collection_drafts DROP COLUMN IF EXISTS product_type;
 
-INSERT INTO public.collection_centers (center_id, center_name, location, center_agent, contact_phone)
-VALUES
-  ('center001', 'Galle Collection Center', 'Galle', 'John Silva', '+94 77 123 4567'),
-  ('center002', 'Kurunegala Collection Center', 'Kurunegala', 'Mary Perera', '+94 77 234 5678'),
-  ('center003', 'Hikkaduwa Collection Center', 'Hikkaduwa', 'David Fernando', '+94 77 345 6789'),
-  ('center004', 'Matara Collection Center', 'Matara', 'Sarah Jayawardena', '+94 77 456 7890')
-ON CONFLICT (center_id) DO NOTHING;
-
-------------------------------------------------------------------------
--- Field collection (drafts, buckets, center completion tracking)
-------------------------------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS public.sap_drafts (
+CREATE TABLE IF NOT EXISTS public.field_collection_drafts (
   id BIGSERIAL PRIMARY KEY,
   draft_id TEXT UNIQUE NOT NULL,
   date DATE NOT NULL,
-  product_type TEXT NOT NULL DEFAULT 'sap',
   status TEXT NOT NULL DEFAULT 'draft',
   created_by TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT sap_drafts_created_by_fk
+  CONSTRAINT field_collection_drafts_created_by_fk
     FOREIGN KEY (created_by)
     REFERENCES public.users (user_id)
-    ON DELETE RESTRICT,
-  CONSTRAINT sap_drafts_product_ck
-    CHECK (LOWER(product_type) = 'sap')
+    ON DELETE RESTRICT
 );
 
-CREATE TABLE IF NOT EXISTS public.treacle_drafts (
-  id BIGSERIAL PRIMARY KEY,
-  draft_id TEXT UNIQUE NOT NULL,
-  date DATE NOT NULL,
-  product_type TEXT NOT NULL DEFAULT 'treacle',
-  status TEXT NOT NULL DEFAULT 'draft',
-  created_by TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT treacle_drafts_created_by_fk
-    FOREIGN KEY (created_by)
-    REFERENCES public.users (user_id)
-    ON DELETE RESTRICT,
-  CONSTRAINT treacle_drafts_product_ck
-    CHECK (LOWER(product_type) = 'treacle')
-);
-
-COMMENT ON TABLE public.sap_drafts IS 'Field collection drafts for SAP product.';
-COMMENT ON TABLE public.treacle_drafts IS 'Field collection drafts for Treacle product.';
-
+COMMENT ON TABLE public.field_collection_drafts IS 'Field collection drafts shared across product lanes.';
+COMMENT ON COLUMN public.field_collection_drafts.draft_id IS 'Human-readable draft reference used in the UI.';
+COMMENT ON COLUMN public.field_collection_drafts.status IS 'Current workflow state (draft/submitted/completed).';
 CREATE TABLE IF NOT EXISTS public.sap_buckets (
   id BIGSERIAL PRIMARY KEY,
   bucket_id TEXT UNIQUE NOT NULL,
@@ -100,7 +66,7 @@ CREATE TABLE IF NOT EXISTS public.sap_buckets (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT sap_buckets_draft_fk
     FOREIGN KEY (draft_id)
-    REFERENCES public.sap_drafts (id)
+    REFERENCES public.field_collection_drafts (id)
     ON DELETE CASCADE,
   CONSTRAINT sap_buckets_center_fk
     FOREIGN KEY (collection_center_id)
@@ -123,7 +89,7 @@ CREATE TABLE IF NOT EXISTS public.treacle_buckets (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT treacle_buckets_draft_fk
     FOREIGN KEY (draft_id)
-    REFERENCES public.treacle_drafts (id)
+    REFERENCES public.field_collection_drafts (id)
     ON DELETE CASCADE,
   CONSTRAINT treacle_buckets_center_fk
     FOREIGN KEY (collection_center_id)
@@ -141,49 +107,27 @@ CREATE INDEX IF NOT EXISTS idx_treacle_buckets_center_id ON public.treacle_bucke
 COMMENT ON TABLE public.sap_buckets IS 'Individual SAP buckets collected from field centers.';
 COMMENT ON TABLE public.treacle_buckets IS 'Individual Treacle buckets collected from field centers.';
 
-CREATE TABLE IF NOT EXISTS public.sap_center_completions (
+CREATE TABLE IF NOT EXISTS public.field_collection_center_completions (
   id BIGSERIAL PRIMARY KEY,
   draft_id TEXT NOT NULL,
   center_id TEXT NOT NULL,
   completed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT sap_center_completions_draft_fk
+  CONSTRAINT field_collection_center_completions_draft_fk
     FOREIGN KEY (draft_id)
-    REFERENCES public.sap_drafts (draft_id)
+    REFERENCES public.field_collection_drafts (draft_id)
     ON DELETE CASCADE,
-  CONSTRAINT sap_center_completions_center_fk
+  CONSTRAINT field_collection_center_completions_center_fk
     FOREIGN KEY (center_id)
     REFERENCES public.collection_centers (center_id)
     ON DELETE CASCADE,
-  CONSTRAINT sap_center_completions_unique UNIQUE (draft_id, center_id)
+  CONSTRAINT field_collection_center_completions_unique UNIQUE (draft_id, center_id)
 );
 
-CREATE TABLE IF NOT EXISTS public.treacle_center_completions (
-  id BIGSERIAL PRIMARY KEY,
-  draft_id TEXT NOT NULL,
-  center_id TEXT NOT NULL,
-  completed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT treacle_center_completions_draft_fk
-    FOREIGN KEY (draft_id)
-    REFERENCES public.treacle_drafts (draft_id)
-    ON DELETE CASCADE,
-  CONSTRAINT treacle_center_completions_center_fk
-    FOREIGN KEY (center_id)
-    REFERENCES public.collection_centers (center_id)
-    ON DELETE CASCADE,
-  CONSTRAINT treacle_center_completions_unique UNIQUE (draft_id, center_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_sap_center_completions_draft_center
-  ON public.sap_center_completions (draft_id, center_id);
-CREATE INDEX IF NOT EXISTS idx_treacle_center_completions_draft_center
-  ON public.treacle_center_completions (draft_id, center_id);
-
-COMMENT ON TABLE public.sap_center_completions IS 'Completion tracking for SAP field collection centers.';
-COMMENT ON TABLE public.treacle_center_completions IS 'Completion tracking for Treacle field collection centers.';
+CREATE INDEX IF NOT EXISTS idx_field_collection_center_completions_draft_center
+  ON public.field_collection_center_completions (draft_id, center_id);
+COMMENT ON TABLE public.field_collection_center_completions IS 'Completion tracking for field collection centers across products.';
 
 ------------------------------------------------------------------------
 -- Processing (batches and bucket assignments)

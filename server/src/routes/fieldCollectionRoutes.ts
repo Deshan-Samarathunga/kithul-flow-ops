@@ -11,10 +11,17 @@ import {
 
 const router = express.Router();
 
-const DEFAULT_PRODUCT: ProductSlug = "sap";
+const DRAFTS_TABLE = "field_collection_drafts";
+const CENTER_COMPLETIONS_TABLE = "field_collection_center_completions";
+const BUCKET_TOTALS_SOURCE = SUPPORTED_PRODUCTS.map(
+  (product) => `SELECT draft_id, quantity FROM ${getTableName("buckets", product)}`
+).join(" UNION ALL ");
+const BUCKETS_SOURCE = SUPPORTED_PRODUCTS.map(
+  (product) =>
+    `SELECT id, bucket_id, draft_id, collection_center_id, product_type, brix_value, ph_value, quantity, created_at, updated_at FROM ${getTableName("buckets", product)}`,
+).join(" UNION ALL ");
 
 const createDraftSchema = z.object({
-  productType: z.enum(["sap", "treacle"]).optional(),
   date: z.string().optional(),
 });
 
@@ -47,7 +54,6 @@ type DraftSummaryRow = {
   id: number;
   draft_id: string;
   date: Date | string | null;
-  product_type: string;
   status: string;
   created_by_name: string | null;
   bucket_count: number;
@@ -57,10 +63,6 @@ type DraftSummaryRow = {
 };
 
 type DraftContext = {
-  productType: ProductSlug;
-  draftTable: string;
-  bucketTable: string;
-  centerCompletionTable: string;
   row: any;
 };
 
@@ -95,38 +97,43 @@ const sortDraftsDesc = (a: DraftSummaryRow, b: DraftSummaryRow) => {
   return createdB - createdA;
 };
 
-async function fetchDraftSummaries(productType: ProductSlug, statusFilter?: string) {
-  const draftsTable = getTableName("drafts", productType);
-  const bucketsTable = getTableName("buckets", productType);
-
+async function fetchDraftSummaries(
+  productFilter?: ProductSlug | null,
+  statusFilter?: string,
+) {
   const params: any[] = [];
   const whereClauses: string[] = [];
+
   if (statusFilter) {
-    whereClauses.push(`d.status = $${params.length + 1}`);
+    whereClauses.push(`LOWER(d.status) = $${params.length + 1}`);
     params.push(statusFilter);
+  }
+
+  if (productFilter) {
+    whereClauses.push(`EXISTS (SELECT 1 FROM ${getTableName("buckets", productFilter)} b WHERE b.draft_id = d.id)`);
   }
 
   const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
   const query = `
+    WITH bucket_totals AS (
+      SELECT draft_id, COUNT(*) AS bucket_count, COALESCE(SUM(quantity), 0) AS total_quantity
+      FROM (${BUCKET_TOTALS_SOURCE}) AS all_buckets
+      GROUP BY draft_id
+    )
     SELECT
       d.id,
       d.draft_id,
       d.date,
-      d.product_type,
       d.status,
       u.name AS created_by_name,
-      COALESCE(buckets.bucket_count, 0) AS bucket_count,
-      COALESCE(buckets.total_quantity, 0) AS total_quantity,
+      COALESCE(bucket_totals.bucket_count, 0) AS bucket_count,
+      COALESCE(bucket_totals.total_quantity, 0) AS total_quantity,
       d.created_at,
       d.updated_at
-    FROM ${draftsTable} d
+    FROM ${DRAFTS_TABLE} d
     LEFT JOIN users u ON d.created_by = u.user_id
-    LEFT JOIN (
-      SELECT draft_id, COUNT(*) AS bucket_count, COALESCE(SUM(quantity), 0) AS total_quantity
-      FROM ${bucketsTable}
-      GROUP BY draft_id
-    ) buckets ON buckets.draft_id = d.id
+    LEFT JOIN bucket_totals ON bucket_totals.draft_id = d.id
     ${whereSql}
     ORDER BY d.date DESC, d.created_at DESC
   `;
@@ -134,30 +141,24 @@ async function fetchDraftSummaries(productType: ProductSlug, statusFilter?: stri
   const { rows } = await pool.query(query, params);
   return rows.map((row) => ({
     ...row,
-    product_type: row.product_type ?? productType,
     bucket_count: toNumber(row.bucket_count),
     total_quantity: toNumber(row.total_quantity),
   })) as DraftSummaryRow[];
 }
 
 async function resolveDraftContext(draftId: string): Promise<DraftContext | null> {
-  for (const productType of SUPPORTED_PRODUCTS) {
-    const draftsTable = getTableName("drafts", productType);
-    const { rows } = await pool.query(
-      `SELECT d.*, u.name AS created_by_name FROM ${draftsTable} d LEFT JOIN users u ON d.created_by = u.user_id WHERE d.draft_id = $1`,
-      [draftId]
-    );
-    if (rows.length > 0) {
-      return {
-        productType,
-        draftTable: draftsTable,
-        bucketTable: getTableName("buckets", productType),
-        centerCompletionTable: getTableName("centerCompletions", productType),
-        row: rows[0],
-      };
-    }
+  const { rows } = await pool.query(
+    `SELECT d.*, u.name AS created_by_name FROM ${DRAFTS_TABLE} d LEFT JOIN users u ON d.created_by = u.user_id WHERE d.draft_id = $1`,
+    [draftId],
+  );
+
+  if (rows.length === 0) {
+    return null;
   }
-  return null;
+
+  return {
+    row: rows[0],
+  };
 }
 
 async function resolveBucketContext(bucketId: string): Promise<BucketContext | null> {
@@ -178,10 +179,9 @@ router.get("/drafts", auth, requireRole("Field Collection", "Administrator"), as
       ? req.query.status.trim().toLowerCase()
       : undefined;
 
-    const productsToQuery = productFilter ? [productFilter] : [...SUPPORTED_PRODUCTS];
-    const draftsPerProduct = await Promise.all(productsToQuery.map((product) => fetchDraftSummaries(product, statusFilter)));
-    const combined = draftsPerProduct.flat().sort(sortDraftsDesc);
-    res.json(combined);
+  const drafts = await fetchDraftSummaries(productFilter, statusFilter);
+  drafts.sort(sortDraftsDesc);
+  res.json(drafts);
   } catch (error) {
     console.error("Error fetching drafts:", error);
     res.status(500).json({ error: "Failed to fetch drafts" });
@@ -208,7 +208,7 @@ router.get("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
         cc.center_id,
         cc.center_name,
         cc.location
-      FROM ${context.bucketTable} b
+      FROM (${BUCKETS_SOURCE}) b
       JOIN collection_centers cc ON b.collection_center_id = cc.id
       WHERE b.draft_id = $1
       ORDER BY cc.center_name, b.bucket_id
@@ -240,7 +240,7 @@ router.get("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
 
     const response = {
       ...draftRow,
-      product_type: draftRow.product_type ?? context.productType,
+      product_type: null,
       created_at: toIsoString(draftRow.created_at),
       updated_at: toIsoString(draftRow.updated_at),
       buckets: Object.values(centers),
@@ -259,18 +259,16 @@ router.post("/drafts", auth, requireRole("Field Collection", "Administrator"), a
     const validated = createDraftSchema.parse(req.body ?? {});
     const user = (req as any).user;
 
-    const productType = normalizeProduct(validated.productType) ?? DEFAULT_PRODUCT;
-    const draftTable = getTableName("drafts", productType);
     const draftId = `d${Date.now()}`;
     const dateValue = validated.date ?? new Date().toISOString().split("T")[0];
 
     const insertQuery = `
-      INSERT INTO ${draftTable} (draft_id, date, product_type, status, created_by)
-      VALUES ($1, $2, $3, 'draft', $4)
+      INSERT INTO ${DRAFTS_TABLE} (draft_id, date, status, created_by)
+      VALUES ($1, $2, 'draft', $3)
       RETURNING *
     `;
 
-    const { rows } = await pool.query(insertQuery, [draftId, dateValue, productType, user.userId]);
+    const { rows } = await pool.query(insertQuery, [draftId, dateValue, user.userId]);
     res.status(201).json(rows[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -296,7 +294,7 @@ router.put("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
     }
 
     const updateQuery = `
-      UPDATE ${context.draftTable}
+      UPDATE ${DRAFTS_TABLE}
       SET status = $1, updated_at = CURRENT_TIMESTAMP
       WHERE draft_id = $2
       RETURNING *
@@ -321,9 +319,11 @@ router.delete("/drafts/:draftId", auth, requireRole("Field Collection", "Adminis
       return res.status(404).json({ error: "Draft not found" });
     }
 
-    await pool.query(`DELETE FROM ${context.bucketTable} WHERE draft_id = $1`, [context.row.id]);
-    await pool.query(`DELETE FROM ${context.centerCompletionTable} WHERE draft_id = $1`, [draftId]);
-    const { rows } = await pool.query(`DELETE FROM ${context.draftTable} WHERE draft_id = $1 RETURNING *`, [draftId]);
+    for (const product of SUPPORTED_PRODUCTS) {
+      await pool.query(`DELETE FROM ${getTableName("buckets", product)} WHERE draft_id = $1`, [context.row.id]);
+    }
+    await pool.query(`DELETE FROM ${CENTER_COMPLETIONS_TABLE} WHERE draft_id = $1`, [draftId]);
+    const { rows } = await pool.query(`DELETE FROM ${DRAFTS_TABLE} WHERE draft_id = $1 RETURNING *`, [draftId]);
 
     res.json({ message: "Draft deleted successfully", draft: rows[0] });
   } catch (error) {
@@ -341,7 +341,7 @@ router.post("/drafts/:draftId/submit", auth, requireRole("Field Collection", "Ad
     }
 
     const { rows } = await pool.query(
-      `UPDATE ${context.draftTable} SET status = 'submitted', updated_at = CURRENT_TIMESTAMP WHERE draft_id = $1 RETURNING *`,
+      `UPDATE ${DRAFTS_TABLE} SET status = 'submitted', updated_at = CURRENT_TIMESTAMP WHERE draft_id = $1 RETURNING *`,
       [draftId]
     );
     res.json({ message: "Draft submitted successfully", draft: rows[0] });
@@ -360,7 +360,7 @@ router.post("/drafts/:draftId/reopen", auth, requireRole("Field Collection", "Ad
     }
 
     const { rows } = await pool.query(
-      `UPDATE ${context.draftTable} SET status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE draft_id = $1 RETURNING *`,
+      `UPDATE ${DRAFTS_TABLE} SET status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE draft_id = $1 RETURNING *`,
       [draftId]
     );
     res.json({ message: "Draft reopened successfully", draft: rows[0] });
@@ -388,11 +388,11 @@ router.get("/drafts/:draftId/centers/:centerId/buckets", auth, requireRole("Fiel
         b.quantity,
         cc.center_name,
         cc.center_id,
-        ${context.draftTable}.date AS draft_date
-      FROM ${context.bucketTable} b
+        d.date AS draft_date
+      FROM (${BUCKETS_SOURCE}) b
       JOIN collection_centers cc ON b.collection_center_id = cc.id
-      JOIN ${context.draftTable} ON b.draft_id = ${context.draftTable}.id
-      WHERE ${context.draftTable}.draft_id = $1 AND (cc.center_id = $2 OR cc.center_name = $2)
+      JOIN ${DRAFTS_TABLE} d ON b.draft_id = d.id
+      WHERE d.draft_id = $1 AND (cc.center_id = $2 OR cc.center_name = $2)
       ORDER BY b.bucket_id
     `;
 
@@ -409,10 +409,9 @@ router.post("/buckets", auth, requireRole("Field Collection", "Administrator"), 
   try {
     const validated = createBucketSchema.parse(req.body ?? {});
     const productType = validated.productType;
-    const draftTable = getTableName("drafts", productType);
     const bucketTable = getTableName("buckets", productType);
 
-    const { rows: draftRows } = await client.query(`SELECT id FROM ${draftTable} WHERE draft_id = $1`, [validated.draftId]);
+    const { rows: draftRows } = await client.query(`SELECT id FROM ${DRAFTS_TABLE} WHERE draft_id = $1`, [validated.draftId]);
     const draftRow = draftRows[0];
     if (!draftRow) {
       return res.status(404).json({ error: "Draft not found" });
@@ -568,7 +567,7 @@ router.post("/drafts/:draftId/centers/:centerId/submit", auth, requireRole("Fiel
     }
 
     const insertQuery = `
-      INSERT INTO ${context.centerCompletionTable} (draft_id, center_id, completed_at)
+      INSERT INTO ${CENTER_COMPLETIONS_TABLE} (draft_id, center_id, completed_at)
       VALUES ($1, $2, CURRENT_TIMESTAMP)
       ON CONFLICT (draft_id, center_id)
       DO UPDATE SET completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
@@ -592,7 +591,7 @@ router.post("/drafts/:draftId/centers/:centerId/reopen", auth, requireRole("Fiel
     }
 
     const deleteQuery = `
-      DELETE FROM ${context.centerCompletionTable}
+      DELETE FROM ${CENTER_COMPLETIONS_TABLE}
       WHERE draft_id = $1 AND center_id = $2
       RETURNING *
     `;
@@ -613,7 +612,7 @@ router.get("/drafts/:draftId/completed-centers", auth, requireRole("Field Collec
       return res.status(404).json({ error: "Draft not found" });
     }
 
-    const { rows } = await pool.query(`SELECT center_id, completed_at FROM ${context.centerCompletionTable} WHERE draft_id = $1`, [draftId]);
+  const { rows } = await pool.query(`SELECT center_id, completed_at FROM ${CENTER_COMPLETIONS_TABLE} WHERE draft_id = $1`, [draftId]);
     res.json(rows);
   } catch (error) {
     console.error("Error fetching completed centers:", error);

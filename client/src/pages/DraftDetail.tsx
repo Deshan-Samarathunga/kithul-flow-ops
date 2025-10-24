@@ -201,14 +201,23 @@ export default function DraftDetail() {
   ];
 
   // group buckets by center name (fallback to farmerName)
-  const centers = draft?.buckets?.reduce<Record<string, { name: string; buckets: any[] }>>((acc, b) => {
-    const key = b.collectionCenterName ?? b.farmerName;
-    if (!acc[key]) acc[key] = { name: key, buckets: [] };
-    acc[key].buckets.push(b);
-    return acc;
-  }, {} as any) ?? {};
-
-  const centerList = Object.values(centers);
+  const centerBucketsById = (draft?.buckets ?? []).reduce(
+    (acc, bucket) => {
+      const id = bucket.collectionCenterId ?? bucket.collection_center_id;
+      if (!id) {
+        return acc;
+      }
+      if (!acc[id]) {
+        acc[id] = {
+          id,
+          name: bucket.collectionCenterName ?? bucket.collection_center_name ?? id,
+          buckets: [],
+        };
+      }
+      acc[id].buckets.push(bucket);
+      return acc;
+    },
+    {} as Record<string, { id: string; name: string; buckets: any[] }>);
 
   
   
@@ -238,7 +247,7 @@ export default function DraftDetail() {
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold">Draft {new Date(draft.date).toISOString().split('T')[0]}</h1>
-            <p className="text-sm text-muted-foreground">Buckets: {draft.bucket_count || 0}</p>
+            <p className="text-sm text-muted-foreground">Buckets: {draft.bucketCount ?? draft.bucket_count ?? 0}</p>
           </div>
           {draft.status === "draft" && (
             <div className="flex gap-2">
@@ -265,7 +274,7 @@ export default function DraftDetail() {
                     .filter(center => !completedCenters.has(center.id))
                     .map((center) => {
                       // Find if this center has any buckets
-                      const centerBuckets = centerList.find(c => c.name === center.name)?.buckets || [];
+                      const centerBuckets = centerBucketsById[center.id]?.buckets ?? [];
                       const bucketCount = centerBuckets.length;
                       
                       return (
@@ -312,7 +321,7 @@ export default function DraftDetail() {
                     .filter(center => completedCenters.has(center.id))
                     .map((center) => {
                       // Find if this center has any buckets
-                      const centerBuckets = centerList.find(c => c.name === center.name)?.buckets || [];
+                      const centerBuckets = centerBucketsById[center.id]?.buckets ?? [];
                       const bucketCount = centerBuckets.length;
                       
                       return (
@@ -368,7 +377,7 @@ export default function DraftDetail() {
                   .filter(center => completedCenters.has(center.id))
                   .map((center) => {
                     // Find if this center has any buckets
-                    const centerBuckets = centerList.find(c => c.name === center.name)?.buckets || [];
+                    const centerBuckets = centerBucketsById[center.id]?.buckets ?? [];
                     const bucketCount = centerBuckets.length;
                     
                     return (

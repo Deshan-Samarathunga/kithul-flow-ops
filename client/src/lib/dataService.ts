@@ -21,9 +21,13 @@ export class DataService {
     }
   }
 
-  static async createDraft(productType: 'sap' | 'treacle', date?: string) {
+  static async createDraft(date?: string) {
     try {
-      return await apiClient.createDraft({ productType, date });
+      const payload: { date?: string } = {};
+      if (date) {
+        payload.date = date;
+      }
+      return await apiClient.createDraft(payload);
     } catch (error) {
       console.error('Error creating draft:', error);
       throw error;

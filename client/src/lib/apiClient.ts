@@ -201,7 +201,7 @@ class ApiClient {
     return this.request<any>(`/field-collection/drafts/${draftId}`);
   }
 
-  async createDraft(data: { productType: 'sap' | 'treacle'; date?: string }) {
+  async createDraft(data: { date?: string } = {}) {
     return this.request<any>('/field-collection/drafts', {
       method: 'POST',
       body: JSON.stringify(data),
