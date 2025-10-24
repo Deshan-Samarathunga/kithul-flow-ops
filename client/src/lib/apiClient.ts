@@ -36,6 +36,9 @@ export type ProcessingBatchDto = {
   updatedAt: string | null;
   bucketCount: number;
   totalQuantity: number;
+  totalSapOutput?: number | null;
+  gasCost?: number | null;
+  laborCost?: number | null;
   bucketIds?: string[];
 };
 
@@ -52,6 +55,37 @@ export type PackagingBatchDto = {
   updatedAt: string | null;
   bucketCount: number;
   totalQuantity: number;
+  totalSapOutput?: number | null;
+  finishedQuantity?: number | null;
+  notes?: string | null;
+  bottleCost?: number | null;
+  lidCost?: number | null;
+  alufoilCost?: number | null;
+  vacuumBagCost?: number | null;
+  parchmentPaperCost?: number | null;
+};
+
+export type LabelingBatchDto = {
+  packagingId: string;
+  labelingId?: string | null;
+  processingBatchId: string;
+  batchNumber: string;
+  productType: string;
+  scheduledDate: string | null;
+  packagingStatus: string;
+  labelingStatus: string;
+  labelingNotes?: string | null;
+  processingStatus: string;
+  startedAt: string | null;
+  updatedAt: string | null;
+  bucketCount: number;
+  totalQuantity: number;
+  totalSapOutput?: number | null;
+  finishedQuantity?: number | null;
+  stickerCost?: number | null;
+  shrinkSleeveCost?: number | null;
+  neckTagCost?: number | null;
+  corrugatedCartonCost?: number | null;
 };
 
 class ApiClient {
@@ -289,7 +323,15 @@ class ApiClient {
 
   async updateProcessingBatch(
     batchId: string,
-    payload: { status?: string; scheduledDate?: string; productType?: string; notes?: string }
+    payload: {
+      status?: string;
+      scheduledDate?: string;
+      productType?: string;
+      notes?: string;
+      totalSapOutput?: number | null;
+      gasCost?: number | null;
+      laborCost?: number | null;
+    }
   ) {
     return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}`, {
       method: 'PATCH',
@@ -319,6 +361,47 @@ class ApiClient {
   // Packaging API
   async getPackagingBatches() {
     return this.request<{ batches: PackagingBatchDto[] }>(`/packaging/batches`);
+  }
+
+  async updatePackagingBatch(
+    packagingId: string,
+    payload: {
+      status?: string;
+      notes?: string;
+      finishedQuantity?: number | null;
+      bottleCost?: number | null;
+      lidCost?: number | null;
+      alufoilCost?: number | null;
+      vacuumBagCost?: number | null;
+      parchmentPaperCost?: number | null;
+    }
+  ) {
+    return this.request<PackagingBatchDto>(`/packaging/batches/${packagingId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Labeling API
+  async getLabelingBatches() {
+    return this.request<{ batches: LabelingBatchDto[] }>(`/labeling/batches`);
+  }
+
+  async updateLabelingBatch(
+    packagingId: string,
+    payload: {
+      status?: string;
+      notes?: string;
+      stickerCost?: number | null;
+      shrinkSleeveCost?: number | null;
+      neckTagCost?: number | null;
+      corrugatedCartonCost?: number | null;
+    }
+  ) {
+    return this.request<LabelingBatchDto>(`/labeling/batches/${packagingId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
   }
 
   // Health check

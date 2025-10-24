@@ -10,6 +10,7 @@ import profileRoutes from "./routes/profileRoutes.js";
 import fieldCollectionRoutes from "./routes/fieldCollectionRoutes.js";
 import processingRoutes from "./routes/processingRoutes.js";
 import packagingRoutes from "./routes/packagingRoutes.js";
+import labelingRoutes from "./routes/labelingRoutes.js";
 import { auth, requireRole } from "./middleware/authMiddleware.js";
 import { pool } from "./db.js";
 
@@ -111,6 +112,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/field-collection", fieldCollectionRoutes);
 app.use("/api/processing", processingRoutes);
 app.use("/api/packaging", packagingRoutes);
+app.use("/api/labeling", labelingRoutes);
 
 app.get("/api/admin/stats", auth, requireRole("Administrator"), (_req, res) => {
   res.json({ secret: "admin-only numbers" });

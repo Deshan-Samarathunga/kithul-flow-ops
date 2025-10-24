@@ -1,15 +1,28 @@
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
-import { SecondaryToolbar } from "@/components/SecondaryToolbar";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
-import { Loader2, Plus, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Loader2, Plus, RefreshCcw, Search } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import DataService from "@/lib/dataService";
 import type { ProcessingBatchDto } from "@/lib/apiClient";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+function normalizeStatus(status: string | null | undefined) {
+  return String(status ?? "").trim().toLowerCase();
+}
 
 export default function Processing() {
   const navigate = useNavigate();
@@ -21,6 +34,16 @@ export default function Processing() {
   const [submittingBatchId, setSubmittingBatchId] = useState<string | null>(null);
   const [reopeningBatchId, setReopeningBatchId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">("sap");
+  const [productionDialog, setProductionDialog] = useState<{ open: boolean; batch: ProcessingBatchDto | null }>(
+    { open: false, batch: null }
+  );
+  const [productionForm, setProductionForm] = useState({
+    totalSapOutput: "",
+    gasCost: "",
+    laborCost: "",
+  });
+  const [isSavingProduction, setIsSavingProduction] = useState(false);
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
   const apiBase = useMemo(() => {
@@ -28,6 +51,19 @@ export default function Processing() {
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
+  const productTypeOptions: Array<{ value: "sap" | "treacle"; label: string }> = [
+    { value: "sap", label: "Sap" },
+    { value: "treacle", label: "Treacle" },
+  ];
+  const selectedProductLabel = productTypeFilter === "sap" ? "Sap" : "Treacle";
+  const activeProductionProductType = productionDialog.batch?.productType ?? null;
+  const productionOutputLabel =
+    activeProductionProductType === "sap"
+      ? "Sap out after melting (L)"
+      : activeProductionProductType
+      ? "Output quantity (kg)"
+      : "Output quantity";
+  const productionOutputStep = activeProductionProductType === "sap" ? "0.1" : "0.01";
 
   const handleLogout = () => {
     logout();
@@ -55,8 +91,8 @@ export default function Processing() {
   const handleCreateBatch = async () => {
     setIsCreating(true);
     try {
-      const created = await DataService.createProcessingBatch();
-      toast.success(`Batch ${created.batchNumber} created`);
+      const created = await DataService.createProcessingBatch({ productType: productTypeFilter });
+      toast.success(`${selectedProductLabel} batch ${created.batchNumber} created`);
       await loadBatches();
       navigate(`/processing/batch/${created.id}`);
     } catch (err) {
@@ -106,101 +142,291 @@ export default function Processing() {
     return new Date(parsed).toLocaleDateString();
   };
 
-  const resolveBadgeStatus = (status: string) => (status === "completed" ? "completed" : "in-progress");
-
   const formatStatusLabel = (status: string) =>
     status
       .split("-")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
 
+  const formatVolumeLiters = (value: number | null | undefined) => {
+    if (value === null || value === undefined) {
+      return "—";
+    }
+    return `${Number(value).toFixed(1)} L`;
+  };
+
+  const formatVolumeByProduct = (
+    value: number | null | undefined,
+    productType: ProcessingBatchDto["productType"]
+  ) => {
+    if (value === null || value === undefined) {
+      return "—";
+    }
+    const unit = productType === "sap" ? "L" : "kg";
+    return `${Number(value).toFixed(1)} ${unit}`;
+  };
+
+  const formatCurrencyValue = (value: number | null | undefined) => {
+    if (value === null || value === undefined) {
+      return "—";
+    }
+    return `Rs ${Number(value).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
+  const openProductionDialogForBatch = (batch: ProcessingBatchDto) => {
+    setProductionDialog({ open: true, batch });
+    setProductionForm({
+      totalSapOutput:
+        batch.totalSapOutput !== null && batch.totalSapOutput !== undefined
+          ? String(batch.totalSapOutput)
+          : "",
+      gasCost: batch.gasCost !== null && batch.gasCost !== undefined ? String(batch.gasCost) : "",
+      laborCost: batch.laborCost !== null && batch.laborCost !== undefined ? String(batch.laborCost) : "",
+    });
+  };
+
+  const closeProductionDialog = () => {
+    setProductionDialog({ open: false, batch: null });
+    setProductionForm({ totalSapOutput: "", gasCost: "", laborCost: "" });
+  };
+
+  const handleSaveProductionData = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const targetBatch = productionDialog.batch;
+    if (!targetBatch) {
+      return;
+    }
+
+    const parsedTotal = parseFloat(productionForm.totalSapOutput);
+    const parsedGas = parseFloat(productionForm.gasCost);
+    const parsedLabor = parseFloat(productionForm.laborCost);
+
+    if (
+      Number.isNaN(parsedTotal) ||
+      Number.isNaN(parsedGas) ||
+      Number.isNaN(parsedLabor) ||
+      parsedTotal < 0 ||
+      parsedGas < 0 ||
+      parsedLabor < 0
+    ) {
+      toast.error("Please enter valid non-negative numbers for all production fields.");
+      return;
+    }
+
+    setIsSavingProduction(true);
+    try {
+      await DataService.updateProcessingBatch(targetBatch.id, {
+        totalSapOutput: parsedTotal,
+        gasCost: parsedGas,
+        laborCost: parsedLabor,
+      });
+      toast.success(`Production data saved for batch ${targetBatch.batchNumber}`);
+      closeProductionDialog();
+      await loadBatches();
+    } catch (err) {
+      console.error("Failed to save production data", err);
+      toast.error("Unable to save production data. Please try again.");
+    } finally {
+      setIsSavingProduction(false);
+    }
+  };
+
+  const batchMetrics = useMemo(() => {
+    type Metric = { total: number; active: number; completed: number };
+    const metrics: Record<"sap" | "treacle", Metric> = {
+      sap: { total: 0, active: 0, completed: 0 },
+      treacle: { total: 0, active: 0, completed: 0 },
+    };
+
+    batches.forEach((batch) => {
+      const key = (batch.productType || "").toLowerCase();
+      if (key !== "sap" && key !== "treacle") {
+        return;
+      }
+
+      const status = normalizeStatus(batch.status);
+      metrics[key].total += 1;
+      if (status === "completed") {
+        metrics[key].completed += 1;
+      } else if (status !== "cancelled") {
+        metrics[key].active += 1;
+      }
+    });
+
+    return metrics;
+  }, [batches]);
+
+  const handleRefresh = () => {
+    void loadBatches();
+  };
+
   const filteredBatches = batches.filter((batch) => {
+    const matchesType = (batch.productType || "").toLowerCase() === productTypeFilter;
+    if (!matchesType) {
+      return false;
+    }
+
+    const normalizedStatus = normalizeStatus(batch.status);
     if (!searchQuery.trim()) {
       return true;
     }
     const term = searchQuery.trim().toLowerCase();
-    const composite = [batch.batchNumber, batch.productType, batch.status, formatDate(batch.scheduledDate)]
+    const composite = [batch.batchNumber, batch.productType, normalizedStatus, formatDate(batch.scheduledDate)]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
     return composite.includes(term);
   });
 
-  const activeBatches = filteredBatches.filter((batch) => batch.status !== "completed" && batch.status !== "cancelled");
-  const completedBatches = filteredBatches.filter((batch) => batch.status === "completed");
+  const activeBatches = filteredBatches.filter((batch) => {
+    const status = normalizeStatus(batch.status);
+    return status !== "completed" && status !== "cancelled";
+  });
+  const completedBatches = filteredBatches.filter((batch) => normalizeStatus(batch.status) === "completed");
+  const selectedMetrics = batchMetrics[productTypeFilter];
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
-      
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="space-y-6">
-          <SecondaryToolbar>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 w-full">
-              <Button
-                onClick={handleCreateBatch}
-                className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
-                disabled={isCreating}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                {isCreating ? "Creating…" : "Add new Batch"}
-              </Button>
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search batches"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  className="pl-10"
-                />
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <div className="space-y-6 sm:space-y-8">
+          <div className="space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">Processing Batches</h1>
+            <p className="text-sm text-muted-foreground">
+              Track, submit, and reopen batches as they move through processing.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-center gap-1 bg-muted/60 rounded-full p-1 w-full sm:w-auto">
+                {productTypeOptions.map((option) => {
+                  const isActive = option.value === productTypeFilter;
+                  const metrics = batchMetrics[option.value];
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setProductTypeFilter(option.value)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-cta text-cta-foreground shadow"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <span>{option.label}</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                          isActive ? "bg-white/25 text-white" : "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {metrics.total}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-              <StatusBadge status="in-progress" label={`${activeBatches.length} Active`} />
+
+              <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search batches"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleRefresh}
+                  className="w-full sm:w-auto"
+                  disabled={isLoading}
+                >
+                  <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                  <span className="ml-2">Refresh</span>
+                </Button>
+                <Button
+                  onClick={handleCreateBatch}
+                  className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                  disabled={isCreating}
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating…
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" />
+                      {`Add ${selectedProductLabel} Batch`}
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-          </SecondaryToolbar>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{selectedProductLabel} overview</span>
+              <span className="inline-flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-status-progress" /> Active: {selectedMetrics.active}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-status-completed" /> Completed: {selectedMetrics.completed}
+              </span>
+            </div>
+          </div>
 
           {isLoading && (
-            <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+            <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
               Loading batches…
             </div>
           )}
 
           {error && !isLoading && (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+            <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive shadow-sm">
               {error}
             </div>
           )}
 
           {!isLoading && !error && batches.length === 0 && (
-            <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
+            <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground text-center shadow-sm">
               No batches yet. Create a new batch to get started.
             </div>
           )}
 
           {!isLoading && !error && batches.length > 0 && (
             <div className="space-y-10">
-              <section className="space-y-4">
+              <section className="space-y-3">
                 <h2 className="text-lg sm:text-xl font-semibold">Active Batches</h2>
                 {activeBatches.length === 0 ? (
-                  <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-                    No batches ready for submission.
+                  <div className="rounded-xl border border-dashed border-muted/40 bg-muted/20 p-6 text-sm text-muted-foreground text-center">
+                    No active {selectedProductLabel.toLowerCase()} batches.
                   </div>
                 ) : (
                   activeBatches.map((batch) => (
                     <div
                       key={batch.id}
-                      className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+                      className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm transition-shadow hover:shadow-md"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:gap-6">
                           <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
-                          <span className="hidden sm:inline text-muted-foreground">|</span>
-                          <span>Batch: {batch.batchNumber}</span>
-                          <span className="hidden sm:inline text-muted-foreground">|</span>
-                          <span>Buckets: {batch.bucketCount}</span>
-                          <span className="hidden sm:inline text-muted-foreground">|</span>
-                          <span>Total Qty: {Number(batch.totalQuantity ?? 0).toFixed(1)} kg</span>
+                          <span className="hidden text-muted-foreground sm:inline">|</span>
+                          <span>
+                            Batch <span className="font-semibold text-foreground">{batch.batchNumber}</span>
+                          </span>
+                          <span className="hidden text-muted-foreground sm:inline">|</span>
+                          <span>{`${formatVolumeByProduct(batch.totalQuantity, batch.productType)} total`}</span>
+                          <span className="hidden text-muted-foreground sm:inline">|</span>
+                          <span>{batch.bucketCount} bucket{batch.bucketCount === 1 ? "" : "s"}</span>
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button
                             variant="outline"
                             size="sm"
@@ -231,65 +457,191 @@ export default function Processing() {
                 )}
               </section>
 
-              <section className="space-y-4">
-                <h2 className="text-lg sm:text-xl font-semibold">Submitted History</h2>
+              <section className="space-y-3">
+                <h2 className="text-lg sm:text-xl font-semibold">Completed Batches</h2>
                 {completedBatches.length === 0 ? (
-                  <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-                    No submitted batches yet.
+                  <div className="rounded-xl border border-dashed border-muted/40 bg-muted/20 p-6 text-sm text-muted-foreground text-center">
+                    No completed {selectedProductLabel.toLowerCase()} batches yet.
                   </div>
                 ) : (
-                  completedBatches.map((batch) => (
-                    <div
-                      key={batch.id}
-                      className="bg-muted/50 border rounded-lg p-4 sm:p-6"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm">
-                          <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
-                          <span className="hidden sm:inline text-muted-foreground">|</span>
-                          <span>Batch: {batch.batchNumber}</span>
-                          <span className="hidden sm:inline text-muted-foreground">|</span>
-                          <span>Total Qty: {Number(batch.totalQuantity ?? 0).toFixed(1)} kg</span>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <StatusBadge
-                            status={resolveBadgeStatus(batch.status)}
-                            label="Submitted"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/processing/batch/${batch.id}`)}
-                            className="flex-1 sm:flex-none"
-                          >
-                            View
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => void handleReopenBatch(batch.id, batch.batchNumber)}
-                            disabled={reopeningBatchId === batch.id}
-                            className="flex-1 sm:flex-none"
-                          >
-                            {reopeningBatchId === batch.id ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Reopening…
-                              </>
-                            ) : (
-                              "Reopen"
-                            )}
-                          </Button>
+                  completedBatches.map((batch) => {
+                    const hasProductionData =
+                      batch.totalSapOutput !== null &&
+                      batch.totalSapOutput !== undefined &&
+                      batch.gasCost !== null &&
+                      batch.gasCost !== undefined &&
+                      batch.laborCost !== null &&
+                      batch.laborCost !== undefined;
+                    const outputSummaryLabel = batch.productType === "sap" ? "Sap Output" : "Output Quantity";
+
+                    return (
+                      <div
+                        key={batch.id}
+                        className="rounded-2xl border bg-muted/30 p-4 sm:p-6"
+                      >
+                        <div className="space-y-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:gap-6">
+                              <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
+                              <span className="hidden text-muted-foreground sm:inline">|</span>
+                              <span>
+                                Batch <span className="font-semibold text-foreground">{batch.batchNumber}</span>
+                              </span>
+                              <span className="hidden text-muted-foreground sm:inline">|</span>
+                              <span>{`${formatVolumeByProduct(batch.totalQuantity, batch.productType)} total`}</span>
+                            </div>
+                            <Badge variant="outline" className="border-status-completed/40 bg-status-completedBg text-status-completed">
+                              {formatStatusLabel(batch.status)}
+                            </Badge>
+                          </div>
+
+                          <div className="grid gap-3 text-xs sm:grid-cols-3">
+                            <div className="rounded-lg bg-white/50 px-3 py-2 shadow-sm">
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{outputSummaryLabel}</p>
+                              <p className="mt-1 text-sm font-medium text-foreground">{formatVolumeByProduct(batch.totalSapOutput, batch.productType)}</p>
+                            </div>
+                            <div className="rounded-lg bg-white/50 px-3 py-2 shadow-sm">
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Gas Cost</p>
+                              <p className="mt-1 text-sm font-medium text-foreground">{formatCurrencyValue(batch.gasCost)}</p>
+                            </div>
+                            <div className="rounded-lg bg-white/50 px-3 py-2 shadow-sm">
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Labor Cost</p>
+                              <p className="mt-1 text-sm font-medium text-foreground">{formatCurrencyValue(batch.laborCost)}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/processing/batch/${batch.id}`)}
+                              className="flex-1 sm:flex-none"
+                            >
+                              View
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="bg-cta hover:bg-cta-hover text-cta-foreground flex-1 sm:flex-none"
+                              onClick={() => openProductionDialogForBatch(batch)}
+                            >
+                              {hasProductionData ? "Update Production Data" : "Enter Production Data"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void handleReopenBatch(batch.id, batch.batchNumber)}
+                              disabled={reopeningBatchId === batch.id}
+                              className="flex-1 sm:flex-none"
+                            >
+                              {reopeningBatchId === batch.id ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Reopening…
+                                </>
+                              ) : (
+                                "Reopen"
+                              )}
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </section>
             </div>
           )}
         </div>
-      </div>
+      </main>
+
+      <Dialog
+        open={productionDialog.open}
+        onOpenChange={(open) => {
+          if (!open && !isSavingProduction) {
+            closeProductionDialog();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Production details</DialogTitle>
+            <DialogDescription>
+              {productionDialog.batch
+                ? `Record melting output and costs for batch ${productionDialog.batch.batchNumber}.`
+                : "Record melting output and costs for the batch."}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveProductionData} className="space-y-5">
+            {productionDialog.batch?.productType === "sap" && (
+              <div className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Sap in</span>
+                  <span className="font-medium text-foreground">
+                    {formatVolumeLiters(productionDialog.batch.totalQuantity)}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="totalSapOutput">{productionOutputLabel}</Label>
+              <Input
+                id="totalSapOutput"
+                type="number"
+                min="0"
+                step={productionOutputStep}
+                value={productionForm.totalSapOutput}
+                onChange={(event) =>
+                  setProductionForm((prev) => ({ ...prev, totalSapOutput: event.target.value }))
+                }
+                required
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="gasCost">Gas cost</Label>
+                <Input
+                  id="gasCost"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={productionForm.gasCost}
+                  onChange={(event) =>
+                    setProductionForm((prev) => ({ ...prev, gasCost: event.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="laborCost">Labor cost</Label>
+                <Input
+                  id="laborCost"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={productionForm.laborCost}
+                  onChange={(event) =>
+                    setProductionForm((prev) => ({ ...prev, laborCost: event.target.value }))
+                  }
+                  required
+                />
+              </div>
+            </div>
+            <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeProductionDialog}
+                disabled={isSavingProduction}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSavingProduction} className="bg-cta hover:bg-cta-hover">
+                {isSavingProduction ? "Saving…" : "Save production data"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

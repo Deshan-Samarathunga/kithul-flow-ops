@@ -6,6 +6,11 @@ CREATE TABLE IF NOT EXISTS public.packaging_batches (
   status TEXT NOT NULL DEFAULT 'pending',
   started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   notes TEXT,
+  bottle_cost NUMERIC(12,2),
+  lid_cost NUMERIC(12,2),
+  alufoil_cost NUMERIC(12,2),
+  vacuum_bag_cost NUMERIC(12,2),
+  parchment_paper_cost NUMERIC(12,2),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT fk_packaging_processing_batch

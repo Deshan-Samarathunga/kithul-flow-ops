@@ -197,6 +197,26 @@ export class DataService {
     }
   }
 
+  static async updateProcessingBatch(
+    batchId: string,
+    data: {
+      status?: string;
+      scheduledDate?: string;
+      productType?: string;
+      notes?: string;
+      totalSapOutput?: number | null;
+      gasCost?: number | null;
+      laborCost?: number | null;
+    }
+  ) {
+    try {
+      return await apiClient.updateProcessingBatch(batchId, data);
+    } catch (error) {
+      console.error('Error updating processing batch:', error);
+      throw error;
+    }
+  }
+
   static async updateProcessingBatchBuckets(batchId: string, bucketIds: string[]) {
     try {
       return await apiClient.updateProcessingBatchBuckets(batchId, bucketIds);
@@ -230,6 +250,56 @@ export class DataService {
       return response.batches;
     } catch (error) {
       console.error('Error fetching packaging batches:', error);
+      throw error;
+    }
+  }
+
+  static async updatePackagingBatch(
+    packagingId: string,
+    data: {
+      status?: string;
+      notes?: string;
+      finishedQuantity?: number | null;
+      bottleCost?: number | null;
+      lidCost?: number | null;
+      alufoilCost?: number | null;
+      vacuumBagCost?: number | null;
+      parchmentPaperCost?: number | null;
+    }
+  ) {
+    try {
+      return await apiClient.updatePackagingBatch(packagingId, data);
+    } catch (error) {
+      console.error('Error updating packaging batch:', error);
+      throw error;
+    }
+  }
+
+  static async getLabelingBatches() {
+    try {
+      const response = await apiClient.getLabelingBatches();
+      return response.batches;
+    } catch (error) {
+      console.error('Error fetching labeling batches:', error);
+      throw error;
+    }
+  }
+
+  static async updateLabelingBatch(
+    packagingId: string,
+    data: {
+      status?: string;
+      notes?: string;
+      stickerCost?: number | null;
+      shrinkSleeveCost?: number | null;
+      neckTagCost?: number | null;
+      corrugatedCartonCost?: number | null;
+    }
+  ) {
+    try {
+      return await apiClient.updateLabelingBatch(packagingId, data);
+    } catch (error) {
+      console.error('Error updating labeling batch:', error);
       throw error;
     }
   }

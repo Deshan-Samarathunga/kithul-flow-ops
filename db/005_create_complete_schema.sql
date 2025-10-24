@@ -1,7 +1,10 @@
 -- Complete database schema for Kithul Flow Ops
--- This file creates all necessary tables with the current simplified structure
+-- Executes end-to-end table creation for SAP and Treacle product lanes
 
--- Create users table
+------------------------------------------------------------------------
+-- Core reference tables
+------------------------------------------------------------------------
+
 CREATE TABLE IF NOT EXISTS public.users (
   id BIGSERIAL PRIMARY KEY,
   user_id TEXT UNIQUE NOT NULL,
@@ -14,7 +17,6 @@ CREATE TABLE IF NOT EXISTS public.users (
 
 CREATE INDEX IF NOT EXISTS users_role_idx ON public.users (role);
 
--- Create collection_centers table
 CREATE TABLE IF NOT EXISTS public.collection_centers (
   id BIGSERIAL PRIMARY KEY,
   center_id TEXT UNIQUE NOT NULL,
@@ -27,8 +29,21 @@ CREATE TABLE IF NOT EXISTS public.collection_centers (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Create drafts table
-CREATE TABLE IF NOT EXISTS public.drafts (
+INSERT INTO public.collection_centers (center_id, center_name, location, center_agent, contact_phone) VALUES
+  ('center001', 'Galle Collection Center', 'Galle', 'John Silva', '+94 77 123 4567'),
+  ('center002', 'Kurunegala Collection Center', 'Kurunegala', 'Mary Perera', '+94 77 234 5678'),
+  ('center003', 'Hikkaduwa Collection Center', 'Hikkaduwa', 'David Fernando', '+94 77 345 6789'),
+  ('center004', 'Matara Collection Center', 'Matara', 'Sarah Jayawardena', '+94 77 456 7890')
+ON CONFLICT (center_id) DO NOTHING;
+
+COMMENT ON TABLE public.users IS 'User accounts for the Kithul Flow Ops system';
+COMMENT ON TABLE public.collection_centers IS 'Collection centers where kithul products are gathered';
+
+------------------------------------------------------------------------
+-- Field collection: drafts and buckets split per product
+------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.sap_drafts (
   id BIGSERIAL PRIMARY KEY,
   draft_id TEXT UNIQUE NOT NULL,
   date DATE NOT NULL,
@@ -37,81 +52,139 @@ CREATE TABLE IF NOT EXISTS public.drafts (
   created_by TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
-  CONSTRAINT fk_created_by
-    FOREIGN KEY(created_by) 
-    REFERENCES users(user_id)
-    ON DELETE RESTRICT
+  CONSTRAINT sap_drafts_created_by_fk
+    FOREIGN KEY (created_by)
+    REFERENCES public.users (user_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT sap_drafts_product_ck
+    CHECK (LOWER(product_type) = 'sap')
 );
 
--- Create buckets table with simplified structure
-CREATE TABLE IF NOT EXISTS public.buckets (
+CREATE TABLE IF NOT EXISTS public.treacle_drafts (
+  id BIGSERIAL PRIMARY KEY,
+  draft_id TEXT UNIQUE NOT NULL,
+  date DATE NOT NULL,
+  product_type TEXT NOT NULL DEFAULT 'treacle',
+  status TEXT NOT NULL DEFAULT 'draft',
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT treacle_drafts_created_by_fk
+    FOREIGN KEY (created_by)
+    REFERENCES public.users (user_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT treacle_drafts_product_ck
+    CHECK (LOWER(product_type) = 'treacle')
+);
+
+COMMENT ON TABLE public.sap_drafts IS 'Field collection drafts for SAP product.';
+COMMENT ON TABLE public.treacle_drafts IS 'Field collection drafts for Treacle product.';
+
+CREATE TABLE IF NOT EXISTS public.sap_buckets (
   id BIGSERIAL PRIMARY KEY,
   bucket_id TEXT UNIQUE NOT NULL,
   draft_id BIGINT NOT NULL,
   collection_center_id BIGINT NOT NULL,
   product_type TEXT NOT NULL,
-  brix_value DECIMAL(5,2),
-  ph_value DECIMAL(3,2),
-  quantity DECIMAL(10,2) NOT NULL,
+  brix_value NUMERIC(5,2),
+  ph_value NUMERIC(3,2),
+  quantity NUMERIC(10,2) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
-  CONSTRAINT fk_draft
-    FOREIGN KEY(draft_id) 
-    REFERENCES drafts(id)
+  CONSTRAINT sap_buckets_draft_fk
+    FOREIGN KEY (draft_id)
+    REFERENCES public.sap_drafts (id)
     ON DELETE CASCADE,
-    
-  CONSTRAINT fk_collection_center
-    FOREIGN KEY(collection_center_id) 
-    REFERENCES collection_centers(id)
-    ON DELETE RESTRICT
+  CONSTRAINT sap_buckets_center_fk
+    FOREIGN KEY (collection_center_id)
+    REFERENCES public.collection_centers (id)
+    ON DELETE RESTRICT,
+  CONSTRAINT sap_buckets_product_ck
+    CHECK (LOWER(product_type) = 'sap')
 );
 
--- Create center_completions table
-CREATE TABLE IF NOT EXISTS public.center_completions (
+CREATE TABLE IF NOT EXISTS public.treacle_buckets (
+  id BIGSERIAL PRIMARY KEY,
+  bucket_id TEXT UNIQUE NOT NULL,
+  draft_id BIGINT NOT NULL,
+  collection_center_id BIGINT NOT NULL,
+  product_type TEXT NOT NULL,
+  brix_value NUMERIC(5,2),
+  ph_value NUMERIC(3,2),
+  quantity NUMERIC(10,2) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT treacle_buckets_draft_fk
+    FOREIGN KEY (draft_id)
+    REFERENCES public.treacle_drafts (id)
+    ON DELETE CASCADE,
+  CONSTRAINT treacle_buckets_center_fk
+    FOREIGN KEY (collection_center_id)
+    REFERENCES public.collection_centers (id)
+    ON DELETE RESTRICT,
+  CONSTRAINT treacle_buckets_product_ck
+    CHECK (LOWER(product_type) = 'treacle')
+);
+
+CREATE INDEX IF NOT EXISTS idx_sap_buckets_draft_id ON public.sap_buckets (draft_id);
+CREATE INDEX IF NOT EXISTS idx_sap_buckets_center_id ON public.sap_buckets (collection_center_id);
+
+CREATE INDEX IF NOT EXISTS idx_treacle_buckets_draft_id ON public.treacle_buckets (draft_id);
+CREATE INDEX IF NOT EXISTS idx_treacle_buckets_center_id ON public.treacle_buckets (collection_center_id);
+
+COMMENT ON TABLE public.sap_buckets IS 'Individual SAP buckets collected from field centers.';
+COMMENT ON TABLE public.treacle_buckets IS 'Individual Treacle buckets collected from field centers.';
+
+CREATE TABLE IF NOT EXISTS public.sap_center_completions (
   id BIGSERIAL PRIMARY KEY,
   draft_id TEXT NOT NULL,
   center_id TEXT NOT NULL,
   completed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  
-  CONSTRAINT fk_draft_completion
-    FOREIGN KEY(draft_id) 
-    REFERENCES drafts(draft_id)
+  CONSTRAINT sap_center_completions_draft_fk
+    FOREIGN KEY (draft_id)
+    REFERENCES public.sap_drafts (draft_id)
     ON DELETE CASCADE,
-    
-  CONSTRAINT fk_center_completion
-    FOREIGN KEY(center_id) 
-    REFERENCES collection_centers(center_id)
+  CONSTRAINT sap_center_completions_center_fk
+    FOREIGN KEY (center_id)
+    REFERENCES public.collection_centers (center_id)
     ON DELETE CASCADE,
-    
-  CONSTRAINT unique_draft_center UNIQUE (draft_id, center_id)
+  CONSTRAINT sap_center_completions_unique UNIQUE (draft_id, center_id)
 );
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_buckets_draft_id ON buckets (draft_id);
-CREATE INDEX IF NOT EXISTS idx_buckets_collection_center_id ON buckets (collection_center_id);
-CREATE INDEX IF NOT EXISTS idx_center_completions_draft_center ON center_completions (draft_id, center_id);
+CREATE TABLE IF NOT EXISTS public.treacle_center_completions (
+  id BIGSERIAL PRIMARY KEY,
+  draft_id TEXT NOT NULL,
+  center_id TEXT NOT NULL,
+  completed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT treacle_center_completions_draft_fk
+    FOREIGN KEY (draft_id)
+    REFERENCES public.treacle_drafts (draft_id)
+    ON DELETE CASCADE,
+  CONSTRAINT treacle_center_completions_center_fk
+    FOREIGN KEY (center_id)
+    REFERENCES public.collection_centers (center_id)
+    ON DELETE CASCADE,
+  CONSTRAINT treacle_center_completions_unique UNIQUE (draft_id, center_id)
+);
 
--- Insert default collection centers
-INSERT INTO public.collection_centers (center_id, center_name, location, center_agent, contact_phone) VALUES
-('center001', 'Galle Collection Center', 'Galle', 'John Silva', '+94 77 123 4567'),
-('center002', 'Kurunegala Collection Center', 'Kurunegala', 'Mary Perera', '+94 77 234 5678'),
-('center003', 'Hikkaduwa Collection Center', 'Hikkaduwa', 'David Fernando', '+94 77 345 6789'),
-('center004', 'Matara Collection Center', 'Matara', 'Sarah Jayawardena', '+94 77 456 7890')
-ON CONFLICT (center_id) DO NOTHING;
+CREATE INDEX IF NOT EXISTS idx_sap_center_completions_draft_center
+  ON public.sap_center_completions (draft_id, center_id);
 
--- Add comments
-COMMENT ON TABLE public.users IS 'User accounts for the Kithul Flow Ops system';
-COMMENT ON TABLE public.collection_centers IS 'Collection centers where kithul products are gathered';
-COMMENT ON TABLE public.drafts IS 'Collection drafts for organizing field collection activities';
-COMMENT ON TABLE public.buckets IS 'Individual kithul sap/treacle buckets collected from farmers';
-COMMENT ON TABLE public.center_completions IS 'Tracks which collection centers have been marked as completed for a specific draft';
+CREATE INDEX IF NOT EXISTS idx_treacle_center_completions_draft_center
+  ON public.treacle_center_completions (draft_id, center_id);
 
--- Create processing_batches table for the processing workflow
-CREATE TABLE IF NOT EXISTS public.processing_batches (
+COMMENT ON TABLE public.sap_center_completions IS 'Completion tracking for SAP field collection centers.';
+COMMENT ON TABLE public.treacle_center_completions IS 'Completion tracking for Treacle field collection centers.';
+
+------------------------------------------------------------------------
+-- Processing stage per product
+------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.sap_processing_batches (
   id BIGSERIAL PRIMARY KEY,
   batch_id TEXT UNIQUE NOT NULL,
   batch_number TEXT NOT NULL,
@@ -119,75 +192,124 @@ CREATE TABLE IF NOT EXISTS public.processing_batches (
   product_type TEXT NOT NULL DEFAULT 'sap',
   status TEXT NOT NULL DEFAULT 'in-progress',
   notes TEXT,
+  total_sap_output NUMERIC(12,2),
+  gas_cost NUMERIC(12,2),
+  labor_cost NUMERIC(12,2),
   created_by TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT fk_processing_batches_created_by
-    FOREIGN KEY(created_by)
-    REFERENCES users(user_id)
+  CONSTRAINT sap_processing_batches_created_by_fk
+    FOREIGN KEY (created_by)
+    REFERENCES public.users (user_id)
     ON DELETE RESTRICT,
-  CONSTRAINT processing_batches_status_check
+  CONSTRAINT sap_processing_batches_status_ck
     CHECK (status IN ('draft', 'in-progress', 'completed', 'cancelled')),
-  CONSTRAINT processing_batches_product_check
-    CHECK (product_type IN ('sap', 'treacle', 'toddy'))
+  CONSTRAINT sap_processing_batches_product_ck
+    CHECK (LOWER(product_type) = 'sap')
 );
 
-CREATE INDEX IF NOT EXISTS idx_processing_batches_status ON public.processing_batches (status);
-CREATE INDEX IF NOT EXISTS idx_processing_batches_scheduled_date ON public.processing_batches (scheduled_date DESC);
+CREATE TABLE IF NOT EXISTS public.treacle_processing_batches (
+  id BIGSERIAL PRIMARY KEY,
+  batch_id TEXT UNIQUE NOT NULL,
+  batch_number TEXT NOT NULL,
+  scheduled_date DATE NOT NULL,
+  product_type TEXT NOT NULL DEFAULT 'treacle',
+  status TEXT NOT NULL DEFAULT 'in-progress',
+  notes TEXT,
+  total_sap_output NUMERIC(12,2),
+  gas_cost NUMERIC(12,2),
+  labor_cost NUMERIC(12,2),
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT treacle_processing_batches_created_by_fk
+    FOREIGN KEY (created_by)
+    REFERENCES public.users (user_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT treacle_processing_batches_status_ck
+    CHECK (status IN ('draft', 'in-progress', 'completed', 'cancelled')),
+  CONSTRAINT treacle_processing_batches_product_ck
+    CHECK (LOWER(product_type) = 'treacle')
+);
 
-COMMENT ON TABLE public.processing_batches IS 'Processing stage batches that group up to four collected buckets';
+CREATE INDEX IF NOT EXISTS idx_sap_processing_batches_status
+  ON public.sap_processing_batches (status);
+CREATE INDEX IF NOT EXISTS idx_sap_processing_batches_sched
+  ON public.sap_processing_batches (scheduled_date DESC);
 
--- Join table to assign buckets to processing batches with a hard cap of four buckets per batch
-CREATE TABLE IF NOT EXISTS public.processing_batch_buckets (
+CREATE INDEX IF NOT EXISTS idx_treacle_processing_batches_status
+  ON public.treacle_processing_batches (status);
+CREATE INDEX IF NOT EXISTS idx_treacle_processing_batches_sched
+  ON public.treacle_processing_batches (scheduled_date DESC);
+
+COMMENT ON TABLE public.sap_processing_batches IS 'Processing stage batches for SAP (max four buckets).';
+COMMENT ON TABLE public.treacle_processing_batches IS 'Processing stage batches for Treacle (max four buckets).';
+
+CREATE TABLE IF NOT EXISTS public.sap_processing_batch_buckets (
   id BIGSERIAL PRIMARY KEY,
   processing_batch_id BIGINT NOT NULL,
   bucket_id BIGINT NOT NULL,
   added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT fk_processing_batch
-    FOREIGN KEY(processing_batch_id)
-    REFERENCES processing_batches(id)
+  CONSTRAINT sap_processing_batch_fk
+    FOREIGN KEY (processing_batch_id)
+    REFERENCES public.sap_processing_batches (id)
     ON DELETE CASCADE,
-  CONSTRAINT fk_processing_bucket
-    FOREIGN KEY(bucket_id)
-    REFERENCES buckets(id)
+  CONSTRAINT sap_processing_bucket_fk
+    FOREIGN KEY (bucket_id)
+    REFERENCES public.sap_buckets (id)
     ON DELETE RESTRICT,
-  CONSTRAINT uq_processing_batch_bucket UNIQUE (processing_batch_id, bucket_id),
-  CONSTRAINT uq_processing_bucket UNIQUE (bucket_id)
+  CONSTRAINT sap_processing_batch_bucket_uq UNIQUE (processing_batch_id, bucket_id),
+  CONSTRAINT sap_processing_bucket_uq UNIQUE (bucket_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_processing_batch_buckets_batch_id ON public.processing_batch_buckets (processing_batch_id);
-CREATE INDEX IF NOT EXISTS idx_processing_batch_buckets_bucket_id ON public.processing_batch_buckets (bucket_id);
+CREATE TABLE IF NOT EXISTS public.treacle_processing_batch_buckets (
+  id BIGSERIAL PRIMARY KEY,
+  processing_batch_id BIGINT NOT NULL,
+  bucket_id BIGINT NOT NULL,
+  added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT treacle_processing_batch_fk
+    FOREIGN KEY (processing_batch_id)
+    REFERENCES public.treacle_processing_batches (id)
+    ON DELETE CASCADE,
+  CONSTRAINT treacle_processing_bucket_fk
+    FOREIGN KEY (bucket_id)
+    REFERENCES public.treacle_buckets (id)
+    ON DELETE RESTRICT,
+  CONSTRAINT treacle_processing_batch_bucket_uq UNIQUE (processing_batch_id, bucket_id),
+  CONSTRAINT treacle_processing_bucket_uq UNIQUE (bucket_id)
+);
 
-COMMENT ON TABLE public.processing_batch_buckets IS 'Assignments of field buckets to processing batches (max four per batch)';
+CREATE INDEX IF NOT EXISTS idx_sap_processing_batch_buckets_batch_id
+  ON public.sap_processing_batch_buckets (processing_batch_id);
+CREATE INDEX IF NOT EXISTS idx_sap_processing_batch_buckets_bucket_id
+  ON public.sap_processing_batch_buckets (bucket_id);
 
--- Trigger to enforce maximum of four buckets per processing batch
-DROP TRIGGER IF EXISTS trg_enforce_processing_bucket_limit ON public.processing_batch_buckets;
-DROP FUNCTION IF EXISTS public.enforce_processing_bucket_limit();
+CREATE INDEX IF NOT EXISTS idx_treacle_processing_batch_buckets_batch_id
+  ON public.treacle_processing_batch_buckets (processing_batch_id);
+CREATE INDEX IF NOT EXISTS idx_treacle_processing_batch_buckets_bucket_id
+  ON public.treacle_processing_batch_buckets (bucket_id);
 
-CREATE FUNCTION public.enforce_processing_bucket_limit()
+COMMENT ON TABLE public.sap_processing_batch_buckets IS 'SAP bucket assignments for processing batches (limit four).';
+COMMENT ON TABLE public.treacle_processing_batch_buckets IS 'Treacle bucket assignments for processing batches (limit four).';
+
+DROP TRIGGER IF EXISTS trg_sap_processing_bucket_limit ON public.sap_processing_batch_buckets;
+DROP TRIGGER IF EXISTS trg_treacle_processing_bucket_limit ON public.treacle_processing_batch_buckets;
+DROP FUNCTION IF EXISTS public.enforce_processing_bucket_limit_generic();
+
+CREATE FUNCTION public.enforce_processing_bucket_limit_generic()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 DECLARE
   bucket_count INTEGER;
 BEGIN
-  IF TG_OP = 'INSERT' THEN
-    SELECT COUNT(*) INTO bucket_count
-    FROM public.processing_batch_buckets
-    WHERE processing_batch_id = NEW.processing_batch_id;
+  IF TG_OP = 'INSERT' OR (TG_OP = 'UPDATE' AND NEW.processing_batch_id <> OLD.processing_batch_id) THEN
+    EXECUTE format('SELECT COUNT(*) FROM %I WHERE processing_batch_id = $1', TG_TABLE_NAME)
+    INTO bucket_count
+    USING NEW.processing_batch_id;
 
     IF bucket_count >= 4 THEN
       RAISE EXCEPTION 'A processing batch cannot contain more than 4 buckets.';
-    END IF;
-  ELSIF TG_OP = 'UPDATE' THEN
-    IF NEW.processing_batch_id <> OLD.processing_batch_id THEN
-      SELECT COUNT(*) INTO bucket_count
-      FROM public.processing_batch_buckets
-      WHERE processing_batch_id = NEW.processing_batch_id;
-
-      IF bucket_count >= 4 THEN
-        RAISE EXCEPTION 'A processing batch cannot contain more than 4 buckets.';
-      END IF;
     END IF;
   END IF;
 
@@ -195,7 +317,131 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER trg_enforce_processing_bucket_limit
-BEFORE INSERT OR UPDATE ON public.processing_batch_buckets
+CREATE TRIGGER trg_sap_processing_bucket_limit
+BEFORE INSERT OR UPDATE ON public.sap_processing_batch_buckets
 FOR EACH ROW
-EXECUTE FUNCTION public.enforce_processing_bucket_limit();
+EXECUTE FUNCTION public.enforce_processing_bucket_limit_generic();
+
+CREATE TRIGGER trg_treacle_processing_bucket_limit
+BEFORE INSERT OR UPDATE ON public.treacle_processing_batch_buckets
+FOR EACH ROW
+EXECUTE FUNCTION public.enforce_processing_bucket_limit_generic();
+
+------------------------------------------------------------------------
+-- Packaging stage per product
+------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.sap_packaging_batches (
+  id BIGSERIAL PRIMARY KEY,
+  packaging_id TEXT UNIQUE NOT NULL,
+  processing_batch_id BIGINT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  notes TEXT,
+  bottle_cost NUMERIC(12,2),
+  lid_cost NUMERIC(12,2),
+  alufoil_cost NUMERIC(12,2),
+  vacuum_bag_cost NUMERIC(12,2),
+  parchment_paper_cost NUMERIC(12,2),
+  finished_quantity NUMERIC(12,2),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT sap_packaging_processing_fk
+    FOREIGN KEY (processing_batch_id)
+    REFERENCES public.sap_processing_batches (id)
+    ON DELETE CASCADE,
+  CONSTRAINT sap_packaging_status_ck
+    CHECK (status IN ('pending', 'in-progress', 'completed', 'on-hold'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sap_packaging_batches_processing
+  ON public.sap_packaging_batches (processing_batch_id);
+
+CREATE TABLE IF NOT EXISTS public.treacle_packaging_batches (
+  id BIGSERIAL PRIMARY KEY,
+  packaging_id TEXT UNIQUE NOT NULL,
+  processing_batch_id BIGINT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  notes TEXT,
+  bottle_cost NUMERIC(12,2),
+  lid_cost NUMERIC(12,2),
+  alufoil_cost NUMERIC(12,2),
+  vacuum_bag_cost NUMERIC(12,2),
+  parchment_paper_cost NUMERIC(12,2),
+  finished_quantity NUMERIC(12,2),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT treacle_packaging_processing_fk
+    FOREIGN KEY (processing_batch_id)
+    REFERENCES public.treacle_processing_batches (id)
+    ON DELETE CASCADE,
+  CONSTRAINT treacle_packaging_status_ck
+    CHECK (status IN ('pending', 'in-progress', 'completed', 'on-hold'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_treacle_packaging_batches_processing
+  ON public.treacle_packaging_batches (processing_batch_id);
+
+COMMENT ON TABLE public.sap_packaging_batches IS 'Packaging workflow for SAP production.';
+COMMENT ON TABLE public.treacle_packaging_batches IS 'Packaging workflow for Treacle production.';
+
+------------------------------------------------------------------------
+-- Labeling stage per product
+------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.sap_labeling_batches (
+  id BIGSERIAL PRIMARY KEY,
+  labeling_id TEXT UNIQUE NOT NULL,
+  packaging_batch_id BIGINT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'pending',
+  notes TEXT,
+  sticker_cost NUMERIC(12,2),
+  shrink_sleeve_cost NUMERIC(12,2),
+  neck_tag_cost NUMERIC(12,2),
+  corrugated_carton_cost NUMERIC(12,2),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT sap_labeling_packaging_fk
+    FOREIGN KEY (packaging_batch_id)
+    REFERENCES public.sap_packaging_batches (id)
+    ON DELETE CASCADE,
+  CONSTRAINT sap_labeling_status_ck
+    CHECK (status IN ('pending', 'in-progress', 'completed', 'on-hold'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_sap_labeling_batches_packaging
+  ON public.sap_labeling_batches (packaging_batch_id);
+
+CREATE TABLE IF NOT EXISTS public.treacle_labeling_batches (
+  id BIGSERIAL PRIMARY KEY,
+  labeling_id TEXT UNIQUE NOT NULL,
+  packaging_batch_id BIGINT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'pending',
+  notes TEXT,
+  sticker_cost NUMERIC(12,2),
+  shrink_sleeve_cost NUMERIC(12,2),
+  neck_tag_cost NUMERIC(12,2),
+  corrugated_carton_cost NUMERIC(12,2),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT treacle_labeling_packaging_fk
+    FOREIGN KEY (packaging_batch_id)
+    REFERENCES public.treacle_packaging_batches (id)
+    ON DELETE CASCADE,
+  CONSTRAINT treacle_labeling_status_ck
+    CHECK (status IN ('pending', 'in-progress', 'completed', 'on-hold'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_treacle_labeling_batches_packaging
+  ON public.treacle_labeling_batches (packaging_batch_id);
+
+COMMENT ON TABLE public.sap_labeling_batches IS 'Labeling data captured for SAP packaging runs.';
+COMMENT ON TABLE public.treacle_labeling_batches IS 'Labeling data captured for Treacle packaging runs.';
+
+------------------------------------------------------------------------
+-- Summary
+------------------------------------------------------------------------
+
+-- Running this script on an empty PostgreSQL database creates the full set of
+-- SAP and Treacle workflow tables along with shared references and triggers.
