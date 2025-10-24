@@ -39,7 +39,7 @@ const updateBatchSchema = z.object({
 });
 
 const updateBatchBucketsSchema = z.object({
-	bucketIds: z.array(z.string()).max(4, "A batch can contain at most 4 buckets"),
+	bucketIds: z.array(z.string()).max(15, "A batch can contain at most 15 buckets"),
 });
 
 const mapBucketRow = (row: any) => ({
@@ -297,9 +297,17 @@ router.get("/buckets", auth, requireRole("Processing", "Administrator"), async (
 		const forBatch = typeof req.query.forBatch === "string" && req.query.forBatch.trim()
 			? req.query.forBatch.trim()
 			: undefined;
+		let targetProducts: ProductSlug[] = [...SUPPORTED_PRODUCTS];
+		if (forBatch) {
+			const context = await resolveProcessingBatchContext(forBatch);
+			if (!context) {
+				return res.status(404).json({ error: "Batch not found" });
+			}
+			targetProducts = [context.productType];
+		}
 
 		const productBuckets = await Promise.all(
-			SUPPORTED_PRODUCTS.map((product) => fetchBucketsForProduct(product, statusFilter, forBatch))
+			targetProducts.map((product) => fetchBucketsForProduct(product, statusFilter, forBatch))
 		);
 
 		const buckets = productBuckets.flat().map(mapBucketRow);

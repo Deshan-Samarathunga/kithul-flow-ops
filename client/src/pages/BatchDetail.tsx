@@ -10,7 +10,7 @@ import DataService from "@/lib/dataService";
 import type { ProcessingBatchDto, ProcessingBucketDto } from "@/lib/apiClient";
 import { ChevronRight } from "lucide-react";
 
-const MAX_BUCKET_SELECTION = 4;
+const MAX_BUCKET_SELECTION = 15;
 
 export default function BatchDetail() {
   const navigate = useNavigate();

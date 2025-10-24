@@ -117,8 +117,8 @@ BEGIN
     INTO bucket_count
     USING NEW.processing_batch_id;
 
-    IF bucket_count >= 4 THEN
-      RAISE EXCEPTION 'A processing batch cannot contain more than 4 buckets.';
+    IF bucket_count >= 15 THEN
+      RAISE EXCEPTION 'A processing batch cannot contain more than 15 buckets.';
     END IF;
   END IF;
 

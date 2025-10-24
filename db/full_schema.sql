@@ -190,8 +190,8 @@ CREATE INDEX IF NOT EXISTS idx_treacle_processing_batches_status
 CREATE INDEX IF NOT EXISTS idx_treacle_processing_batches_sched
   ON public.treacle_processing_batches (scheduled_date DESC);
 
-COMMENT ON TABLE public.sap_processing_batches IS 'Processing stage batches for SAP (max four buckets).';
-COMMENT ON TABLE public.treacle_processing_batches IS 'Processing stage batches for Treacle (max four buckets).';
+COMMENT ON TABLE public.sap_processing_batches IS 'Processing stage batches for SAP (supports up to fifteen buckets).';
+COMMENT ON TABLE public.treacle_processing_batches IS 'Processing stage batches for Treacle (supports up to fifteen buckets).';
 
 CREATE TABLE IF NOT EXISTS public.sap_processing_batch_buckets (
   id BIGSERIAL PRIMARY KEY,
@@ -255,8 +255,8 @@ BEGIN
     INTO bucket_count
     USING NEW.processing_batch_id;
 
-    IF bucket_count >= 4 THEN
-      RAISE EXCEPTION 'A processing batch cannot contain more than 4 buckets.';
+    IF bucket_count >= 15 THEN
+      RAISE EXCEPTION 'A processing batch cannot contain more than 15 buckets.';
     END IF;
   END IF;
 
