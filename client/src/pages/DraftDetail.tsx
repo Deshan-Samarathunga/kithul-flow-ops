@@ -26,6 +26,44 @@ export default function DraftDetail() {
   const [error, setError] = useState<string | null>(null);
   const [completedCenters, setCompletedCenters] = useState<Set<string>>(new Set());
 
+  const centerBucketCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const entries = Array.isArray(draft?.buckets) ? draft.buckets : [];
+
+    entries.forEach((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return;
+      }
+
+      const data = entry as Record<string, unknown>;
+
+      const centerIdCandidate =
+        typeof data["centerId"] === "string"
+          ? data["centerId"]
+          : typeof data["collectionCenterId"] === "string"
+            ? data["collectionCenterId"]
+            : typeof data["center_id"] === "string"
+              ? data["center_id"]
+              : typeof data["collection_center_id"] === "string"
+                ? data["collection_center_id"]
+                : undefined;
+
+      if (!centerIdCandidate) {
+        return;
+      }
+
+      const bucketsValue = data["buckets"];
+      if (Array.isArray(bucketsValue)) {
+        counts[centerIdCandidate] = bucketsValue.length;
+        return;
+      }
+
+      counts[centerIdCandidate] = (counts[centerIdCandidate] ?? 0) + 1;
+    });
+
+    return counts;
+  }, [draft?.buckets]);
+
   useEffect(() => {
     const loadDraft = async () => {
       if (!draftId) {
@@ -200,28 +238,6 @@ export default function DraftDetail() {
     }
   ];
 
-  // group buckets by center name (fallback to farmerName)
-  const centerBucketsById = (draft?.buckets ?? []).reduce(
-    (acc, bucket) => {
-      const id = bucket.collectionCenterId ?? bucket.collection_center_id;
-      if (!id) {
-        return acc;
-      }
-      if (!acc[id]) {
-        acc[id] = {
-          id,
-          name: bucket.collectionCenterName ?? bucket.collection_center_name ?? id,
-          buckets: [],
-        };
-      }
-      acc[id].buckets.push(bucket);
-      return acc;
-    },
-    {} as Record<string, { id: string; name: string; buckets: any[] }>);
-
-  
-  
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar 
@@ -274,8 +290,7 @@ export default function DraftDetail() {
                     .filter(center => !completedCenters.has(center.id))
                     .map((center) => {
                       // Find if this center has any buckets
-                      const centerBuckets = centerBucketsById[center.id]?.buckets ?? [];
-                      const bucketCount = centerBuckets.length;
+                      const bucketCount = centerBucketCounts[center.id] ?? 0;
                       
                       return (
                         <div key={center.id} className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
@@ -321,8 +336,7 @@ export default function DraftDetail() {
                     .filter(center => completedCenters.has(center.id))
                     .map((center) => {
                       // Find if this center has any buckets
-                      const centerBuckets = centerBucketsById[center.id]?.buckets ?? [];
-                      const bucketCount = centerBuckets.length;
+                      const bucketCount = centerBucketCounts[center.id] ?? 0;
                       
                       return (
                         <div key={`completed-${center.id}`} className="bg-muted/50 border rounded-lg p-4 sm:p-6">
@@ -377,8 +391,7 @@ export default function DraftDetail() {
                   .filter(center => completedCenters.has(center.id))
                   .map((center) => {
                     // Find if this center has any buckets
-                    const centerBuckets = centerBucketsById[center.id]?.buckets ?? [];
-                    const bucketCount = centerBuckets.length;
+                    const bucketCount = centerBucketCounts[center.id] ?? 0;
                     
                     return (
                       <div key={center.id} className="bg-muted/50 border rounded-lg p-4 sm:p-6">
