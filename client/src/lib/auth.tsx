@@ -18,24 +18,48 @@ type AuthContext = AuthState & {
 
 const AuthCtx = createContext<AuthContext | null>(null);
 
-function normalizeUser(data: any | null | undefined): User | null {
-  if (!data) return null;
-  const normalizedUserId = data.userId ?? data.user_id ?? data.username;
+const toOptionalString = (value: unknown) => {
+  if (typeof value === "string") {
+    return value;
+  }
+  return undefined;
+};
+
+const toOptionalNumber = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+};
+
+function normalizeUser(data: unknown): User | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const record = data as Record<string, unknown>;
+  const normalizedUserId = toOptionalString(record.userId) ?? toOptionalString(record.user_id) ?? toOptionalString(record.username);
   if (!normalizedUserId) {
     throw new Error("Invalid user payload: missing userId");
   }
 
-  const userId = String(normalizedUserId).trim();
+  const userId = normalizedUserId.trim();
   if (!userId) {
     throw new Error("Invalid user payload: empty userId");
   }
 
+  const id = toOptionalNumber(record.id) ?? 0;
+
   return {
-    id: Number(data.id),
+    id,
     userId,
-    name: data.name ?? null,
-    role: data.role ?? null,
-    profileImage: data.profileImage ?? data.profile_image ?? null,
+    name: toOptionalString(record.name) ?? null,
+    role: toOptionalString(record.role) ?? null,
+    profileImage: toOptionalString(record.profileImage) ?? toOptionalString(record.profile_image) ?? null,
   };
 }
 
@@ -43,9 +67,9 @@ function loadSavedAuth(): AuthState {
   const saved = localStorage.getItem("auth");
   if (!saved) return { user: null, token: null };
   try {
-    const parsed = JSON.parse(saved) as AuthState;
-    const normalizedUser = normalizeUser(parsed.user);
-    return { user: normalizedUser, token: parsed.token ?? null };
+  const parsed = JSON.parse(saved) as { user?: unknown; token?: unknown };
+  const normalizedUser = normalizeUser(parsed.user);
+  return { user: normalizedUser, token: typeof parsed.token === "string" ? parsed.token : null };
   } catch {
     localStorage.removeItem("auth");
     return { user: null, token: null };

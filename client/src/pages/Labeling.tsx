@@ -390,6 +390,20 @@ export default function Labeling() {
   const selectedProductLabel = productTypeFilter === "sap" ? "Sap" : "Treacle";
   const selectedMetrics = labelingMetrics[productTypeFilter];
 
+  const hasCompletedLabeling = useMemo(
+    () =>
+      (labelingMetrics.sap.completed ?? 0) + (labelingMetrics.treacle.completed ?? 0) > 0,
+    [labelingMetrics],
+  );
+
+  const handleOpenReportDialog = () => {
+    if (!hasCompletedLabeling) {
+      toast.error("Complete at least one labeling batch before generating a report.");
+      return;
+    }
+    setReportDialogOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
@@ -413,7 +427,7 @@ export default function Labeling() {
               </Button>
               <Button
                 variant="secondary"
-                onClick={() => setReportDialogOpen(true)}
+                onClick={handleOpenReportDialog}
                 className="w-full sm:w-auto"
               >
                 <FileText className="h-4 w-4 mr-2" />

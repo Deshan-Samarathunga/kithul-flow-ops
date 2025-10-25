@@ -60,6 +60,110 @@ const formatNumeric = (value: number) => {
   });
 };
 
+const toIdString = (value: unknown) => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  return null;
+};
+
+const toOptionalString = (value: unknown) => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  return null;
+};
+
+const toFiniteNumber = (value: unknown): number => {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const pushToken = (tokens: string[], value: unknown) => {
+  if (value === null || value === undefined) {
+    return;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length > 0 && trimmed !== "—") {
+      tokens.push(trimmed.toLowerCase());
+    }
+    return;
+  }
+
+  if (typeof value === "number") {
+    tokens.push(String(value));
+    return;
+  }
+
+  if (value instanceof Date) {
+    pushToken(tokens, value.toISOString());
+    pushToken(tokens, value.toLocaleDateString());
+  }
+};
+
+const createSearchTokens = (draft: DraftSummary): string[] => {
+  const tokens: string[] = [];
+  pushToken(tokens, draft.id);
+  pushToken(tokens, draft.draftId);
+  pushToken(tokens, draft.status);
+  pushToken(tokens, normalizeStatus(draft.status));
+  pushToken(tokens, draft.createdByName);
+  pushToken(tokens, draft.date);
+  if (draft.date) {
+    pushToken(tokens, new Date(draft.date));
+    pushToken(tokens, formatDateLabel(draft.date));
+  }
+  pushToken(tokens, draft.createdAt);
+  pushToken(tokens, draft.updatedAt);
+  pushToken(tokens, draft.bucketCount);
+  pushToken(tokens, formatNumeric(draft.bucketCount));
+  pushToken(tokens, draft.totalQuantity);
+  pushToken(tokens, formatNumeric(draft.totalQuantity));
+  return tokens;
+};
+
+const normalizeDraftRecord = (input: unknown): DraftSummary | null => {
+  if (!input || typeof input !== "object") {
+    return null;
+  }
+
+  const record = input as Record<string, unknown>;
+  const draftId = toIdString(record.draft_id) ?? toIdString(record.draftId);
+  if (!draftId) {
+    return null;
+  }
+
+  const id = toIdString(record.id) ?? draftId;
+  const statusValue = toOptionalString(record.status) ?? "draft";
+
+  return {
+    id,
+    draftId,
+    date: toOptionalString(record.date),
+    status: normalizeStatus(statusValue) as DraftStatus,
+    bucketCount: toFiniteNumber(record.bucket_count ?? record.bucketCount),
+    totalQuantity: toFiniteNumber(record.total_quantity ?? record.totalQuantity),
+    createdByName: toOptionalString(record.created_by_name) ?? toOptionalString(record.createdByName),
+    createdAt: toOptionalString(record.created_at) ?? toOptionalString(record.createdAt),
+    updatedAt: toOptionalString(record.updated_at) ?? toOptionalString(record.updatedAt),
+  } satisfies DraftSummary;
+};
+
+const extractDraftId = (input: unknown): string | null => {
+  if (!input || typeof input !== "object") {
+    return null;
+  }
+  const record = input as Record<string, unknown>;
+  return toIdString(record.draft_id) ?? toIdString(record.draftId);
+};
+
 export default function FieldCollection() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -100,37 +204,13 @@ export default function FieldCollection() {
     setError(null);
     try {
       const data = await DataService.getDrafts();
-      const normalized = (data ?? [])
-        .map((item) => {
-          const draftId = item?.draft_id ?? item?.draftId;
-          if (!draftId) {
-            return null;
-          }
-          const status = normalizeStatus(item?.status ?? "draft");
-          const bucketCount = Number(item?.bucket_count ?? item?.bucketCount ?? 0);
-          const totalQuantity = Number(
-            item?.total_quantity ?? item?.totalQuantity ?? 0,
-          );
-          return {
-            id: String(item?.id ?? draftId),
-            draftId: String(draftId),
-            date: item?.date ?? null,
-            status,
-            bucketCount: Number.isFinite(bucketCount) ? bucketCount : 0,
-            totalQuantity: Number.isFinite(totalQuantity)
-              ? totalQuantity
-              : 0,
-            createdByName: item?.created_by_name ?? item?.createdByName ?? null,
-            createdAt: item?.created_at ?? item?.createdAt ?? null,
-            updatedAt: item?.updated_at ?? item?.updatedAt ?? null,
-          } satisfies DraftSummary;
-        })
-        .filter(Boolean) as DraftSummary[];
+      const normalized = (Array.isArray(data) ? data : [])
+        .map((item) => normalizeDraftRecord(item))
+        .filter((draft): draft is DraftSummary => draft !== null);
       setDrafts(normalized);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to load drafts", err);
-      const message =
-        err instanceof Error ? err.message : "Failed to load drafts";
+      const message = err instanceof Error ? err.message : "Failed to load drafts";
       setError(message);
       toast.error("Failed to load drafts");
     } finally {
@@ -154,14 +234,21 @@ export default function FieldCollection() {
   const handleCreateDraft = async () => {
     setIsCreating(true);
     try {
-  const currentDate = new Date().toISOString().split("T")[0];
-  const created = await DataService.createDraft(currentDate);
+      const currentDate = new Date().toISOString().split("T")[0];
+      const created = await DataService.createDraft(currentDate);
+      const newDraftId = extractDraftId(created);
+      if (!newDraftId) {
+        throw new Error("Draft created but response did not include an identifier.");
+      }
       toast.success("Collection draft created successfully");
       await loadDrafts({ suppressLoader: true });
-      navigate(`/field-collection/draft/${created.draft_id ?? created.draftId}`);
-    } catch (err) {
+      navigate(`/field-collection/draft/${newDraftId}`);
+    } catch (err: unknown) {
       console.error("Error creating draft", err);
-      toast.error("Failed to create draft");
+      const message = err instanceof Error && err.message.trim().length > 0
+        ? err.message
+        : "Failed to create draft";
+      toast.error(message);
     } finally {
       setIsCreating(false);
     }
@@ -170,12 +257,86 @@ export default function FieldCollection() {
   const handleSubmitDraft = async (draftId: string) => {
     setSubmittingDraftId(draftId);
     try {
+      const [centersData, completedData] = await Promise.all([
+        DataService.getCollectionCenters(),
+        DataService.getCompletedCenters(draftId),
+      ]);
+
+      const centers = (Array.isArray(centersData) ? centersData : []).map((item) => {
+        if (!item || typeof item !== "object") {
+          return { id: null as string | null, name: undefined as string | undefined };
+        }
+
+        const record = item as Record<string, unknown>;
+        const rawId =
+          typeof record.center_id === "string"
+            ? record.center_id
+            : typeof record.centerId === "string"
+              ? record.centerId
+              : typeof record.id === "string"
+                ? record.id
+                : typeof record.id === "number"
+                  ? String(record.id)
+                  : null;
+
+        const nameCandidate =
+          typeof record.center_name === "string"
+            ? record.center_name
+            : typeof record.centerName === "string"
+              ? record.centerName
+              : undefined;
+
+        return {
+          id: rawId && rawId.trim().length > 0 ? rawId.trim() : null,
+          name: nameCandidate,
+        };
+      }).filter((center): center is { id: string; name: string | undefined } =>
+        typeof center.id === "string" && center.id.length > 0
+      );
+
+      const completedIds = new Set(
+        (Array.isArray(completedData) ? completedData : [])
+          .map((entry) => {
+            if (!entry || typeof entry !== "object") {
+              return null;
+            }
+
+            const record = entry as Record<string, unknown>;
+            const rawId =
+              typeof record.center_id === "string"
+                ? record.center_id
+                : typeof record.centerId === "string"
+                  ? record.centerId
+                  : null;
+
+            return rawId && rawId.trim().length > 0 ? rawId.trim() : null;
+          })
+          .filter((id): id is string => id !== null),
+      );
+
+      const pendingCenters = centers.filter((center) => !completedIds.has(center.id));
+
+      if (pendingCenters.length > 0) {
+        const pendingLabel = pendingCenters
+          .map((center) => center.name ?? center.id)
+          .join(", ");
+        toast.error(
+          pendingLabel
+            ? `Submit the following centers before submitting the draft: ${pendingLabel}`
+            : "Submit all centers before submitting the draft",
+        );
+        return;
+      }
+
       await DataService.submitDraft(draftId);
       toast.success("Draft submitted successfully");
       await loadDrafts({ suppressLoader: true });
     } catch (err) {
       console.error("Error submitting draft", err);
-      toast.error("Failed to submit draft");
+      const message = err instanceof Error && err.message.trim().length > 0
+        ? err.message
+        : "Failed to submit draft";
+      toast.error(message);
     } finally {
       setSubmittingDraftId(null);
     }
@@ -215,17 +376,8 @@ export default function FieldCollection() {
       return drafts;
     }
     return drafts.filter((draft) => {
-      const composite = [
-        draft.draftId,
-        draft.createdByName,
-        draft.status,
-        formatDateLabel(draft.date),
-        draft.bucketCount ? String(draft.bucketCount) : null,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return composite.includes(term);
+      const tokens = createSearchTokens(draft);
+      return tokens.some((token) => token.includes(term));
     });
   }, [drafts, searchQuery]);
 
@@ -254,6 +406,22 @@ export default function FieldCollection() {
 
     return totals;
   }, [drafts]);
+
+  const hasSubmittedDrafts = useMemo(
+    () => drafts.some((draft) => {
+      const status = normalizeStatus(draft.status);
+      return status === "submitted" || status === "completed";
+    }),
+    [drafts],
+  );
+
+  const handleOpenReportDialog = () => {
+    if (!hasSubmittedDrafts) {
+      toast.error("Submit a draft before generating a report.");
+      return;
+    }
+    setReportDialogOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -303,7 +471,7 @@ export default function FieldCollection() {
 
               <Button
                 variant="secondary"
-                onClick={() => setReportDialogOpen(true)}
+                onClick={handleOpenReportDialog}
                 className="w-full sm:w-auto"
               >
                 <FileText className="h-4 w-4 mr-2" /> Generate report
@@ -393,7 +561,7 @@ export default function FieldCollection() {
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                               <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-muted-foreground">
-                                  <span>Draft ID: {draft.draftId}</span>
+                                  <span>Draft ID: {draft.id}</span>
                                   <span>Collected on {formatDateLabel(draft.date)}</span>
                                 </div>
                                 <div className="flex flex-wrap gap-3 text-xs sm:text-sm text-muted-foreground">
@@ -479,7 +647,7 @@ export default function FieldCollection() {
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                               <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-muted-foreground">
-                                  <span>Draft ID: {draft.draftId}</span>
+                                  <span>Draft ID: {draft.id}</span>
                                   <span>Collected on {formatDateLabel(draft.date)}</span>
                                   <Badge variant="outline" className="border-muted-foreground/40 text-muted-foreground">
                                     {normalizeStatus(draft.status) === "completed" ? "Completed" : "Submitted"}

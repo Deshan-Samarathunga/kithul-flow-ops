@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, RefreshCcw, Download, CalendarDays } from "lucide-react";
-import jsPDF from "jspdf";
+import { utils, writeFileXLSX, type CellObject, type WorkSheet } from "xlsx";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -130,6 +130,33 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
     setIsGenerating(true);
     try {
       const data = await DataService.getDailyProductionReport(selectedDate);
+      const hasRecords = (() => {
+        switch (stage) {
+          case "field":
+            return data.totals.fieldCollection.drafts > 0;
+          case "processing":
+            return data.totals.processing.completedBatches > 0;
+          case "packaging":
+            return data.totals.packaging.completedBatches > 0;
+          case "labeling":
+            return data.totals.labeling.completedBatches > 0;
+          default:
+            return false;
+        }
+      })();
+
+      if (!hasRecords) {
+        const messages: Record<ReportStage, string> = {
+          field: "No submitted drafts found for the selected date.",
+          processing: "No submitted processing batches found for the selected date.",
+          packaging: "No completed packaging batches found for the selected date.",
+          labeling: "No completed labeling batches found for the selected date.",
+        };
+        toast.error(messages[stage]);
+        setReport(null);
+        return;
+      }
+
       setReport(data);
     } catch (error) {
       console.error("Failed to generate daily report", error);
@@ -254,151 +281,396 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
       return;
     }
 
-    const doc = new jsPDF();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const marginX = 14;
-    let cursorY = 20;
+    type ExcelRow = Array<string | number | null>;
+    type ExcelMetric = { label: string; value: string; note?: string };
 
-    const ensureVerticalSpace = (required = 6) => {
-      if (cursorY + required > pageHeight - 12) {
-        doc.addPage();
-        cursorY = 20;
+    const stageName = stagePayload.stage.charAt(0).toUpperCase() + stagePayload.stage.slice(1);
+    const generatedAtDisplay = new Date(stagePayload.generatedAt).toLocaleString();
+
+    const rows: ExcelRow[] = [];
+    const merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = [];
+    const sectionRows: number[] = [];
+    const headerRows: number[] = [];
+    const productHeaderRows: number[] = [];
+    const metricRows: number[] = [];
+    const tableRows: Array<[string, string, string, string, string]> = [];
+
+    const padRow = (cells: ExcelRow): ExcelRow => {
+      const copy = [...cells];
+      while (copy.length < 3) {
+        copy.push(null);
       }
+      return copy.slice(0, 3);
     };
 
-    const addLine = (text: string) => {
-      ensureVerticalSpace();
-      doc.text(text, marginX, cursorY);
-      cursorY += 6;
+    const pushRow = (cells: ExcelRow) => {
+      const index = rows.push(padRow(cells)) - 1;
+      return index;
     };
 
-    const addBlankLine = () => {
-      ensureVerticalSpace();
-      cursorY += 2;
+    const addBlankRow = () => {
+      pushRow([null, null, null]);
     };
 
-    const addSectionTitle = (title: string) => {
-      ensureVerticalSpace(10);
-      doc.setFontSize(13);
-      doc.text(title, marginX, cursorY);
-      cursorY += 8;
-      doc.setFontSize(11);
+    const addSectionHeader = (title: string) => {
+      const rowIndex = pushRow([title, null, null]);
+      merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 2 } });
+      sectionRows.push(rowIndex);
+      return rowIndex;
     };
 
-    const addProductHeading = (title: string) => {
-      ensureVerticalSpace(8);
-      doc.setFontSize(12);
-      doc.text(title, marginX, cursorY);
-      cursorY += 7;
-      doc.setFontSize(11);
+    const addHeaderRow = (labels: [string, string, string]) => {
+      const rowIndex = pushRow(labels);
+      headerRows.push(rowIndex);
+      return rowIndex;
     };
 
-    doc.setFontSize(16);
-    doc.text(stageMeta[stage].title, marginX, cursorY);
-    cursorY += 10;
-    doc.setFontSize(11);
+    const addProductHeader = (title: string) => {
+      const rowIndex = pushRow([title, null, null]);
+      merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 2 } });
+      productHeaderRows.push(rowIndex);
+      return rowIndex;
+    };
 
-    addLine(`Report date: ${stagePayload.date}`);
-    addLine(`Generated at: ${new Date(stagePayload.generatedAt).toLocaleString()}`);
-    addBlankLine();
+    const addMetricRow = (metric: ExcelMetric) => {
+      const rowIndex = pushRow([metric.label, metric.value, metric.note ?? ""]);
+      metricRows.push(rowIndex);
+      return rowIndex;
+    };
 
-    const summaryCards = topCards.filter((card) => card.key !== "date" && card.key !== "generatedAt");
+    const addMetricRows = (metrics: ExcelMetric[]) => {
+      metrics.forEach((metric) => addMetricRow(metric));
+    };
+
+    const addTitleRow = (title: string) => {
+      const rowIndex = pushRow([title, null, null]);
+      merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 2 } });
+      return rowIndex;
+    };
+
+    const addTableRow = (section: string, product: string, metric: string, value: string, notes: string = "") => {
+      tableRows.push([section, product, metric, value, notes]);
+    };
+
+    // Title & basic metadata
+    const titleRowIndex = addTitleRow(stageMeta[stage].title);
+    addBlankRow();
+    addMetricRow({ label: "Report date", value: stagePayload.date });
+    addMetricRow({ label: "Generated at", value: generatedAtDisplay });
+    addBlankRow();
+
+    addTableRow("Report info", "", "Stage", stageName, "");
+    addTableRow("Report info", "", "Report date", stagePayload.date, "");
+    addTableRow("Report info", "", "Generated at", generatedAtDisplay, "");
+
+    // Summary section
+    const summaryCards = topCards
+      .filter((card) => card.key !== "date" && card.key !== "generatedAt")
+      .map<ExcelMetric>((card) => ({ label: card.label, value: card.value, note: card.helper ?? "" }));
+
     if (summaryCards.length > 0) {
-      addSectionTitle("Summary");
-      summaryCards.forEach((card) => {
-        const text = card.helper ? `${card.label}: ${card.value} (${card.helper})` : `${card.label}: ${card.value}`;
-        addLine(text);
-      });
-      addBlankLine();
+      addSectionHeader("Summary");
+      addHeaderRow(["Metric", "Value", "Notes"]);
+      addMetricRows(summaryCards);
+      addBlankRow();
+      summaryCards.forEach((metric) => addTableRow("Summary", "", metric.label, metric.value, metric.note ?? ""));
     }
 
-    addSectionTitle("Per product metrics");
+    // Per-product sections and totals
+    const productSections: Array<{ title: string; metrics: ExcelMetric[] }> = [];
+    let totalsMetrics: ExcelMetric[] = [];
 
     switch (stagePayload.stage) {
       case "field": {
         Object.entries(stagePayload.perProduct).forEach(([key, metrics]) => {
           const product = key as ProductKey;
-          const unit = productUnits[product];
-          addProductHeading(productLabels[product]);
-          addLine(`• Drafts: ${formatNumber(metrics.drafts)}`);
-          addLine(`• Buckets: ${formatNumber(metrics.buckets)}`);
-          addLine(
-            `• Quantity: ${formatNumber(metrics.quantity, {
+          const unit = "L";
+          const draftIdDisplay = metrics.draftIds && metrics.draftIds.length > 0 ? metrics.draftIds.join(", ") : "—";
+          productSections.push({
+            title: productLabels[product],
+            metrics: [
+              { label: "Draft ID", value: draftIdDisplay },
+              { label: "Buckets", value: formatNumber(metrics.buckets) },
+              {
+                label: "Quantity",
+                value: formatNumber(metrics.quantity, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                }),
+                note: unit,
+              },
+            ],
+          });
+        });
+
+        totalsMetrics = [
+          {
+            label: "Draft ID",
+            value: stagePayload.totals.draftIds && stagePayload.totals.draftIds.length > 0
+              ? stagePayload.totals.draftIds.join(", ")
+              : "—",
+          },
+          { label: "Drafts", value: formatNumber(stagePayload.totals.drafts) },
+          { label: "Buckets", value: formatNumber(stagePayload.totals.buckets) },
+          {
+            label: "Quantity",
+            value: formatNumber(stagePayload.totals.quantity, {
               minimumFractionDigits: 1,
               maximumFractionDigits: 1,
-            })} ${unit}`
-          );
-          addBlankLine();
-        });
+            }),
+            note: "L",
+          },
+        ];
         break;
       }
       case "processing": {
         Object.entries(stagePayload.perProduct).forEach(([key, metrics]) => {
           const product = key as ProductKey;
           const unit = productUnits[product];
-          addProductHeading(productLabels[product]);
-          addLine(`• Batches: ${formatNumber(metrics.totalBatches)}`);
-          addLine(`• Completed: ${formatNumber(metrics.completedBatches)}`);
-          addLine(
-            `• Input: ${formatNumber(metrics.totalInput, {
-              minimumFractionDigits: 1,
-              maximumFractionDigits: 1,
-            })} ${unit}`
-          );
-          addLine(
-            `• Output: ${formatNumber(metrics.totalOutput, {
-              minimumFractionDigits: 1,
-              maximumFractionDigits: 1,
-            })} ${unit}`
-          );
-          addLine(`• Gas cost: ${formatCurrency(metrics.totalGasCost)}`);
-          addLine(`• Labor cost: ${formatCurrency(metrics.totalLaborCost)}`);
-          addBlankLine();
+          productSections.push({
+            title: productLabels[product],
+            metrics: [
+              { label: "Batches", value: formatNumber(metrics.totalBatches) },
+              { label: "Completed", value: formatNumber(metrics.completedBatches) },
+              {
+                label: "Input",
+                value: formatNumber(metrics.totalInput, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                }),
+                note: unit,
+              },
+              {
+                label: "Output",
+                value: formatNumber(metrics.totalOutput, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                }),
+                note: unit,
+              },
+              { label: "Gas cost", value: formatCurrency(metrics.totalGasCost) },
+              { label: "Labor cost", value: formatCurrency(metrics.totalLaborCost) },
+            ],
+          });
         });
+
+        totalsMetrics = [
+          { label: "Batches", value: formatNumber(stagePayload.totals.totalBatches) },
+          { label: "Completed", value: formatNumber(stagePayload.totals.completedBatches) },
+          {
+            label: "Input",
+            value: formatNumber(stagePayload.totals.totalInput, {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            }),
+            note: "Sap in L, Treacle in kg",
+          },
+          {
+            label: "Output",
+            value: formatNumber(stagePayload.totals.totalOutput, {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            }),
+            note: "Sap in L, Treacle in kg",
+          },
+          { label: "Gas cost", value: formatCurrency(stagePayload.totals.totalGasCost) },
+          { label: "Labor cost", value: formatCurrency(stagePayload.totals.totalLaborCost) },
+        ];
         break;
       }
       case "packaging": {
         Object.entries(stagePayload.perProduct).forEach(([key, metrics]) => {
           const product = key as ProductKey;
           const unit = productUnits[product];
-          addProductHeading(productLabels[product]);
-          addLine(`• Batches: ${formatNumber(metrics.totalBatches)}`);
-          addLine(`• Completed: ${formatNumber(metrics.completedBatches)}`);
-          addLine(
-            `• Finished quantity: ${formatNumber(metrics.finishedQuantity, {
+          productSections.push({
+            title: productLabels[product],
+            metrics: [
+              { label: "Batches", value: formatNumber(metrics.totalBatches) },
+              { label: "Completed", value: formatNumber(metrics.completedBatches) },
+              {
+                label: "Finished quantity",
+                value: formatNumber(metrics.finishedQuantity, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                }),
+                note: unit,
+              },
+              { label: "Bottle cost", value: formatCurrency(metrics.totalBottleCost) },
+              { label: "Lid cost", value: formatCurrency(metrics.totalLidCost) },
+              { label: "Alufoil cost", value: formatCurrency(metrics.totalAlufoilCost) },
+              { label: "Vacuum bag cost", value: formatCurrency(metrics.totalVacuumBagCost) },
+              { label: "Parchment paper cost", value: formatCurrency(metrics.totalParchmentPaperCost) },
+              { label: "Total packaging cost", value: formatCurrency(metrics.totalCost) },
+            ],
+          });
+        });
+
+        totalsMetrics = [
+          { label: "Batches", value: formatNumber(stagePayload.totals.totalBatches) },
+          { label: "Completed", value: formatNumber(stagePayload.totals.completedBatches) },
+          {
+            label: "Finished quantity",
+            value: formatNumber(stagePayload.totals.finishedQuantity, {
               minimumFractionDigits: 1,
               maximumFractionDigits: 1,
-            })} ${unit}`
-          );
-          addLine(`• Bottle cost: ${formatCurrency(metrics.totalBottleCost)}`);
-          addLine(`• Lid cost: ${formatCurrency(metrics.totalLidCost)}`);
-          addLine(`• Alufoil cost: ${formatCurrency(metrics.totalAlufoilCost)}`);
-          addLine(`• Vacuum bag cost: ${formatCurrency(metrics.totalVacuumBagCost)}`);
-          addLine(`• Parchment paper cost: ${formatCurrency(metrics.totalParchmentPaperCost)}`);
-          addLine(`• Total packaging cost: ${formatCurrency(metrics.totalCost)}`);
-          addBlankLine();
-        });
+            }),
+            note: "Sap in L, Treacle in kg",
+          },
+          { label: "Bottle cost", value: formatCurrency(stagePayload.totals.totalBottleCost) },
+          { label: "Lid cost", value: formatCurrency(stagePayload.totals.totalLidCost) },
+          { label: "Alufoil cost", value: formatCurrency(stagePayload.totals.totalAlufoilCost) },
+          { label: "Vacuum bag cost", value: formatCurrency(stagePayload.totals.totalVacuumBagCost) },
+          { label: "Parchment paper cost", value: formatCurrency(stagePayload.totals.totalParchmentPaperCost) },
+          { label: "Total packaging cost", value: formatCurrency(stagePayload.totals.totalCost) },
+        ];
         break;
       }
       case "labeling": {
         Object.entries(stagePayload.perProduct).forEach(([key, metrics]) => {
           const product = key as ProductKey;
-          addProductHeading(productLabels[product]);
-          addLine(`• Batches: ${formatNumber(metrics.totalBatches)}`);
-          addLine(`• Completed: ${formatNumber(metrics.completedBatches)}`);
-          addLine(`• Sticker cost: ${formatCurrency(metrics.totalStickerCost)}`);
-          addLine(`• Shrink sleeve cost: ${formatCurrency(metrics.totalShrinkSleeveCost)}`);
-          addLine(`• Neck tag cost: ${formatCurrency(metrics.totalNeckTagCost)}`);
-          addLine(`• Corrugated carton cost: ${formatCurrency(metrics.totalCorrugatedCartonCost)}`);
-          addLine(`• Total labeling cost: ${formatCurrency(metrics.totalCost)}`);
-          addBlankLine();
+          productSections.push({
+            title: productLabels[product],
+            metrics: [
+              { label: "Batches", value: formatNumber(metrics.totalBatches) },
+              { label: "Completed", value: formatNumber(metrics.completedBatches) },
+              { label: "Sticker cost", value: formatCurrency(metrics.totalStickerCost) },
+              { label: "Shrink sleeve cost", value: formatCurrency(metrics.totalShrinkSleeveCost) },
+              { label: "Neck tag cost", value: formatCurrency(metrics.totalNeckTagCost) },
+              { label: "Corrugated carton cost", value: formatCurrency(metrics.totalCorrugatedCartonCost) },
+              { label: "Total labeling cost", value: formatCurrency(metrics.totalCost) },
+            ],
+          });
         });
+
+        totalsMetrics = [
+          { label: "Batches", value: formatNumber(stagePayload.totals.totalBatches) },
+          { label: "Completed", value: formatNumber(stagePayload.totals.completedBatches) },
+          { label: "Sticker cost", value: formatCurrency(stagePayload.totals.totalStickerCost) },
+          { label: "Shrink sleeve cost", value: formatCurrency(stagePayload.totals.totalShrinkSleeveCost) },
+          { label: "Neck tag cost", value: formatCurrency(stagePayload.totals.totalNeckTagCost) },
+          { label: "Corrugated carton cost", value: formatCurrency(stagePayload.totals.totalCorrugatedCartonCost) },
+          { label: "Total labeling cost", value: formatCurrency(stagePayload.totals.totalCost) },
+        ];
         break;
       }
     }
 
-    doc.save(`${stagePayload.stage}-report-${stagePayload.date}.pdf`);
-    toast.success("Report PDF downloaded.");
+    if (productSections.length > 0) {
+      addSectionHeader("Per product metrics");
+      productSections.forEach((section, index) => {
+        if (index === 0) {
+          addBlankRow();
+        }
+        addProductHeader(section.title);
+        addHeaderRow(["Metric", "Value", "Notes"]);
+        addMetricRows(section.metrics);
+        addBlankRow();
+      });
+      productSections.forEach((section) => {
+        section.metrics.forEach((metric) => {
+          addTableRow("Per product", section.title, metric.label, metric.value, metric.note ?? "");
+        });
+      });
+    }
+
+    if (totalsMetrics.length > 0) {
+      addSectionHeader("Totals");
+      addHeaderRow(["Metric", "Value", "Notes"]);
+      addMetricRows(totalsMetrics);
+      totalsMetrics.forEach((metric) => addTableRow("Totals", "", metric.label, metric.value, metric.note ?? ""));
+    }
+
+    const worksheet = utils.aoa_to_sheet(rows);
+    worksheet["!cols"] = [{ wch: 28 }, { wch: 24 }, { wch: 38 }];
+    worksheet["!merges"] = merges;
+
+    type ExcelCellStyle = NonNullable<CellObject["s"]>;
+    const applyStyle = (sheet: WorkSheet, rowIndex: number, colIndex: number, style: Partial<ExcelCellStyle>) => {
+      const address = utils.encode_cell({ r: rowIndex, c: colIndex });
+      const cell = sheet[address] as CellObject | undefined;
+      if (!cell) {
+        return;
+      }
+      const currentStyle = (cell.s ?? {}) as ExcelCellStyle;
+      cell.s = { ...currentStyle, ...(style as ExcelCellStyle) };
+    };
+
+    const sectionHeaderStyle: Partial<ExcelCellStyle> = {
+      font: { bold: true, sz: 12, color: { rgb: "1F2937" } },
+      alignment: { horizontal: "left", vertical: "center" },
+      fill: { patternType: "solid", fgColor: { rgb: "E5E7EB" } },
+    };
+
+    const titleStyle: Partial<ExcelCellStyle> = {
+      font: { bold: true, sz: 14, color: { rgb: "111827" } },
+      alignment: { horizontal: "left", vertical: "center" },
+    };
+
+    const tableHeaderStyle: Partial<ExcelCellStyle> = {
+      font: { bold: true, color: { rgb: "111827" } },
+      alignment: { horizontal: "left", vertical: "center" },
+      fill: { patternType: "solid", fgColor: { rgb: "F3F4F6" } },
+      border: {
+        top: { style: "thin", color: { rgb: "D1D5DB" } },
+        bottom: { style: "thin", color: { rgb: "D1D5DB" } },
+        left: { style: "thin", color: { rgb: "D1D5DB" } },
+        right: { style: "thin", color: { rgb: "D1D5DB" } },
+      },
+    };
+
+    const productHeaderStyle: Partial<ExcelCellStyle> = {
+      font: { bold: true, color: { rgb: "1F2937" } },
+      alignment: { horizontal: "left", vertical: "center" },
+      fill: { patternType: "solid", fgColor: { rgb: "E0F2FE" } },
+    };
+
+    const metricLabelStyle: Partial<ExcelCellStyle> = {
+      font: { bold: true },
+      alignment: { horizontal: "left", vertical: "center" },
+    };
+
+    applyStyle(worksheet, titleRowIndex, 0, titleStyle);
+
+    sectionRows.forEach((rowIndex) => {
+      applyStyle(worksheet, rowIndex, 0, sectionHeaderStyle);
+    });
+
+    headerRows.forEach((rowIndex) => {
+      for (let col = 0; col < 3; col += 1) {
+        applyStyle(worksheet, rowIndex, col, tableHeaderStyle);
+      }
+    });
+
+    productHeaderRows.forEach((rowIndex) => {
+      applyStyle(worksheet, rowIndex, 0, productHeaderStyle);
+    });
+
+    metricRows.forEach((rowIndex) => {
+      applyStyle(worksheet, rowIndex, 0, metricLabelStyle);
+    });
+
+    const tableSheetData: Array<Array<string>> = [
+      ["Section", "Product", "Metric", "Value", "Notes"],
+      ...tableRows,
+    ];
+    const tableSheet = utils.aoa_to_sheet(tableSheetData);
+    tableSheet["!cols"] = [{ wch: 18 }, { wch: 18 }, { wch: 28 }, { wch: 24 }, { wch: 32 }];
+
+    if (tableRows.length > 0) {
+      tableSheet["!autofilter"] = {
+        ref: utils.encode_range({ s: { r: 0, c: 0 }, e: { r: tableRows.length, c: 4 } }),
+      };
+    }
+
+    for (let col = 0; col < 5; col += 1) {
+      applyStyle(tableSheet, 0, col, tableHeaderStyle);
+    }
+
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, stageName);
+    utils.book_append_sheet(workbook, tableSheet, `${stageName} Table`);
+    writeFileXLSX(workbook, `${stagePayload.stage}-report-${stagePayload.date}.xlsx`);
+    toast.success("Report Excel downloaded.");
   };
 
   const topCards = useMemo(() => {
@@ -417,18 +689,24 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
 
     switch (stagePayload.stage) {
       case "field":
+        {
+          const draftIdDisplay =
+            stagePayload.totals.draftIds && stagePayload.totals.draftIds.length > 0
+              ? stagePayload.totals.draftIds.join(", ")
+              : "—";
         cards.push(
-          { key: "drafts", label: "Total drafts", value: formatNumber(stagePayload.totals.drafts) },
+          {
+              key: "draftIds",
+              label: "Draft ID",
+              value: draftIdDisplay,
+          },
           {
             key: "buckets",
             label: "Total buckets",
             value: formatNumber(stagePayload.totals.buckets),
-            helper: `Combined quantity: ${formatNumber(stagePayload.totals.quantity, {
-              minimumFractionDigits: 1,
-              maximumFractionDigits: 1,
-            })} (Sap in L, Treacle in kg)`,
           }
         );
+        }
         break;
       case "processing":
         cards.push(
@@ -525,7 +803,7 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
                 {isGenerating ? "Generating" : "Generate"}
               </Button>
               <Button type="button" onClick={handleDownload} disabled={!stagePayload}>
-                <Download className="mr-2 h-4 w-4" /> Download PDF
+                <Download className="mr-2 h-4 w-4" /> Download Excel
               </Button>
             </div>
           </div>
@@ -565,32 +843,32 @@ function renderStageSections(payload: StageReportPayload) {
       return (
         <section className="space-y-4">
           <h3 className="text-base font-semibold">Per product metrics</h3>
-          <div className="space-y-4">
-            {Object.entries(payload.perProduct).map(([key, metrics]) => {
-              const product = key as ProductKey;
-              const unit = productUnits[product];
-              return (
-                <div key={product} className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
-                  <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Product lane</p>
-                      <p className="text-lg font-semibold text-foreground">{productLabels[product]}</p>
-                    </div>
-                    <div className="text-xs text-muted-foreground sm:text-sm">
-                      Collected {formatNumber(metrics.quantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} {unit}
-                    </div>
-                  </div>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                    <Metric label="Drafts" value={formatNumber(metrics.drafts)} />
-                    <Metric label="Buckets" value={formatNumber(metrics.buckets)} />
-                    <Metric
-                      label={`Quantity (${unit})`}
-                      value={formatNumber(metrics.quantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+          <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
+            <table className="min-w-full text-sm">
+              <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-foreground">Product</th>
+                  <th className="px-4 py-3 text-left font-semibold text-foreground">Buckets</th>
+                  <th className="px-4 py-3 text-left font-semibold text-foreground">Quantity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(payload.perProduct).map(([key, metrics], index) => {
+                  const product = key as ProductKey;
+                  const unit = "L";
+                  const rowClass = index % 2 === 0 ? "bg-card" : "bg-muted/30";
+                  return (
+                    <tr key={product} className={`${rowClass} border-b last:border-b-0 border-border/70`}>
+                      <td className="px-4 py-3 font-medium text-foreground">{productLabels[product]}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{formatNumber(metrics.buckets)}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {formatNumber(metrics.quantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} {unit}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </section>
       );

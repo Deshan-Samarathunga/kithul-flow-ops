@@ -26,6 +26,7 @@ type FieldCollectionMetrics = {
   drafts: number;
   buckets: number;
   quantity: number;
+  draftIds: string[];
 };
 
 type ProcessingMetrics = {
@@ -72,7 +73,7 @@ type ReportTotals = {
   labeling: LabelingMetrics;
 };
 
-const emptyFieldCollection = (): FieldCollectionMetrics => ({ drafts: 0, buckets: 0, quantity: 0 });
+const emptyFieldCollection = (): FieldCollectionMetrics => ({ drafts: 0, buckets: 0, quantity: 0, draftIds: [] });
 
 const emptyProcessing = (): ProcessingMetrics => ({
   totalBatches: 0,
@@ -103,16 +104,41 @@ const emptyLabeling = (): LabelingMetrics => ({
   totalCorrugatedCartonCost: 0,
 });
 
+const toStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (typeof item === "string") {
+        const trimmed = item.trim();
+        return trimmed.length > 0 ? trimmed : null;
+      }
+      if (typeof item === "number") {
+        return String(item);
+      }
+      if (item && typeof item === "object" && "value" in (item as Record<string, unknown>)) {
+        const inner = (item as Record<string, unknown>).value;
+        return typeof inner === "string" ? inner : inner != null ? String(inner) : null;
+      }
+      return item != null ? String(item) : null;
+    })
+    .filter((item): item is string => item !== null);
+};
+
 async function fetchFieldCollectionMetrics(product: ProductSlug, targetDate: string): Promise<FieldCollectionMetrics> {
   const bucketsTable = getTableName("buckets", product);
   const query = `
     SELECT
+      ARRAY_REMOVE(ARRAY_AGG(DISTINCT d.id::text), NULL) AS draft_ids,
       COUNT(DISTINCT d.id) AS draft_count,
       COUNT(b.id) AS bucket_count,
       COALESCE(SUM(b.quantity), 0) AS total_quantity
     FROM field_collection_drafts d
     LEFT JOIN ${bucketsTable} b ON b.draft_id = d.id
     WHERE d.date::date = $1
+      AND LOWER(d.status) IN ('submitted', 'completed')
   `;
   const { rows } = await pool.query(query, [targetDate]);
   const row = rows[0] ?? {};
@@ -120,6 +146,7 @@ async function fetchFieldCollectionMetrics(product: ProductSlug, targetDate: str
     drafts: toNumber(row.draft_count),
     buckets: toNumber(row.bucket_count),
     quantity: toNumber(row.total_quantity),
+    draftIds: toStringArray(row.draft_ids),
   };
 }
 
@@ -264,6 +291,9 @@ router.get(
         totals.fieldCollection.drafts += report.fieldCollection.drafts;
         totals.fieldCollection.buckets += report.fieldCollection.buckets;
         totals.fieldCollection.quantity += report.fieldCollection.quantity;
+        totals.fieldCollection.draftIds = Array.from(
+          new Set([...totals.fieldCollection.draftIds, ...report.fieldCollection.draftIds])
+        );
 
         totals.processing.totalBatches += report.processing.totalBatches;
         totals.processing.completedBatches += report.processing.completedBatches;
