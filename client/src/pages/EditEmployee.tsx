@@ -45,7 +45,8 @@ export default function EditEmployee() {
 
     if (!token) {
       toast.error("Session expired. Please log in again.");
-      handleLogout();
+      logout();
+      navigate("/");
       return;
     }
 
@@ -74,9 +75,10 @@ export default function EditEmployee() {
           role: rolesResponse.includes(employee.role) ? employee.role : rolesResponse[0] ?? ROLE_OPTIONS[0],
           isActive: employee.isActive,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (!cancelled) {
-          toast.error(error?.message || "Unable to load employee");
+          const message = error instanceof Error ? error.message : "Unable to load employee";
+          toast.error(message);
           navigate("/admin");
         }
       } finally {
@@ -89,7 +91,7 @@ export default function EditEmployee() {
     return () => {
       cancelled = true;
     };
-  }, [userId, token, navigate]);
+  }, [userId, token, navigate, logout]);
 
 
   const handleSave = async () => {
@@ -107,8 +109,9 @@ export default function EditEmployee() {
       });
       toast.success("Employee updated");
       navigate("/admin");
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to update employee");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to update employee";
+      toast.error(message);
     } finally {
       setSaving(false);
     }

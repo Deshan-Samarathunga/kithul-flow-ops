@@ -36,8 +36,15 @@ function routeForRole(role?: string | null) {
 
 export default function Login() {
   const navigate = useNavigate();
-  const location = useLocation() as any;
-  const redirectFrom = location.state?.from as string | undefined;
+  const location = useLocation();
+  const redirectFrom = ((): string | undefined => {
+    const state = location.state;
+    if (state && typeof state === "object" && "from" in state) {
+      const value = (state as Record<string, unknown>).from;
+      return typeof value === "string" ? value : undefined;
+    }
+    return undefined;
+  })();
   const { login } = useAuth();
 
   const [userId, setUserId] = useState("");
@@ -63,8 +70,9 @@ export default function Login() {
       // redirect priority: explicit redirectFrom -> role route -> default
       const target = redirectFrom || routeForRole(loggedInUser.role);
       navigate(target, { replace: true });
-    } catch (err: any) {
-      toast.error(err.message || "Invalid credentials");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Invalid credentials";
+      toast.error(message);
     } finally {
       setLoading(false);
     }

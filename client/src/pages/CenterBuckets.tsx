@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,15 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+type BucketListItem = {
+  bucket_id: string;
+  product_type: string;
+  quantity: number;
+  brix_value: number | null;
+  ph_value: number | null;
+  total_amount: number | null;
+};
+
 export default function CenterBuckets() {
   const navigate = useNavigate();
   const { draftId, centerId } = useParams();
@@ -36,7 +45,7 @@ export default function CenterBuckets() {
   const [searchQuery, setSearchQuery] = useState("");
   const productTypeParam = searchParams.get("productType");
   const [activeTab, setActiveTab] = useState(productTypeParam || "sap");
-  const [buckets, setBuckets] = useState<any[]>([]);
+  const [buckets, setBuckets] = useState<BucketListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draftStatus, setDraftStatus] = useState<string>("draft");
@@ -61,7 +70,7 @@ export default function CenterBuckets() {
   const centerName = centerInfo.name;
 
   // Load buckets and draft status from API
-  const loadBuckets = async () => {
+  const loadBuckets = useCallback(async () => {
     if (!draftId || !centerId || draftId === "new") {
       setLoading(false);
       return;
@@ -70,27 +79,61 @@ export default function CenterBuckets() {
     try {
       setLoading(true);
       setError(null);
-      
-      // Load both buckets and draft status
+
       const [bucketsData, draftData] = await Promise.all([
         DataService.getBuckets(draftId, centerId),
-        DataService.getDraft(draftId)
+        DataService.getDraft(draftId),
       ]);
-      
-      setBuckets(bucketsData);
-      setDraftStatus(draftData.status || "draft");
-      setDraftDate(new Date(draftData.date).toISOString().split('T')[0]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
-      toast.error('Failed to load data');
+
+      const normalizedBuckets = (Array.isArray(bucketsData) ? bucketsData : [])
+        .map((bucket) => {
+          if (!bucket || typeof bucket !== "object") {
+            return null;
+          }
+
+          const record = bucket as Record<string, unknown>;
+          const bucketId = typeof record.bucket_id === "string" ? record.bucket_id : null;
+          const productType = typeof record.product_type === "string" ? record.product_type : null;
+
+          if (!bucketId || !productType) {
+            return null;
+          }
+
+          const quantityValue = Number(record.quantity ?? 0);
+
+          return {
+            bucket_id: bucketId,
+            product_type: productType,
+            quantity: Number.isFinite(quantityValue) ? quantityValue : 0,
+            brix_value: typeof record.brix_value === "number" ? record.brix_value : null,
+            ph_value: typeof record.ph_value === "number" ? record.ph_value : null,
+            total_amount: typeof record.total_amount === "number" ? record.total_amount : null,
+          } satisfies BucketListItem;
+        })
+        .filter((bucket): bucket is BucketListItem => bucket !== null);
+
+      const draftRecord = draftData && typeof draftData === "object"
+        ? (draftData as Record<string, unknown>)
+        : null;
+
+      const draftStatusValue = draftRecord && typeof draftRecord.status === "string" ? draftRecord.status : "draft";
+      const draftDateValue = draftRecord && typeof draftRecord.date === "string" ? draftRecord.date : null;
+
+      setBuckets(normalizedBuckets);
+      setDraftStatus(draftStatusValue || "draft");
+      setDraftDate(draftDateValue ? new Date(draftDateValue).toISOString().split("T")[0] : "");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load data";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [centerId, draftId]);
 
   useEffect(() => {
     loadBuckets();
-  }, [draftId, centerId]);
+  }, [loadBuckets]);
 
   // Refresh buckets when page becomes visible (e.g., after navigation back)
   useEffect(() => {
@@ -102,13 +145,13 @@ export default function CenterBuckets() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [draftId, centerId]);
+  }, [loadBuckets]);
 
   const filteredBuckets = buckets.filter(
-    (b) =>
-      b.product_type === activeTab &&
-      (b.bucket_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-       b.product_type.toLowerCase().includes(searchQuery.toLowerCase()))
+    (bucket) =>
+      bucket.product_type === activeTab &&
+      (bucket.bucket_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        bucket.product_type.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleLogout = () => {
@@ -120,15 +163,14 @@ export default function CenterBuckets() {
     try {
       setLoading(true);
       await DataService.deleteBucket(bucketId);
-      
+
       toast.success('Can deleted successfully');
-      
-      // Refresh the buckets list
+
       await loadBuckets();
-      
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error deleting can:', error);
-      toast.error('Failed to delete can');
+      const message = error instanceof Error ? error.message : 'Failed to delete can';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -214,13 +256,13 @@ export default function CenterBuckets() {
                         <h3 className="font-semibold text-sm sm:text-base">Can ID: {bucket.bucket_id}</h3>
                         <p className="text-xs sm:text-sm text-muted-foreground">Product: {bucket.product_type}</p>
                         <p className="text-xs sm:text-sm text-muted-foreground">Quantity: {bucket.quantity} L</p>
-                        {bucket.brix_value && (
+                        {bucket.brix_value !== null && (
                           <p className="text-xs sm:text-sm text-muted-foreground">Brix: {bucket.brix_value}</p>
                         )}
-                        {bucket.ph_value && (
+                        {bucket.ph_value !== null && (
                           <p className="text-xs sm:text-sm text-muted-foreground">pH: {bucket.ph_value}</p>
                         )}
-                        {bucket.total_amount && (
+                        {bucket.total_amount !== null && (
                           <p className="text-xs sm:text-sm text-muted-foreground">Amount: Rs. {bucket.total_amount}</p>
                         )}
                       </div>

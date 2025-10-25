@@ -7,6 +7,14 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { DataService } from "@/lib/dataService";
 
+type DraftDetailData = {
+  buckets?: Array<Record<string, unknown>>;
+  status?: string | null;
+  date?: string | null;
+  bucketCount?: number;
+  bucket_count?: number;
+} & Record<string, unknown>;
+
 export default function DraftDetail() {
   const navigate = useNavigate();
   const { draftId } = useParams();
@@ -21,10 +29,48 @@ export default function DraftDetail() {
   }, []);
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
 
-  const [draft, setDraft] = useState<any>(null);
+  const [draft, setDraft] = useState<DraftDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [completedCenters, setCompletedCenters] = useState<Set<string>>(new Set());
+
+  const centerBucketCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+  const entries = Array.isArray(draft?.buckets) ? draft.buckets : [];
+
+    entries.forEach((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return;
+      }
+
+      const data = entry as Record<string, unknown>;
+
+      const centerIdCandidate =
+        typeof data["centerId"] === "string"
+          ? data["centerId"]
+          : typeof data["collectionCenterId"] === "string"
+            ? data["collectionCenterId"]
+            : typeof data["center_id"] === "string"
+              ? data["center_id"]
+              : typeof data["collection_center_id"] === "string"
+                ? data["collection_center_id"]
+                : undefined;
+
+      if (!centerIdCandidate) {
+        return;
+      }
+
+      const bucketsValue = data["buckets"];
+      if (Array.isArray(bucketsValue)) {
+        counts[centerIdCandidate] = bucketsValue.length;
+        return;
+      }
+
+      counts[centerIdCandidate] = (counts[centerIdCandidate] ?? 0) + 1;
+    });
+
+    return counts;
+  }, [draft?.buckets]);
 
   useEffect(() => {
     const loadDraft = async () => {
@@ -39,9 +85,10 @@ export default function DraftDetail() {
         setError(null);
         const fetchedDraft = await DataService.getDraft(draftId);
         setDraft(fetchedDraft);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load draft');
-        toast.error('Failed to load draft');
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to load draft';
+        setError(message);
+        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -56,9 +103,18 @@ export default function DraftDetail() {
 
       try {
         const completedCentersData = await DataService.getCompletedCenters(draftId);
-        const completedSet = new Set(completedCentersData.map(center => center.center_id));
-        setCompletedCenters(completedSet);
-      } catch (err) {
+        const completedIds = (Array.isArray(completedCentersData) ? completedCentersData : [])
+          .map((entry) => {
+            if (!entry || typeof entry !== "object") {
+              return null;
+            }
+            const record = entry as Record<string, unknown>;
+            const id = record.center_id ?? record.centerId;
+            return typeof id === "string" ? id : null;
+          })
+          .filter((id): id is string => id !== null);
+        setCompletedCenters(new Set(completedIds));
+      } catch (err: unknown) {
         console.error('Failed to load completed centers:', err);
         // Don't show error toast for this, just log it
       }
@@ -71,21 +127,21 @@ export default function DraftDetail() {
     navigate("/");
   };
 
-  const handleSubmitDraft = async () => {
+  const handleSaveDraft = async () => {
     if (!draftId) return;
     
     try {
       setLoading(true);
-      await DataService.submitDraft(draftId);
-      
-      toast.success('Draft submitted successfully');
-      
-      // Navigate back to field collection page
+      await DataService.updateDraft(draftId, "draft");
+
+      toast.success('Draft saved successfully');
+
       navigate('/field-collection');
       
-    } catch (error) {
-      console.error('Error submitting draft:', error);
-      toast.error('Failed to submit draft');
+    } catch (error: unknown) {
+      console.error('Error saving draft:', error);
+      const message = error instanceof Error ? error.message : 'Failed to save draft';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -103,9 +159,10 @@ export default function DraftDetail() {
       
       toast.success('Center submitted successfully');
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error submitting center:', error);
-      toast.error('Failed to submit center');
+      const message = error instanceof Error ? error.message : 'Failed to submit center';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -127,9 +184,10 @@ export default function DraftDetail() {
       
       toast.success('Center reopened successfully');
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error reopening center:', error);
-      toast.error('Failed to reopen center');
+      const message = error instanceof Error ? error.message : 'Failed to reopen center';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -200,19 +258,6 @@ export default function DraftDetail() {
     }
   ];
 
-  // group buckets by center name (fallback to farmerName)
-  const centers = draft?.buckets?.reduce<Record<string, { name: string; buckets: any[] }>>((acc, b) => {
-    const key = b.collectionCenterName ?? b.farmerName;
-    if (!acc[key]) acc[key] = { name: key, buckets: [] };
-    acc[key].buckets.push(b);
-    return acc;
-  }, {} as any) ?? {};
-
-  const centerList = Object.values(centers);
-
-  
-  
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar 
@@ -238,16 +283,16 @@ export default function DraftDetail() {
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold">Draft {new Date(draft.date).toISOString().split('T')[0]}</h1>
-            <p className="text-sm text-muted-foreground">Buckets: {draft.bucket_count || 0}</p>
+            <p className="text-sm text-muted-foreground">Buckets: {draft.bucketCount ?? draft.bucket_count ?? 0}</p>
           </div>
           {draft.status === "draft" && (
             <div className="flex gap-2">
               <Button
                 className="bg-cta hover:bg-cta-hover text-cta-foreground"
-                onClick={handleSubmitDraft}
+                onClick={handleSaveDraft}
                 disabled={loading}
               >
-                Submit Draft
+                Save draft
               </Button>
             </div>
           )}
@@ -265,8 +310,7 @@ export default function DraftDetail() {
                     .filter(center => !completedCenters.has(center.id))
                     .map((center) => {
                       // Find if this center has any buckets
-                      const centerBuckets = centerList.find(c => c.name === center.name)?.buckets || [];
-                      const bucketCount = centerBuckets.length;
+                      const bucketCount = centerBucketCounts[center.id] ?? 0;
                       
                       return (
                         <div key={center.id} className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
@@ -312,8 +356,7 @@ export default function DraftDetail() {
                     .filter(center => completedCenters.has(center.id))
                     .map((center) => {
                       // Find if this center has any buckets
-                      const centerBuckets = centerList.find(c => c.name === center.name)?.buckets || [];
-                      const bucketCount = centerBuckets.length;
+                      const bucketCount = centerBucketCounts[center.id] ?? 0;
                       
                       return (
                         <div key={`completed-${center.id}`} className="bg-muted/50 border rounded-lg p-4 sm:p-6">
@@ -368,8 +411,7 @@ export default function DraftDetail() {
                   .filter(center => completedCenters.has(center.id))
                   .map((center) => {
                     // Find if this center has any buckets
-                    const centerBuckets = centerList.find(c => c.name === center.name)?.buckets || [];
-                    const bucketCount = centerBuckets.length;
+                    const bucketCount = centerBucketCounts[center.id] ?? 0;
                     
                     return (
                       <div key={center.id} className="bg-muted/50 border rounded-lg p-4 sm:p-6">

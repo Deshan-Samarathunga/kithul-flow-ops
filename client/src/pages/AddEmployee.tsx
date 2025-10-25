@@ -56,9 +56,10 @@ export default function AddEmployee() {
           const allowedRoles = (data.roles ?? []).filter((role) => role !== "Administrator");
           setRoles(allowedRoles);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (!cancelled) {
-          toast.error(error?.message || "Unable to load roles");
+          const message = error instanceof Error ? error.message : "Unable to load roles";
+          toast.error(message);
           setRoles(["Field Collection", "Processing", "Packaging", "Labeling"]);
         }
       } finally {
@@ -146,8 +147,9 @@ export default function AddEmployee() {
       toast.success(`Employee ${created.userId} added successfully`);
       setForm(initialState);
       navigate("/admin");
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to add employee");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to add employee";
+      toast.error(message);
     } finally {
       setLoading(false);
     }

@@ -21,9 +21,13 @@ export class DataService {
     }
   }
 
-  static async createDraft(productType: 'sap' | 'treacle', date?: string) {
+  static async createDraft(date?: string) {
     try {
-      return await apiClient.createDraft({ productType, date });
+      const payload: { date?: string } = {};
+      if (date) {
+        payload.date = date;
+      }
+      return await apiClient.createDraft(payload);
     } catch (error) {
       console.error('Error creating draft:', error);
       throw error;
@@ -155,6 +159,225 @@ export class DataService {
       return await apiClient.getCollectionCenters();
     } catch (error) {
       console.error('Error fetching collection centers:', error);
+      throw error;
+    }
+  }
+
+  static async getProcessingBuckets(status: string = 'active', batchId?: string) {
+    try {
+      const response = await apiClient.getProcessingBuckets({ status, forBatch: batchId });
+      return response.buckets;
+    } catch (error) {
+      console.error('Error fetching processing buckets:', error);
+      throw error;
+    }
+  }
+
+  static async getProcessingBatches() {
+    try {
+      const response = await apiClient.getProcessingBatches();
+      return response.batches;
+    } catch (error) {
+      console.error('Error fetching processing batches:', error);
+      throw error;
+    }
+  }
+
+  static async createProcessingBatch(data?: { scheduledDate?: string; productType?: string; notes?: string }) {
+    try {
+      return await apiClient.createProcessingBatch(data);
+    } catch (error) {
+      console.error('Error creating processing batch:', error);
+      throw error;
+    }
+  }
+
+  static async getProcessingBatch(batchId: string) {
+    try {
+      return await apiClient.getProcessingBatch(batchId);
+    } catch (error) {
+      console.error('Error fetching processing batch:', error);
+      throw error;
+    }
+  }
+
+  static async updateProcessingBatch(
+    batchId: string,
+    data: {
+      status?: string;
+      scheduledDate?: string;
+      productType?: string;
+      notes?: string;
+      totalSapOutput?: number | null;
+      gasCost?: number | null;
+      laborCost?: number | null;
+    }
+  ) {
+    try {
+      return await apiClient.updateProcessingBatch(batchId, data);
+    } catch (error) {
+      console.error('Error updating processing batch:', error);
+      throw error;
+    }
+  }
+
+  static async updateProcessingBatchBuckets(batchId: string, bucketIds: string[]) {
+    try {
+      return await apiClient.updateProcessingBatchBuckets(batchId, bucketIds);
+    } catch (error) {
+      console.error('Error updating processing batch buckets:', error);
+      throw error;
+    }
+  }
+
+  static async submitProcessingBatch(batchId: string) {
+    try {
+      return await apiClient.submitProcessingBatch(batchId);
+    } catch (error) {
+      console.error('Error submitting processing batch:', error);
+      throw error;
+    }
+  }
+
+  static async reopenProcessingBatch(batchId: string) {
+    try {
+      return await apiClient.reopenProcessingBatch(batchId);
+    } catch (error) {
+      console.error('Error reopening processing batch:', error);
+      throw error;
+    }
+  }
+
+  static async deleteProcessingBatch(batchId: string) {
+    try {
+      await apiClient.deleteProcessingBatch(batchId);
+    } catch (error) {
+      console.error('Error deleting processing batch:', error);
+      throw error;
+    }
+  }
+
+  static async getPackagingBatches() {
+    try {
+      const response = await apiClient.getPackagingBatches();
+      return response.batches;
+    } catch (error) {
+      console.error('Error fetching packaging batches:', error);
+      throw error;
+    }
+  }
+
+  static async getEligibleProcessingBatchesForPackaging(productType?: string) {
+    try {
+      const response = await apiClient.getEligibleProcessingBatchesForPackaging({ productType });
+      return response.batches;
+    } catch (error) {
+      console.error('Error fetching eligible processing batches for packaging:', error);
+      throw error;
+    }
+  }
+
+  static async createPackagingBatch(processingBatchId: string) {
+    try {
+      return await apiClient.createPackagingBatch({ processingBatchId });
+    } catch (error) {
+      console.error('Error creating packaging batch:', error);
+      throw error;
+    }
+  }
+
+  static async deletePackagingBatch(packagingId: string) {
+    try {
+      await apiClient.deletePackagingBatch(packagingId);
+    } catch (error) {
+      console.error('Error deleting packaging batch:', error);
+      throw error;
+    }
+  }
+
+  static async updatePackagingBatch(
+    packagingId: string,
+    data: {
+      status?: string;
+      notes?: string;
+      finishedQuantity?: number | null;
+      bottleCost?: number | null;
+      lidCost?: number | null;
+      alufoilCost?: number | null;
+      vacuumBagCost?: number | null;
+      parchmentPaperCost?: number | null;
+    }
+  ) {
+    try {
+      return await apiClient.updatePackagingBatch(packagingId, data);
+    } catch (error) {
+      console.error('Error updating packaging batch:', error);
+      throw error;
+    }
+  }
+
+  static async getLabelingBatches() {
+    try {
+      const response = await apiClient.getLabelingBatches();
+      return response.batches;
+    } catch (error) {
+      console.error('Error fetching labeling batches:', error);
+      throw error;
+    }
+  }
+
+  static async getEligiblePackagingBatchesForLabeling(productType?: string) {
+    try {
+      const response = await apiClient.getEligiblePackagingBatchesForLabeling({ productType });
+      return response.batches;
+    } catch (error) {
+      console.error('Error fetching eligible packaging batches for labeling:', error);
+      throw error;
+    }
+  }
+
+  static async createLabelingBatch(packagingId: string) {
+    try {
+      return await apiClient.createLabelingBatch({ packagingId });
+    } catch (error) {
+      console.error('Error creating labeling batch:', error);
+      throw error;
+    }
+  }
+
+  static async deleteLabelingBatch(packagingId: string) {
+    try {
+      await apiClient.deleteLabelingBatch(packagingId);
+    } catch (error) {
+      console.error('Error deleting labeling batch:', error);
+      throw error;
+    }
+  }
+
+  static async updateLabelingBatch(
+    packagingId: string,
+    data: {
+      status?: string;
+      notes?: string;
+      stickerCost?: number | null;
+      shrinkSleeveCost?: number | null;
+      neckTagCost?: number | null;
+      corrugatedCartonCost?: number | null;
+    }
+  ) {
+    try {
+      return await apiClient.updateLabelingBatch(packagingId, data);
+    } catch (error) {
+      console.error('Error updating labeling batch:', error);
+      throw error;
+    }
+  }
+
+  static async getDailyProductionReport(date?: string) {
+    try {
+      return await apiClient.getDailyProductionReport({ date });
+    } catch (error) {
+      console.error('Error generating daily production report:', error);
       throw error;
     }
   }

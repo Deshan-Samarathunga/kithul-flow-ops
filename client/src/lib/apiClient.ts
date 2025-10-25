@@ -3,6 +3,188 @@ const rawBase = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://
 const normalizedBase = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
 const API_BASE_URL = `${normalizedBase}/api`;
 
+type JsonRecord = Record<string, unknown>;
+
+export type ProcessingBucketDto = {
+  id: string;
+  quantity: number;
+  productType: string;
+  brixValue: number | null;
+  phValue: number | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  assignedBatchId: string | null;
+  draft: {
+    id: string;
+    date: string | null;
+    status: string;
+  };
+  collectionCenter: {
+    id: string;
+    name: string;
+    location: string | null;
+  };
+};
+
+export type ProcessingBatchDto = {
+  id: string;
+  batchNumber: string;
+  scheduledDate: string | null;
+  productType: string;
+  status: string;
+  notes?: string | null;
+  createdBy?: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  bucketCount: number;
+  totalQuantity: number;
+  totalSapOutput?: number | null;
+  gasCost?: number | null;
+  laborCost?: number | null;
+  bucketIds?: string[];
+};
+
+export type EligibleProcessingBatchDto = {
+  processingBatchId: string;
+  batchNumber: string;
+  productType: string;
+  scheduledDate: string | null;
+  totalSapOutput: number | null;
+  totalQuantity: number;
+  bucketCount: number;
+};
+
+export type PackagingBatchDto = {
+  id: string;
+  packagingId: string;
+  processingBatchId: string;
+  batchNumber: string;
+  productType: string;
+  scheduledDate: string | null;
+  packagingStatus: string;
+  processingStatus: string;
+  startedAt: string | null;
+  updatedAt: string | null;
+  bucketCount: number;
+  totalQuantity: number;
+  totalSapOutput?: number | null;
+  finishedQuantity?: number | null;
+  notes?: string | null;
+  bottleCost?: number | null;
+  lidCost?: number | null;
+  alufoilCost?: number | null;
+  vacuumBagCost?: number | null;
+  parchmentPaperCost?: number | null;
+};
+
+export type LabelingBatchDto = {
+  packagingId: string;
+  labelingId?: string | null;
+  processingBatchId: string;
+  batchNumber: string;
+  productType: string;
+  scheduledDate: string | null;
+  packagingStatus: string;
+  labelingStatus: string;
+  labelingNotes?: string | null;
+  processingStatus: string;
+  startedAt: string | null;
+  updatedAt: string | null;
+  bucketCount: number;
+  totalQuantity: number;
+  totalSapOutput?: number | null;
+  finishedQuantity?: number | null;
+  stickerCost?: number | null;
+  shrinkSleeveCost?: number | null;
+  neckTagCost?: number | null;
+  corrugatedCartonCost?: number | null;
+};
+
+export type EligiblePackagingBatchDto = {
+  packagingId: string;
+  batchNumber: string;
+  productType: string;
+  scheduledDate: string | null;
+  finishedQuantity: number | null;
+  totalSapOutput: number | null;
+  totalQuantity: number;
+  bucketCount: number;
+};
+
+export type DailyProductionReport = {
+  date: string;
+  generatedAt: string;
+  perProduct: Record<"sap" | "treacle", {
+    product: "sap" | "treacle";
+    fieldCollection: {
+      drafts: number;
+      buckets: number;
+      quantity: number;
+      draftIds: string[];
+    };
+    processing: {
+      totalBatches: number;
+      completedBatches: number;
+      totalOutput: number;
+      totalInput: number;
+      totalGasCost: number;
+      totalLaborCost: number;
+    };
+    packaging: {
+      totalBatches: number;
+      completedBatches: number;
+      finishedQuantity: number;
+      totalBottleCost: number;
+      totalLidCost: number;
+      totalAlufoilCost: number;
+      totalVacuumBagCost: number;
+      totalParchmentPaperCost: number;
+    };
+    labeling: {
+      totalBatches: number;
+      completedBatches: number;
+      totalStickerCost: number;
+      totalShrinkSleeveCost: number;
+      totalNeckTagCost: number;
+      totalCorrugatedCartonCost: number;
+    };
+  }>;
+  totals: {
+    fieldCollection: {
+      drafts: number;
+      buckets: number;
+      quantity: number;
+      draftIds: string[];
+    };
+    processing: {
+      totalBatches: number;
+      completedBatches: number;
+      totalOutput: number;
+      totalInput: number;
+      totalGasCost: number;
+      totalLaborCost: number;
+    };
+    packaging: {
+      totalBatches: number;
+      completedBatches: number;
+      finishedQuantity: number;
+      totalBottleCost: number;
+      totalLidCost: number;
+      totalAlufoilCost: number;
+      totalVacuumBagCost: number;
+      totalParchmentPaperCost: number;
+    };
+    labeling: {
+      totalBatches: number;
+      completedBatches: number;
+      totalStickerCost: number;
+      totalShrinkSleeveCost: number;
+      totalNeckTagCost: number;
+      totalCorrugatedCartonCost: number;
+    };
+  };
+};
+
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
@@ -84,7 +266,7 @@ class ApiClient {
 
   // Authentication
   async login(credentials: { userId: string; password: string }) {
-    const response = await this.request<{ token: string; user: any }>('/auth/login', {
+    const response = await this.request<{ token: string; user: JsonRecord }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
@@ -97,7 +279,7 @@ class ApiClient {
   }
 
   async getCurrentUser() {
-    return this.request<any>('/auth/me');
+    return this.request<JsonRecord>('/auth/me');
   }
 
   // Field Collection API
@@ -109,63 +291,63 @@ class ApiClient {
     const queryString = searchParams.toString();
     const endpoint = `/field-collection/drafts${queryString ? `?${queryString}` : ''}`;
     
-    return this.request<any[]>(endpoint);
+    return this.request<JsonRecord[]>(endpoint);
   }
 
   async getDraft(draftId: string) {
-    return this.request<any>(`/field-collection/drafts/${draftId}`);
+    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}`);
   }
 
-  async createDraft(data: { productType: 'sap' | 'treacle'; date?: string }) {
-    return this.request<any>('/field-collection/drafts', {
+  async createDraft(data: { date?: string } = {}) {
+    return this.request<JsonRecord>('/field-collection/drafts', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateDraft(draftId: string, data: { status?: 'draft' | 'submitted' | 'completed' }) {
-    return this.request<any>(`/field-collection/drafts/${draftId}`, {
+    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteDraft(draftId: string) {
-    return this.request<any>(`/field-collection/drafts/${draftId}`, {
+    return this.request<undefined>(`/field-collection/drafts/${draftId}`, {
       method: 'DELETE',
     });
   }
 
   async submitDraft(draftId: string) {
-    return this.request<any>(`/field-collection/drafts/${draftId}/submit`, {
+    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}/submit`, {
       method: 'POST',
     });
   }
 
   async reopenDraft(draftId: string) {
-    return this.request<any>(`/field-collection/drafts/${draftId}/reopen`, {
+    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}/reopen`, {
       method: 'POST',
     });
   }
 
   async submitCenter(draftId: string, centerId: string) {
-    return this.request<any>(`/field-collection/drafts/${draftId}/centers/${centerId}/submit`, {
+    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}/centers/${centerId}/submit`, {
       method: 'POST',
     });
   }
 
   async reopenCenter(draftId: string, centerId: string) {
-    return this.request<any>(`/field-collection/drafts/${draftId}/centers/${centerId}/reopen`, {
+    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}/centers/${centerId}/reopen`, {
       method: 'POST',
     });
   }
 
   async getCompletedCenters(draftId: string) {
-    return this.request<any[]>(`/field-collection/drafts/${draftId}/completed-centers`);
+    return this.request<JsonRecord[]>(`/field-collection/drafts/${draftId}/completed-centers`);
   }
 
   async getBuckets(draftId: string, centerId: string) {
-    return this.request<any[]>(`/field-collection/drafts/${draftId}/centers/${centerId}/buckets`);
+    return this.request<JsonRecord[]>(`/field-collection/drafts/${draftId}/centers/${centerId}/buckets`);
   }
 
   async createBucket(data: {
@@ -180,7 +362,7 @@ class ApiClient {
     farmerName?: string;
     collectionTime?: string;
   }) {
-    return this.request<any>('/field-collection/buckets', {
+    return this.request<JsonRecord>('/field-collection/buckets', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -195,20 +377,190 @@ class ApiClient {
     farmerName?: string;
     collectionTime?: string;
   }) {
-    return this.request<any>(`/field-collection/buckets/${bucketId}`, {
+    return this.request<JsonRecord>(`/field-collection/buckets/${bucketId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteBucket(bucketId: string) {
-    return this.request<any>(`/field-collection/buckets/${bucketId}`, {
+    return this.request<undefined>(`/field-collection/buckets/${bucketId}`, {
       method: 'DELETE',
     });
   }
 
   async getCollectionCenters() {
-    return this.request<any[]>('/field-collection/centers');
+    return this.request<JsonRecord[]>('/field-collection/centers');
+  }
+
+  // Processing API
+  async getProcessingBuckets(params?: { status?: string; forBatch?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.append('status', params.status);
+    if (params?.forBatch) searchParams.append('forBatch', params.forBatch);
+    const query = searchParams.toString();
+    const endpoint = `/processing/buckets${query ? `?${query}` : ''}`;
+    return this.request<{ buckets: ProcessingBucketDto[] }>(endpoint);
+  }
+
+  async getProcessingBatches() {
+    return this.request<{ batches: ProcessingBatchDto[] }>(`/processing/batches`);
+  }
+
+  async createProcessingBatch(payload?: { scheduledDate?: string; productType?: string; notes?: string }) {
+    return this.request<ProcessingBatchDto>(`/processing/batches`, {
+      method: 'POST',
+      body: JSON.stringify(payload ?? {}),
+    });
+  }
+
+  async getProcessingBatch(batchId: string) {
+    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}`);
+  }
+
+  async updateProcessingBatch(
+    batchId: string,
+    payload: {
+      status?: string;
+      scheduledDate?: string;
+      productType?: string;
+      notes?: string;
+      totalSapOutput?: number | null;
+      gasCost?: number | null;
+      laborCost?: number | null;
+    }
+  ) {
+    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateProcessingBatchBuckets(batchId: string, bucketIds: string[]) {
+    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/buckets`, {
+      method: 'PUT',
+      body: JSON.stringify({ bucketIds }),
+    });
+  }
+
+  async submitProcessingBatch(batchId: string) {
+    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/submit`, {
+      method: 'POST',
+    });
+  }
+
+  async reopenProcessingBatch(batchId: string) {
+    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/reopen`, {
+      method: 'POST',
+    });
+  }
+
+  async deleteProcessingBatch(batchId: string) {
+    return this.request<void>(`/processing/batches/${batchId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Packaging API
+  async getPackagingBatches() {
+    return this.request<{ batches: PackagingBatchDto[] }>(`/packaging/batches`);
+  }
+
+  async getEligibleProcessingBatchesForPackaging(params?: { productType?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.productType) {
+      searchParams.append("productType", params.productType);
+    }
+    const query = searchParams.toString();
+    const endpoint = `/packaging/batches/available-processing${query ? `?${query}` : ""}`;
+    return this.request<{ batches: EligibleProcessingBatchDto[] }>(endpoint);
+  }
+
+  async createPackagingBatch(payload: { processingBatchId: string }) {
+    return this.request<PackagingBatchDto>(`/packaging/batches`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deletePackagingBatch(packagingId: string) {
+    return this.request<void>(`/packaging/batches/${packagingId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async updatePackagingBatch(
+    packagingId: string,
+    payload: {
+      status?: string;
+      notes?: string;
+      finishedQuantity?: number | null;
+      bottleCost?: number | null;
+      lidCost?: number | null;
+      alufoilCost?: number | null;
+      vacuumBagCost?: number | null;
+      parchmentPaperCost?: number | null;
+    }
+  ) {
+    return this.request<PackagingBatchDto>(`/packaging/batches/${packagingId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Labeling API
+  async getLabelingBatches() {
+    return this.request<{ batches: LabelingBatchDto[] }>(`/labeling/batches`);
+  }
+
+  async getEligiblePackagingBatchesForLabeling(params?: { productType?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.productType) {
+      searchParams.append("productType", params.productType);
+    }
+    const query = searchParams.toString();
+    const endpoint = `/labeling/available-packaging${query ? `?${query}` : ""}`;
+    return this.request<{ batches: EligiblePackagingBatchDto[] }>(endpoint);
+  }
+
+  async createLabelingBatch(payload: { packagingId: string }) {
+    return this.request<LabelingBatchDto>(`/labeling/batches`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteLabelingBatch(packagingId: string) {
+    return this.request<void>(`/labeling/batches/${packagingId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async getDailyProductionReport(params?: { date?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.date) {
+      searchParams.append("date", params.date);
+    }
+    const query = searchParams.toString();
+    const endpoint = `/reports/daily${query ? `?${query}` : ""}`;
+    return this.request<DailyProductionReport>(endpoint);
+  }
+
+  async updateLabelingBatch(
+    packagingId: string,
+    payload: {
+      status?: string;
+      notes?: string;
+      stickerCost?: number | null;
+      shrinkSleeveCost?: number | null;
+      neckTagCost?: number | null;
+      corrugatedCartonCost?: number | null;
+    }
+  ) {
+    return this.request<LabelingBatchDto>(`/labeling/batches/${packagingId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
   }
 
   // Health check

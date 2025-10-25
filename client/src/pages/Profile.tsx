@@ -144,8 +144,9 @@ export default function Profile() {
       setAvatarPreview(toAbsolute(updated.profileImage ?? null));
 
       toast.success("Profile updated successfully");
-    } catch (error: any) {
-      toast.error(error?.message || "Unable to save changes");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unable to save changes";
+      toast.error(message);
     } finally {
       setSaving(false);
     }
