@@ -7,6 +7,14 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { DataService } from "@/lib/dataService";
 
+type DraftDetailData = {
+  buckets?: Array<Record<string, unknown>>;
+  status?: string | null;
+  date?: string | null;
+  bucketCount?: number;
+  bucket_count?: number;
+} & Record<string, unknown>;
+
 export default function DraftDetail() {
   const navigate = useNavigate();
   const { draftId } = useParams();
@@ -21,14 +29,14 @@ export default function DraftDetail() {
   }, []);
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
 
-  const [draft, setDraft] = useState<any>(null);
+  const [draft, setDraft] = useState<DraftDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [completedCenters, setCompletedCenters] = useState<Set<string>>(new Set());
 
   const centerBucketCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    const entries = Array.isArray(draft?.buckets) ? draft.buckets : [];
+  const entries = Array.isArray(draft?.buckets) ? draft.buckets : [];
 
     entries.forEach((entry) => {
       if (!entry || typeof entry !== "object") {
@@ -77,9 +85,10 @@ export default function DraftDetail() {
         setError(null);
         const fetchedDraft = await DataService.getDraft(draftId);
         setDraft(fetchedDraft);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load draft');
-        toast.error('Failed to load draft');
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to load draft';
+        setError(message);
+        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -94,9 +103,18 @@ export default function DraftDetail() {
 
       try {
         const completedCentersData = await DataService.getCompletedCenters(draftId);
-        const completedSet = new Set(completedCentersData.map(center => center.center_id));
-        setCompletedCenters(completedSet);
-      } catch (err) {
+        const completedIds = (Array.isArray(completedCentersData) ? completedCentersData : [])
+          .map((entry) => {
+            if (!entry || typeof entry !== "object") {
+              return null;
+            }
+            const record = entry as Record<string, unknown>;
+            const id = record.center_id ?? record.centerId;
+            return typeof id === "string" ? id : null;
+          })
+          .filter((id): id is string => id !== null);
+        setCompletedCenters(new Set(completedIds));
+      } catch (err: unknown) {
         console.error('Failed to load completed centers:', err);
         // Don't show error toast for this, just log it
       }
@@ -109,21 +127,21 @@ export default function DraftDetail() {
     navigate("/");
   };
 
-  const handleSubmitDraft = async () => {
+  const handleSaveDraft = async () => {
     if (!draftId) return;
     
     try {
       setLoading(true);
-      await DataService.submitDraft(draftId);
-      
-      toast.success('Draft submitted successfully');
-      
-      // Navigate back to field collection page
+      await DataService.updateDraft(draftId, "draft");
+
+      toast.success('Draft saved successfully');
+
       navigate('/field-collection');
       
-    } catch (error) {
-      console.error('Error submitting draft:', error);
-      toast.error('Failed to submit draft');
+    } catch (error: unknown) {
+      console.error('Error saving draft:', error);
+      const message = error instanceof Error ? error.message : 'Failed to save draft';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -141,9 +159,10 @@ export default function DraftDetail() {
       
       toast.success('Center submitted successfully');
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error submitting center:', error);
-      toast.error('Failed to submit center');
+      const message = error instanceof Error ? error.message : 'Failed to submit center';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -165,9 +184,10 @@ export default function DraftDetail() {
       
       toast.success('Center reopened successfully');
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error reopening center:', error);
-      toast.error('Failed to reopen center');
+      const message = error instanceof Error ? error.message : 'Failed to reopen center';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -269,10 +289,10 @@ export default function DraftDetail() {
             <div className="flex gap-2">
               <Button
                 className="bg-cta hover:bg-cta-hover text-cta-foreground"
-                onClick={handleSubmitDraft}
+                onClick={handleSaveDraft}
                 disabled={loading}
               >
-                Submit Draft
+                Save draft
               </Button>
             </div>
           )}

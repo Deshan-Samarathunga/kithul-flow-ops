@@ -54,8 +54,9 @@ export default function Admin() {
     try {
       const data = await adminListUsers();
       setEmployees(data);
-    } catch (error: any) {
-      toast.error(error?.message || "Unable to load employees");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unable to load employees";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -71,8 +72,9 @@ export default function Admin() {
       await adminDeleteUser(deleteTarget.id);
       setEmployees((prev) => prev.filter((emp) => emp.id !== deleteTarget.id));
       toast.success("Employee deleted");
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to delete employee");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to delete employee";
+      toast.error(message);
     } finally {
       setDeleteTarget(null);
     }

@@ -321,6 +321,23 @@ export default function Processing() {
   const completedBatches = filteredBatches.filter((batch) => normalizeStatus(batch.status) === "completed");
   const selectedMetrics = batchMetrics[productTypeFilter];
 
+  const hasSubmittedProcessing = useMemo(
+    () =>
+      batches.some((batch) => {
+        const status = normalizeStatus(batch.status);
+        return status === "submitted" || status === "completed";
+      }),
+    [batches],
+  );
+
+  const handleOpenReportDialog = () => {
+    if (!hasSubmittedProcessing) {
+      toast.error("Submit at least one batch before generating a report.");
+      return;
+    }
+    setReportDialogOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
@@ -377,7 +394,7 @@ export default function Processing() {
                 </div>
                 <Button
                   variant="secondary"
-                  onClick={() => setReportDialogOpen(true)}
+                  onClick={handleOpenReportDialog}
                   className="w-full sm:w-auto"
                 >
                   <FileText className="mr-2 h-4 w-4" /> Generate report

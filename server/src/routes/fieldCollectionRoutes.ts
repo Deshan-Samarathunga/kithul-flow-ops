@@ -86,6 +86,58 @@ const toNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const ADMIN_ROLE = "administrator";
+
+const normalizeUserId = (value: unknown): string | null => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  return null;
+};
+
+const isAdminRole = (role: unknown): boolean => {
+  if (typeof role !== "string") {
+    return false;
+  }
+  return role.trim().toLowerCase() === ADMIN_ROLE;
+};
+
+const extractUserId = (user: unknown): string | null => {
+  if (!user || typeof user !== "object") {
+    return null;
+  }
+  return normalizeUserId((user as Record<string, unknown>).userId);
+};
+
+const canAccessDraft = (user: unknown, draftRow: unknown): boolean => {
+  if (!draftRow || typeof draftRow !== "object") {
+    return false;
+  }
+  if (user && typeof user === "object" && isAdminRole((user as Record<string, unknown>).role)) {
+    return true;
+  }
+
+  const userId = extractUserId(user);
+  if (!userId) {
+    return false;
+  }
+
+  const createdBy = normalizeUserId((draftRow as Record<string, unknown>).created_by);
+  return Boolean(createdBy && createdBy === userId);
+};
+
+async function fetchDraftRowByInternalId(id: unknown): Promise<Record<string, unknown> | null> {
+  if (typeof id !== "number" && typeof id !== "string") {
+    return null;
+  }
+  const { rows } = await pool.query(`SELECT * FROM ${DRAFTS_TABLE} WHERE id = $1`, [id]);
+  return rows[0] ?? null;
+}
+
 const sortDraftsDesc = (a: DraftSummaryRow, b: DraftSummaryRow) => {
   const dateA = a.date ? new Date(a.date as any).getTime() : 0;
   const dateB = b.date ? new Date(b.date as any).getTime() : 0;
@@ -100,8 +152,9 @@ const sortDraftsDesc = (a: DraftSummaryRow, b: DraftSummaryRow) => {
 async function fetchDraftSummaries(
   productFilter?: ProductSlug | null,
   statusFilter?: string,
+  createdByFilter?: string | null,
 ) {
-  const params: any[] = [];
+  const params: unknown[] = [];
   const whereClauses: string[] = [];
 
   if (statusFilter) {
@@ -111,6 +164,11 @@ async function fetchDraftSummaries(
 
   if (productFilter) {
     whereClauses.push(`EXISTS (SELECT 1 FROM ${getTableName("buckets", productFilter)} b WHERE b.draft_id = d.id)`);
+  }
+
+  if (createdByFilter) {
+    whereClauses.push(`d.created_by = $${params.length + 1}`);
+    params.push(createdByFilter);
   }
 
   const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(" AND ")}` : "";
@@ -179,7 +237,18 @@ router.get("/drafts", auth, requireRole("Field Collection", "Administrator"), as
       ? req.query.status.trim().toLowerCase()
       : undefined;
 
-  const drafts = await fetchDraftSummaries(productFilter, statusFilter);
+  const requestUser = (req as any).user;
+  const isAdminUser = isAdminRole(requestUser?.role);
+  let createdByFilter: string | null = null;
+
+  if (!isAdminUser) {
+    createdByFilter = extractUserId(requestUser);
+    if (!createdByFilter) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+  }
+
+  const drafts = await fetchDraftSummaries(productFilter, statusFilter, createdByFilter);
   drafts.sort(sortDraftsDesc);
   res.json(drafts);
   } catch (error) {
@@ -194,6 +263,10 @@ router.get("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
     const context = await resolveDraftContext(draftId);
     if (!context) {
       return res.status(404).json({ error: "Draft not found" });
+    }
+
+    if (!canAccessDraft((req as any).user, context.row)) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     const draftRow = context.row;
@@ -258,9 +331,23 @@ router.post("/drafts", auth, requireRole("Field Collection", "Administrator"), a
   try {
     const validated = createDraftSchema.parse(req.body ?? {});
     const user = (req as any).user;
+    const userId = extractUserId(user);
+
+    if (!userId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
 
     const draftId = `d${Date.now()}`;
     const dateValue = validated.date ?? new Date().toISOString().split("T")[0];
+
+    const { rows: existingDrafts } = await pool.query(
+      `SELECT 1 FROM ${DRAFTS_TABLE} WHERE created_by = $1 AND date = $2 LIMIT 1`,
+      [userId, dateValue],
+    );
+
+    if (existingDrafts.length > 0) {
+      return res.status(409).json({ error: "Draft for this date already exists" });
+    }
 
     const insertQuery = `
       INSERT INTO ${DRAFTS_TABLE} (draft_id, date, status, created_by)
@@ -268,7 +355,7 @@ router.post("/drafts", auth, requireRole("Field Collection", "Administrator"), a
       RETURNING *
     `;
 
-    const { rows } = await pool.query(insertQuery, [draftId, dateValue, user.userId]);
+    const { rows } = await pool.query(insertQuery, [draftId, dateValue, userId]);
     res.status(201).json(rows[0]);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -291,6 +378,10 @@ router.put("/drafts/:draftId", auth, requireRole("Field Collection", "Administra
     const context = await resolveDraftContext(draftId);
     if (!context) {
       return res.status(404).json({ error: "Draft not found" });
+    }
+
+    if (!canAccessDraft((req as any).user, context.row)) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     const updateQuery = `
@@ -319,6 +410,10 @@ router.delete("/drafts/:draftId", auth, requireRole("Field Collection", "Adminis
       return res.status(404).json({ error: "Draft not found" });
     }
 
+    if (!canAccessDraft((req as any).user, context.row)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     for (const product of SUPPORTED_PRODUCTS) {
       await pool.query(`DELETE FROM ${getTableName("buckets", product)} WHERE draft_id = $1`, [context.row.id]);
     }
@@ -340,6 +435,39 @@ router.post("/drafts/:draftId/submit", auth, requireRole("Field Collection", "Ad
       return res.status(404).json({ error: "Draft not found" });
     }
 
+    if (!canAccessDraft((req as any).user, context.row)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const { rows: centerRows } = await pool.query(
+      "SELECT center_id, center_name FROM collection_centers WHERE is_active = true",
+    );
+
+    const { rows: completionRows } = await pool.query(
+      `SELECT center_id FROM ${CENTER_COMPLETIONS_TABLE} WHERE draft_id = $1`,
+      [draftId],
+    );
+
+    const completedSet = new Set(
+      completionRows
+        .map((row) => row.center_id)
+        .filter((value): value is string => typeof value === "string" && value.trim().length > 0),
+    );
+
+    const pendingCenters = centerRows.filter(
+      (center) => typeof center.center_id === "string" && !completedSet.has(center.center_id),
+    );
+
+    if (pendingCenters.length > 0) {
+      return res.status(400).json({
+        error: "Submit all centers before completing the draft",
+        pendingCenters: pendingCenters.map((center) => ({
+          centerId: center.center_id,
+          centerName: center.center_name,
+        })),
+      });
+    }
+
     const { rows } = await pool.query(
       `UPDATE ${DRAFTS_TABLE} SET status = 'submitted', updated_at = CURRENT_TIMESTAMP WHERE draft_id = $1 RETURNING *`,
       [draftId]
@@ -359,6 +487,10 @@ router.post("/drafts/:draftId/reopen", auth, requireRole("Field Collection", "Ad
       return res.status(404).json({ error: "Draft not found" });
     }
 
+    if (!canAccessDraft((req as any).user, context.row)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     const { rows } = await pool.query(
       `UPDATE ${DRAFTS_TABLE} SET status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE draft_id = $1 RETURNING *`,
       [draftId]
@@ -376,6 +508,10 @@ router.get("/drafts/:draftId/centers/:centerId/buckets", auth, requireRole("Fiel
     const context = await resolveDraftContext(draftId);
     if (!context) {
       return res.status(404).json({ error: "Draft not found" });
+    }
+
+    if (!canAccessDraft((req as any).user, context.row)) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     const query = `
@@ -411,10 +547,19 @@ router.post("/buckets", auth, requireRole("Field Collection", "Administrator"), 
     const productType = validated.productType;
     const bucketTable = getTableName("buckets", productType);
 
-    const { rows: draftRows } = await client.query(`SELECT id FROM ${DRAFTS_TABLE} WHERE draft_id = $1`, [validated.draftId]);
-    const draftRow = draftRows[0];
-    if (!draftRow) {
+    const draftContext = await resolveDraftContext(validated.draftId);
+    if (!draftContext) {
       return res.status(404).json({ error: "Draft not found" });
+    }
+
+    if (!canAccessDraft((req as any).user, draftContext.row)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const draftRow = draftContext.row;
+    const draftInternalId = draftRow?.id;
+    if (draftInternalId === null || draftInternalId === undefined) {
+      return res.status(400).json({ error: "Draft is missing an internal identifier" });
     }
 
     const centerQuery = `
@@ -453,7 +598,7 @@ router.post("/buckets", auth, requireRole("Field Collection", "Administrator"), 
 
     const { rows } = await client.query(insertQuery, [
       bucketId,
-      draftRow.id,
+      draftInternalId,
       centerRow.id,
       productType,
       validated.brixValue ?? null,
@@ -489,6 +634,15 @@ router.put("/buckets/:bucketId", auth, requireRole("Field Collection", "Administ
     const context = await resolveBucketContext(bucketId);
     if (!context) {
       return res.status(404).json({ error: "Bucket not found" });
+    }
+
+    const draftRow = await fetchDraftRowByInternalId(context.row.draft_id);
+    if (!draftRow) {
+      return res.status(404).json({ error: "Draft not found" });
+    }
+
+    if (!canAccessDraft((req as any).user, draftRow)) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     const fields = Object.entries(validated)
@@ -533,6 +687,15 @@ router.delete("/buckets/:bucketId", auth, requireRole("Field Collection", "Admin
       return res.status(404).json({ error: "Bucket not found" });
     }
 
+    const draftRow = await fetchDraftRowByInternalId(context.row.draft_id);
+    if (!draftRow) {
+      return res.status(404).json({ error: "Draft not found" });
+    }
+
+    if (!canAccessDraft((req as any).user, draftRow)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     const { rows } = await pool.query(`DELETE FROM ${context.table} WHERE bucket_id = $1 RETURNING *`, [bucketId]);
     res.json({ message: "Bucket deleted successfully", bucket: rows[0] });
   } catch (error) {
@@ -566,6 +729,10 @@ router.post("/drafts/:draftId/centers/:centerId/submit", auth, requireRole("Fiel
       return res.status(404).json({ error: "Draft not found" });
     }
 
+    if (!canAccessDraft((req as any).user, context.row)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     const insertQuery = `
       INSERT INTO ${CENTER_COMPLETIONS_TABLE} (draft_id, center_id, completed_at)
       VALUES ($1, $2, CURRENT_TIMESTAMP)
@@ -590,6 +757,10 @@ router.post("/drafts/:draftId/centers/:centerId/reopen", auth, requireRole("Fiel
       return res.status(404).json({ error: "Draft not found" });
     }
 
+    if (!canAccessDraft((req as any).user, context.row)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     const deleteQuery = `
       DELETE FROM ${CENTER_COMPLETIONS_TABLE}
       WHERE draft_id = $1 AND center_id = $2
@@ -610,6 +781,10 @@ router.get("/drafts/:draftId/completed-centers", auth, requireRole("Field Collec
     const context = await resolveDraftContext(draftId);
     if (!context) {
       return res.status(404).json({ error: "Draft not found" });
+    }
+
+    if (!canAccessDraft((req as any).user, context.row)) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
   const { rows } = await pool.query(`SELECT center_id, completed_at FROM ${CENTER_COMPLETIONS_TABLE} WHERE draft_id = $1`, [draftId]);

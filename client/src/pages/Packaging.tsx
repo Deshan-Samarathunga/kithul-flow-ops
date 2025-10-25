@@ -395,6 +395,20 @@ export default function Packaging() {
   const selectedProductLabel = productTypeFilter === "sap" ? "Sap" : "Treacle";
   const selectedMetrics = packagingMetrics[productTypeFilter];
 
+  const hasCompletedPackaging = useMemo(
+    () =>
+      (packagingMetrics.sap.completed ?? 0) + (packagingMetrics.treacle.completed ?? 0) > 0,
+    [packagingMetrics],
+  );
+
+  const handleOpenReportDialog = () => {
+    if (!hasCompletedPackaging) {
+      toast.error("Complete at least one packaging batch before generating a report.");
+      return;
+    }
+    setReportDialogOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
@@ -417,7 +431,7 @@ export default function Packaging() {
               </Button>
               <Button
                 variant="secondary"
-                onClick={() => setReportDialogOpen(true)}
+                onClick={handleOpenReportDialog}
                 className="w-full sm:w-auto"
               >
                 <FileText className="h-4 w-4 mr-2" />

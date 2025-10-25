@@ -48,7 +48,7 @@ export default function BatchDetail() {
       const remoteBatch = await DataService.getProcessingBatch(id);
       setBatch(remoteBatch);
       setSelectedBuckets((remoteBatch.bucketIds ?? []).slice(0, MAX_BUCKET_SELECTION));
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to load batch", err);
       setBatchError("Unable to load batch. Please try again later.");
     } finally {
@@ -68,7 +68,7 @@ export default function BatchDetail() {
         phValue: bucket.phValue !== null ? Number(bucket.phValue) : null,
       }));
       setAvailableBuckets(normalized);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to load buckets", err);
       setBucketError("Unable to load buckets. Please try again later.");
     } finally {
@@ -122,7 +122,7 @@ export default function BatchDetail() {
       setSelectedBuckets((updated.bucketIds ?? []).slice(0, MAX_BUCKET_SELECTION));
       await loadBuckets(batchId);
       toast.success("Batch updated successfully");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to save batch buckets", err);
       const message = err instanceof Error ? err.message : "Unable to save batch";
       toast.error(message);

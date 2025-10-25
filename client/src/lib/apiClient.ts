@@ -3,6 +3,8 @@ const rawBase = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://
 const normalizedBase = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
 const API_BASE_URL = `${normalizedBase}/api`;
 
+type JsonRecord = Record<string, unknown>;
+
 export type ProcessingBucketDto = {
   id: string;
   quantity: number;
@@ -118,6 +120,7 @@ export type DailyProductionReport = {
       drafts: number;
       buckets: number;
       quantity: number;
+      draftIds: string[];
     };
     processing: {
       totalBatches: number;
@@ -151,6 +154,7 @@ export type DailyProductionReport = {
       drafts: number;
       buckets: number;
       quantity: number;
+      draftIds: string[];
     };
     processing: {
       totalBatches: number;
@@ -262,7 +266,7 @@ class ApiClient {
 
   // Authentication
   async login(credentials: { userId: string; password: string }) {
-    const response = await this.request<{ token: string; user: any }>('/auth/login', {
+    const response = await this.request<{ token: string; user: JsonRecord }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
@@ -275,7 +279,7 @@ class ApiClient {
   }
 
   async getCurrentUser() {
-    return this.request<any>('/auth/me');
+    return this.request<JsonRecord>('/auth/me');
   }
 
   // Field Collection API
@@ -287,63 +291,63 @@ class ApiClient {
     const queryString = searchParams.toString();
     const endpoint = `/field-collection/drafts${queryString ? `?${queryString}` : ''}`;
     
-    return this.request<any[]>(endpoint);
+    return this.request<JsonRecord[]>(endpoint);
   }
 
   async getDraft(draftId: string) {
-    return this.request<any>(`/field-collection/drafts/${draftId}`);
+    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}`);
   }
 
   async createDraft(data: { date?: string } = {}) {
-    return this.request<any>('/field-collection/drafts', {
+    return this.request<JsonRecord>('/field-collection/drafts', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateDraft(draftId: string, data: { status?: 'draft' | 'submitted' | 'completed' }) {
-    return this.request<any>(`/field-collection/drafts/${draftId}`, {
+    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteDraft(draftId: string) {
-    return this.request<any>(`/field-collection/drafts/${draftId}`, {
+    return this.request<undefined>(`/field-collection/drafts/${draftId}`, {
       method: 'DELETE',
     });
   }
 
   async submitDraft(draftId: string) {
-    return this.request<any>(`/field-collection/drafts/${draftId}/submit`, {
+    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}/submit`, {
       method: 'POST',
     });
   }
 
   async reopenDraft(draftId: string) {
-    return this.request<any>(`/field-collection/drafts/${draftId}/reopen`, {
+    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}/reopen`, {
       method: 'POST',
     });
   }
 
   async submitCenter(draftId: string, centerId: string) {
-    return this.request<any>(`/field-collection/drafts/${draftId}/centers/${centerId}/submit`, {
+    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}/centers/${centerId}/submit`, {
       method: 'POST',
     });
   }
 
   async reopenCenter(draftId: string, centerId: string) {
-    return this.request<any>(`/field-collection/drafts/${draftId}/centers/${centerId}/reopen`, {
+    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}/centers/${centerId}/reopen`, {
       method: 'POST',
     });
   }
 
   async getCompletedCenters(draftId: string) {
-    return this.request<any[]>(`/field-collection/drafts/${draftId}/completed-centers`);
+    return this.request<JsonRecord[]>(`/field-collection/drafts/${draftId}/completed-centers`);
   }
 
   async getBuckets(draftId: string, centerId: string) {
-    return this.request<any[]>(`/field-collection/drafts/${draftId}/centers/${centerId}/buckets`);
+    return this.request<JsonRecord[]>(`/field-collection/drafts/${draftId}/centers/${centerId}/buckets`);
   }
 
   async createBucket(data: {
@@ -358,7 +362,7 @@ class ApiClient {
     farmerName?: string;
     collectionTime?: string;
   }) {
-    return this.request<any>('/field-collection/buckets', {
+    return this.request<JsonRecord>('/field-collection/buckets', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -373,20 +377,20 @@ class ApiClient {
     farmerName?: string;
     collectionTime?: string;
   }) {
-    return this.request<any>(`/field-collection/buckets/${bucketId}`, {
+    return this.request<JsonRecord>(`/field-collection/buckets/${bucketId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteBucket(bucketId: string) {
-    return this.request<any>(`/field-collection/buckets/${bucketId}`, {
+    return this.request<undefined>(`/field-collection/buckets/${bucketId}`, {
       method: 'DELETE',
     });
   }
 
   async getCollectionCenters() {
-    return this.request<any[]>('/field-collection/centers');
+    return this.request<JsonRecord[]>('/field-collection/centers');
   }
 
   // Processing API
