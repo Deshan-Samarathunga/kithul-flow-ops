@@ -48,6 +48,7 @@ export const Navbar = ({ userRole = "Guest", userName = "User", userAvatar, onLo
     const primary = lowerRole ? rolePrimaryRoutes[lowerRole] : undefined;
     const paths = location.pathname.split("/").filter(Boolean);
     const crumbs: Array<{ label: string; path: string }> = [];
+    const hiddenSegments = new Set(["batch"]);
 
     if (primary) {
       crumbs.push(primary);
@@ -56,6 +57,9 @@ export const Navbar = ({ userRole = "Guest", userName = "User", userAvatar, onLo
     let currentPath = "";
     paths.forEach((segment) => {
       currentPath += `/${segment}`;
+      if (hiddenSegments.has(segment.toLowerCase())) {
+        return;
+      }
       const label = segment
         .split("-")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))

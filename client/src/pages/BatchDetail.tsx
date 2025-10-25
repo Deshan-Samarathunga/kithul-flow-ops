@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +8,9 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import DataService from "@/lib/dataService";
 import type { ProcessingBatchDto, ProcessingBucketDto } from "@/lib/apiClient";
+import { ChevronRight } from "lucide-react";
 
-const MAX_BUCKET_SELECTION = 4;
+const MAX_BUCKET_SELECTION = 15;
 
 export default function BatchDetail() {
   const navigate = useNavigate();
@@ -24,6 +25,8 @@ export default function BatchDetail() {
   const [selectedBuckets, setSelectedBuckets] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [bucketSearch, setBucketSearch] = useState<string>("");
+
+  const isEditable = batch?.status !== "completed" && batch?.status !== "cancelled";
 
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
@@ -91,6 +94,9 @@ export default function BatchDetail() {
   }, [availableBuckets]);
 
   const handleToggleBucket = (bucketId: string) => {
+    if (!isEditable) {
+      return;
+    }
     setSelectedBuckets((prev) => {
       if (prev.includes(bucketId)) {
         return prev.filter((id) => id !== bucketId);
@@ -106,7 +112,7 @@ export default function BatchDetail() {
   };
 
   const handleSaveBatch = async () => {
-    if (!batchId) {
+    if (!batchId || !isEditable) {
       return;
     }
     setIsSaving(true);
@@ -203,13 +209,36 @@ export default function BatchDetail() {
   const noSearchMatches =
     !isBucketLoading && !bucketError && sortedBuckets.length > 0 && filteredBuckets.length === 0;
 
+  const bucketsToRender = isEditable
+    ? filteredBuckets
+    : filteredBuckets
+        .filter((bucket) => selectedBuckets.includes(bucket.id))
+        .slice(0, MAX_BUCKET_SELECTION);
+  const noSelectedBuckets = !isEditable && bucketsToRender.length === 0;
+
   if (!batchId) {
     return <div className="p-6">No batch selected.</div>;
   }
 
+  const breadcrumbContent = batch ? (
+    <div className="flex items-center space-x-2 text-sm text-white/90">
+      <Link to="/processing" className="hover:text-white transition-colors">
+        Processing
+      </Link>
+      <ChevronRight className="h-4 w-4 opacity-60" />
+      <span className="font-semibold text-black">Batch {batch.batchNumber}</span>
+    </div>
+  ) : undefined;
+
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+      <Navbar
+        userRole={userRole}
+        userName={userName}
+        userAvatar={userAvatar}
+        onLogout={handleLogout}
+        breadcrumb={breadcrumbContent}
+      />
 
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {isBatchLoading ? (
@@ -227,13 +256,19 @@ export default function BatchDetail() {
                   Scheduled for {formatDate(batch.scheduledDate)} · Status {batch.status}
                 </p>
               </div>
-              <Button
-                onClick={handleSaveBatch}
-                className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving…" : "Save Batch"}
-              </Button>
+              {isEditable ? (
+                <Button
+                  onClick={handleSaveBatch}
+                  className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving…" : "Save Batch"}
+                </Button>
+              ) : (
+                <div className="text-sm text-muted-foreground w-full sm:w-auto text-center sm:text-right">
+                  Submitted batches are read-only. Reopen the batch to make changes.
+                </div>
+              )}
             </div>
 
             <div className="mb-6">
@@ -243,13 +278,19 @@ export default function BatchDetail() {
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-base sm:text-lg font-semibold">Available Buckets</h2>
+              <h2 className="text-base sm:text-lg font-semibold">
+                {isEditable ? "Available Buckets" : "Selected Buckets"}
+              </h2>
 
               <div className="max-w-sm">
                 <Input
                   value={bucketSearch}
                   onChange={(event) => setBucketSearch(event.target.value)}
-                  placeholder="Search buckets by ID, center, product, or draft"
+                  placeholder={
+                    isEditable
+                      ? "Search buckets by ID, center, product, or draft"
+                      : "Search within selected buckets"
+                  }
                 />
               </div>
 
@@ -271,16 +312,45 @@ export default function BatchDetail() {
                 </div>
               )}
 
-              {noSearchMatches && (
+              {noSearchMatches && isEditable && (
                 <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
                   No buckets match your search. Adjust the filters to see more buckets.
                 </div>
               )}
 
+              {noSelectedBuckets && (
+                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+                  No buckets are selected for this submitted batch.
+                </div>
+              )}
+
               {!isBucketLoading && !bucketError &&
-                filteredBuckets.map((bucket) => {
+                bucketsToRender.map((bucket) => {
                   const isChecked = selectedBuckets.includes(bucket.id);
-                  const disableSelection = selectionLimitReached && !isChecked;
+                  const disableSelection = !isEditable || (selectionLimitReached && !isChecked);
+
+                  const info = (
+                    <>
+                      <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+                        <span className="font-medium">
+                          Collection Center: {bucket.collectionCenter.name}
+                        </span>
+                        <span className="hidden sm:inline text-muted-foreground">|</span>
+                        <span>Quantity: {bucket.quantity} kg</span>
+                        <span className="hidden sm:inline text-muted-foreground">|</span>
+                        <span>Product: {bucket.productType}</span>
+                        <span className="hidden sm:inline text-muted-foreground">|</span>
+                        <span>Brix: {formatNumber(bucket.brixValue, 1)}</span>
+                        <span className="hidden sm:inline text-muted-foreground">|</span>
+                        <span>pH: {formatNumber(bucket.phValue, 2)}</span>
+                        <span className="hidden sm:inline text-muted-foreground">|</span>
+                        <span>Draft Date: {formatDate(bucket.draft.date)}</span>
+                      </div>
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        Draft ID: {bucket.draft.id} | Created: {formatDate(bucket.createdAt)}
+                      </div>
+                    </>
+                  );
 
                   return (
                     <div
@@ -288,36 +358,29 @@ export default function BatchDetail() {
                       className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-start gap-4">
-                        <Checkbox
-                          id={bucket.id}
-                          checked={isChecked}
-                          onCheckedChange={() => handleToggleBucket(bucket.id)}
-                          className="mt-1"
-                          disabled={disableSelection}
-                        />
-                        <label
-                          htmlFor={bucket.id}
-                          className={`flex-1 cursor-pointer ${disableSelection ? "pointer-events-none opacity-60" : ""}`}
-                        >
-                          <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-                            <span className="font-medium">
-                              Collection Center: {bucket.collectionCenter.name}
-                            </span>
-                            <span className="hidden sm:inline text-muted-foreground">|</span>
-                            <span>Quantity: {bucket.quantity} kg</span>
-                            <span className="hidden sm:inline text-muted-foreground">|</span>
-                            <span>Product: {bucket.productType}</span>
-                            <span className="hidden sm:inline text-muted-foreground">|</span>
-                            <span>Brix: {formatNumber(bucket.brixValue, 1)}</span>
-                            <span className="hidden sm:inline text-muted-foreground">|</span>
-                            <span>pH: {formatNumber(bucket.phValue, 2)}</span>
-                            <span className="hidden sm:inline text-muted-foreground">|</span>
-                            <span>Draft Date: {formatDate(bucket.draft.date)}</span>
-                          </div>
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            Draft ID: {bucket.draft.id} | Created: {formatDate(bucket.createdAt)}
-                          </div>
-                        </label>
+                        {isEditable ? (
+                          <Checkbox
+                            id={bucket.id}
+                            checked={isChecked}
+                            onCheckedChange={() => handleToggleBucket(bucket.id)}
+                            className="mt-1"
+                            disabled={disableSelection}
+                          />
+                        ) : (
+                          <div className="mt-1 h-4 w-4" aria-hidden />
+                        )}
+                        {isEditable ? (
+                          <label
+                            htmlFor={bucket.id}
+                            className={`flex-1 ${
+                              disableSelection ? "pointer-events-none opacity-60" : "cursor-pointer"
+                            }`}
+                          >
+                            {info}
+                          </label>
+                        ) : (
+                          <div className="flex-1">{info}</div>
+                        )}
                       </div>
                     </div>
                   );
@@ -325,7 +388,7 @@ export default function BatchDetail() {
             </div>
 
             <div className="mt-8 space-y-4">
-              {selectionLimitReached && (
+              {isEditable && selectionLimitReached && (
                 <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-warning-foreground">
                   You have reached the {MAX_BUCKET_SELECTION}-bucket limit for this batch. Deselect one to pick
                   another.
