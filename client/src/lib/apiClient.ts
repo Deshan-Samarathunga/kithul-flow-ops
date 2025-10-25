@@ -42,6 +42,16 @@ export type ProcessingBatchDto = {
   bucketIds?: string[];
 };
 
+export type EligibleProcessingBatchDto = {
+  processingBatchId: string;
+  batchNumber: string;
+  productType: string;
+  scheduledDate: string | null;
+  totalSapOutput: number | null;
+  totalQuantity: number;
+  bucketCount: number;
+};
+
 export type PackagingBatchDto = {
   id: string;
   packagingId: string;
@@ -86,6 +96,89 @@ export type LabelingBatchDto = {
   shrinkSleeveCost?: number | null;
   neckTagCost?: number | null;
   corrugatedCartonCost?: number | null;
+};
+
+export type EligiblePackagingBatchDto = {
+  packagingId: string;
+  batchNumber: string;
+  productType: string;
+  scheduledDate: string | null;
+  finishedQuantity: number | null;
+  totalSapOutput: number | null;
+  totalQuantity: number;
+  bucketCount: number;
+};
+
+export type DailyProductionReport = {
+  date: string;
+  generatedAt: string;
+  perProduct: Record<"sap" | "treacle", {
+    product: "sap" | "treacle";
+    fieldCollection: {
+      drafts: number;
+      buckets: number;
+      quantity: number;
+    };
+    processing: {
+      totalBatches: number;
+      completedBatches: number;
+      totalOutput: number;
+      totalInput: number;
+      totalGasCost: number;
+      totalLaborCost: number;
+    };
+    packaging: {
+      totalBatches: number;
+      completedBatches: number;
+      finishedQuantity: number;
+      totalBottleCost: number;
+      totalLidCost: number;
+      totalAlufoilCost: number;
+      totalVacuumBagCost: number;
+      totalParchmentPaperCost: number;
+    };
+    labeling: {
+      totalBatches: number;
+      completedBatches: number;
+      totalStickerCost: number;
+      totalShrinkSleeveCost: number;
+      totalNeckTagCost: number;
+      totalCorrugatedCartonCost: number;
+    };
+  }>;
+  totals: {
+    fieldCollection: {
+      drafts: number;
+      buckets: number;
+      quantity: number;
+    };
+    processing: {
+      totalBatches: number;
+      completedBatches: number;
+      totalOutput: number;
+      totalInput: number;
+      totalGasCost: number;
+      totalLaborCost: number;
+    };
+    packaging: {
+      totalBatches: number;
+      completedBatches: number;
+      finishedQuantity: number;
+      totalBottleCost: number;
+      totalLidCost: number;
+      totalAlufoilCost: number;
+      totalVacuumBagCost: number;
+      totalParchmentPaperCost: number;
+    };
+    labeling: {
+      totalBatches: number;
+      completedBatches: number;
+      totalStickerCost: number;
+      totalShrinkSleeveCost: number;
+      totalNeckTagCost: number;
+      totalCorrugatedCartonCost: number;
+    };
+  };
 };
 
 class ApiClient {
@@ -358,9 +451,38 @@ class ApiClient {
     });
   }
 
+  async deleteProcessingBatch(batchId: string) {
+    return this.request<void>(`/processing/batches/${batchId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Packaging API
   async getPackagingBatches() {
     return this.request<{ batches: PackagingBatchDto[] }>(`/packaging/batches`);
+  }
+
+  async getEligibleProcessingBatchesForPackaging(params?: { productType?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.productType) {
+      searchParams.append("productType", params.productType);
+    }
+    const query = searchParams.toString();
+    const endpoint = `/packaging/batches/available-processing${query ? `?${query}` : ""}`;
+    return this.request<{ batches: EligibleProcessingBatchDto[] }>(endpoint);
+  }
+
+  async createPackagingBatch(payload: { processingBatchId: string }) {
+    return this.request<PackagingBatchDto>(`/packaging/batches`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deletePackagingBatch(packagingId: string) {
+    return this.request<void>(`/packaging/batches/${packagingId}`, {
+      method: "DELETE",
+    });
   }
 
   async updatePackagingBatch(
@@ -385,6 +507,39 @@ class ApiClient {
   // Labeling API
   async getLabelingBatches() {
     return this.request<{ batches: LabelingBatchDto[] }>(`/labeling/batches`);
+  }
+
+  async getEligiblePackagingBatchesForLabeling(params?: { productType?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.productType) {
+      searchParams.append("productType", params.productType);
+    }
+    const query = searchParams.toString();
+    const endpoint = `/labeling/available-packaging${query ? `?${query}` : ""}`;
+    return this.request<{ batches: EligiblePackagingBatchDto[] }>(endpoint);
+  }
+
+  async createLabelingBatch(payload: { packagingId: string }) {
+    return this.request<LabelingBatchDto>(`/labeling/batches`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteLabelingBatch(packagingId: string) {
+    return this.request<void>(`/labeling/batches/${packagingId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async getDailyProductionReport(params?: { date?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.date) {
+      searchParams.append("date", params.date);
+    }
+    const query = searchParams.toString();
+    const endpoint = `/reports/daily${query ? `?${query}` : ""}`;
+    return this.request<DailyProductionReport>(endpoint);
   }
 
   async updateLabelingBatch(

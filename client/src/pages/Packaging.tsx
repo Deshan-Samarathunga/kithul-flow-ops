@@ -6,6 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -14,11 +24,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { FileText, Loader2, RefreshCcw, Search } from "lucide-react";
+import { FileText, Loader2, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import DataService from "@/lib/dataService";
-import type { PackagingBatchDto } from "@/lib/apiClient";
+import type { EligibleProcessingBatchDto, PackagingBatchDto } from "@/lib/apiClient";
+import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
 
 export default function Packaging() {
   const navigate = useNavigate();
@@ -38,6 +49,15 @@ export default function Packaging() {
     vacuumBagCost: "",
     parchmentPaperCost: "",
   });
+  const [eligibleProcessing, setEligibleProcessing] = useState<EligibleProcessingBatchDto[]>([]);
+  const [eligibleSearch, setEligibleSearch] = useState<string>("");
+  const [isEligibleLoading, setIsEligibleLoading] = useState<boolean>(false);
+  const [createDialog, setCreateDialog] = useState<{ open: boolean }>({ open: false });
+  const [selectedProcessingId, setSelectedProcessingId] = useState<string | null>(null);
+  const [isCreatingPackagingBatch, setIsCreatingPackagingBatch] = useState<boolean>(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ packagingId: string; batchNumber: string } | null>(null);
+  const [isDeletingPackaging, setIsDeletingPackaging] = useState<boolean>(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
   const apiBase = useMemo(() => {
@@ -76,6 +96,25 @@ export default function Packaging() {
     return metrics;
   }, [batches]);
 
+  const filteredEligibleProcessing = useMemo(() => {
+    const term = eligibleSearch.trim().toLowerCase();
+    if (!term) {
+      return eligibleProcessing;
+    }
+    return eligibleProcessing.filter((batch) => {
+      const composite = [
+        batch.batchNumber,
+        batch.productType,
+        batch.scheduledDate ?? "",
+        batch.bucketCount.toString(),
+        batch.totalQuantity.toString(),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return composite.includes(term);
+    });
+  }, [eligibleProcessing, eligibleSearch]);
+
   const handleLogout = () => {
     logout();
     navigate("/");
@@ -95,9 +134,72 @@ export default function Packaging() {
     }
   };
 
+  const fetchEligibleProcessingBatches = async (product: "sap" | "treacle") => {
+    setIsEligibleLoading(true);
+    try {
+      const list = await DataService.getEligibleProcessingBatchesForPackaging(product);
+      setEligibleProcessing(list);
+    } catch (err) {
+      console.error("Failed to load eligible processing batches", err);
+      toast.error("Unable to load processing batches. Please try again later.");
+      setEligibleProcessing([]);
+    } finally {
+      setIsEligibleLoading(false);
+    }
+  };
+
+  const openCreatePackagingDialog = () => {
+    setCreateDialog({ open: true });
+    setEligibleSearch("");
+    setSelectedProcessingId(null);
+  };
+
+  const handleCreatePackagingBatch = async () => {
+    if (!selectedProcessingId) {
+      toast.error("Select a processing batch first.");
+      return;
+    }
+    setIsCreatingPackagingBatch(true);
+    try {
+      const created = await DataService.createPackagingBatch(selectedProcessingId);
+      toast.success(`Packaging batch created for ${created.batchNumber}`);
+      setCreateDialog({ open: false });
+      await loadBatches();
+    } catch (err) {
+      console.error("Failed to create packaging batch", err);
+      toast.error(err instanceof Error ? err.message : "Unable to create packaging batch");
+    } finally {
+      setIsCreatingPackagingBatch(false);
+    }
+  };
+
+  const handleDeletePackagingBatch = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+    setIsDeletingPackaging(true);
+    try {
+      await DataService.deletePackagingBatch(deleteTarget.packagingId);
+      toast.success(`Packaging batch ${deleteTarget.batchNumber} deleted`);
+      setDeleteTarget(null);
+      await loadBatches();
+    } catch (err) {
+      console.error("Failed to delete packaging batch", err);
+      toast.error(err instanceof Error ? err.message : "Unable to delete packaging batch");
+    } finally {
+      setIsDeletingPackaging(false);
+    }
+  };
+
   useEffect(() => {
     void loadBatches();
   }, []);
+
+  useEffect(() => {
+    if (createDialog.open) {
+      void fetchEligibleProcessingBatches(productTypeFilter);
+    }
+  }, [createDialog.open, productTypeFilter]);
 
   const handleRefresh = () => {
     void loadBatches();
@@ -305,13 +407,23 @@ export default function Packaging() {
                 Review completed processing batches and record packaging costs.
               </p>
             </div>
-            <Button
-              onClick={() => toast.success("Report downloaded")}
-              className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Download Report
-            </Button>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button
+                onClick={openCreatePackagingDialog}
+                className="bg-cta hover:bg-cta-hover text-cta-foreground"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Packaging Batch
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setReportDialogOpen(true)}
+                className="w-full sm:w-auto"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Generate report
+              </Button>
+            </div>
           </div>
 
           <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
@@ -495,6 +607,15 @@ export default function Packaging() {
                           {hasPackagingData ? "Update Packaging Data" : "Enter Packaging Data"}
                         </Button>
                       )}
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="flex-1 sm:flex-none"
+                        onClick={() => setDeleteTarget({ packagingId: batch.packagingId, batchNumber: batch.batchNumber })}
+                        disabled={isDeletingPackaging && deleteTarget?.packagingId === batch.packagingId}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" /> Delete
+                      </Button>
                     </div>
                   </div>
                 );
@@ -502,6 +623,149 @@ export default function Packaging() {
           </div>
         </div>
       </main>
+
+  <ReportGenerationDialog stage="packaging" open={reportDialogOpen} onOpenChange={setReportDialogOpen} />
+
+      <Dialog
+        open={createDialog.open}
+        onOpenChange={(open) => {
+          if (!open && !isCreatingPackagingBatch) {
+            setCreateDialog({ open: false });
+            setSelectedProcessingId(null);
+          } else if (open) {
+            setCreateDialog({ open: true });
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add packaging batch</DialogTitle>
+            <DialogDescription>
+              Choose a submitted processing batch to start capturing packaging data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="processingSearch">Search processing batches</Label>
+                <Input
+                  id="processingSearch"
+                  placeholder="Search by batch, center, or quantity"
+                  value={eligibleSearch}
+                  onChange={(event) => setEligibleSearch(event.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="sm:w-auto"
+                onClick={() => void fetchEligibleProcessingBatches(productTypeFilter)}
+                disabled={isEligibleLoading}
+              >
+                <RefreshCcw className={cn("h-4 w-4", isEligibleLoading && "animate-spin")} />
+                <span className="ml-2">Refresh</span>
+              </Button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto space-y-2">
+              {isEligibleLoading ? (
+                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+                  Loading processing batches…
+                </div>
+              ) : filteredEligibleProcessing.length === 0 ? (
+                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+                  No completed processing batches are available for packaging right now.
+                </div>
+              ) : (
+                filteredEligibleProcessing.map((batch) => {
+                  const isSelected = selectedProcessingId === batch.processingBatchId;
+                  return (
+                    <button
+                      key={batch.processingBatchId}
+                      type="button"
+                      onClick={() => setSelectedProcessingId(batch.processingBatchId)}
+                      className={cn(
+                        "w-full rounded-lg border p-4 text-left transition-colors",
+                        isSelected
+                          ? "border-cta bg-cta/10 text-foreground"
+                          : "hover:border-cta hover:bg-muted"
+                      )}
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-semibold">Batch {batch.batchNumber}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Scheduled {formatDate(batch.scheduledDate)} · {batch.bucketCount} bucket
+                            {batch.bucketCount === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <div className="text-sm text-muted-foreground sm:text-right">
+                          <div>{batch.productType.toUpperCase()}</div>
+                          <div>Collected: {batch.totalQuantity.toFixed(1)} kg</div>
+                          {batch.totalSapOutput !== null && (
+                            <div>Sap out: {batch.totalSapOutput.toFixed(1)} L</div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+          <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (!isCreatingPackagingBatch) {
+                  setCreateDialog({ open: false });
+                  setSelectedProcessingId(null);
+                }
+              }}
+              disabled={isCreatingPackagingBatch}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleCreatePackagingBatch()}
+              disabled={isCreatingPackagingBatch || !selectedProcessingId}
+              className="bg-cta hover:bg-cta-hover"
+            >
+              {isCreatingPackagingBatch ? "Creating…" : "Add packaging batch"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingPackaging) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete packaging batch?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove packaging and any downstream labeling data linked to batch {deleteTarget?.batchNumber}.
+              You can recreate it later from the list of completed processing batches.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingPackaging}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleDeletePackagingBatch()}
+              disabled={isDeletingPackaging}
+            >
+              {isDeletingPackaging ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog
         open={packagingDialog.open}

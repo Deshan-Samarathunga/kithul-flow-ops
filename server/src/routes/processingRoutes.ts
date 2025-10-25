@@ -736,4 +736,36 @@ router.post(
 	}
 );
 
+router.delete(
+	"/batches/:batchId",
+	auth,
+	requireRole("Processing", "Administrator"),
+	async (req, res) => {
+		const { batchId } = req.params;
+		const client = await pool.connect();
+		try {
+			await client.query("BEGIN");
+			const context = await resolveProcessingBatchContext(batchId);
+			if (!context) {
+				await client.query("ROLLBACK");
+				return res.status(404).json({ error: "Batch not found" });
+			}
+
+			const batchPk = Number(context.row.id);
+			await client.query(`DELETE FROM ${context.batchBucketTable} WHERE processing_batch_id = $1`, [batchPk]);
+			await client.query(`DELETE FROM ${context.packagingTable} WHERE processing_batch_id = $1`, [batchPk]);
+			await client.query(`DELETE FROM ${context.batchTable} WHERE id = $1`, [batchPk]);
+
+			await client.query("COMMIT");
+			res.status(204).send();
+		} catch (error) {
+			await client.query("ROLLBACK").catch(() => undefined);
+			console.error("Error deleting processing batch:", error);
+			res.status(500).json({ error: "Failed to delete processing batch" });
+		} finally {
+			client.release();
+		}
+	}
+);
+
 export default router;

@@ -15,10 +15,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
+import { FileText, Loader2, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import DataService from "@/lib/dataService";
+import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
 
 type DraftStatus = "draft" | "submitted" | "completed" | string;
 
@@ -84,6 +85,7 @@ export default function FieldCollection() {
   );
   const [reopeningDraftId, setReopeningDraftId] = useState<string | null>(null);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -298,6 +300,14 @@ export default function FieldCollection() {
                   className="pl-10"
                 />
               </div>
+
+              <Button
+                variant="secondary"
+                onClick={() => setReportDialogOpen(true)}
+                className="w-full sm:w-auto"
+              >
+                <FileText className="h-4 w-4 mr-2" /> Generate report
+              </Button>
 
               <Button
                 variant="outline"
@@ -515,6 +525,7 @@ export default function FieldCollection() {
           )}
         </div>
       </div>
+  <ReportGenerationDialog stage="field" open={reportDialogOpen} onOpenChange={setReportDialogOpen} />
     </div>
   );
 }

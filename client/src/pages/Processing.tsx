@@ -13,12 +13,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, RefreshCcw, Search } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { FileText, Loader2, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import DataService from "@/lib/dataService";
 import type { ProcessingBatchDto } from "@/lib/apiClient";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
 
 function normalizeStatus(status: string | null | undefined) {
   return String(status ?? "").trim().toLowerCase();
@@ -44,6 +55,9 @@ export default function Processing() {
     laborCost: "",
   });
   const [isSavingProduction, setIsSavingProduction] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; batchNumber: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
   const apiBase = useMemo(() => {
@@ -263,6 +277,25 @@ export default function Processing() {
     void loadBatches();
   };
 
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await DataService.deleteProcessingBatch(deleteTarget.id);
+      toast.success(`Batch ${deleteTarget.batchNumber} deleted`);
+      setDeleteTarget(null);
+      await loadBatches();
+    } catch (err) {
+      console.error("Failed to delete processing batch", err);
+      toast.error("Unable to delete the batch. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const filteredBatches = batches.filter((batch) => {
     const matchesType = (batch.productType || "").toLowerCase() === productTypeFilter;
     if (!matchesType) {
@@ -342,6 +375,13 @@ export default function Processing() {
                     className="pl-10"
                   />
                 </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => setReportDialogOpen(true)}
+                  className="w-full sm:w-auto"
+                >
+                  <FileText className="mr-2 h-4 w-4" /> Generate report
+                </Button>
                 <Button
                   variant="outline"
                   onClick={handleRefresh}
@@ -450,6 +490,15 @@ export default function Processing() {
                               "Submit"
                             )}
                           </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="flex-1 sm:flex-none"
+                            onClick={() => setDeleteTarget({ id: batch.id, batchNumber: batch.batchNumber })}
+                            disabled={isDeleting && deleteTarget?.id === batch.id}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -554,6 +603,36 @@ export default function Processing() {
         </div>
       </main>
 
+  <ReportGenerationDialog stage="processing" open={reportDialogOpen} onOpenChange={setReportDialogOpen} />
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete processing batch?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove processing batch {deleteTarget?.batchNumber}. You can recreate it from the
+              appropriate drafting stage later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleConfirmDelete()}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog
         open={productionDialog.open}
         onOpenChange={(open) => {
@@ -645,4 +724,3 @@ export default function Processing() {
     </div>
   );
 }
-

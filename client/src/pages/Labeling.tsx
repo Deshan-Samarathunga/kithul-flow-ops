@@ -6,6 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -14,11 +24,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { FileText, Loader2, RefreshCcw, Search } from "lucide-react";
+import { FileText, Loader2, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import DataService from "@/lib/dataService";
-import type { LabelingBatchDto } from "@/lib/apiClient";
+import type { EligiblePackagingBatchDto, LabelingBatchDto } from "@/lib/apiClient";
+import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
 
 const formatStatusLabel = (status: string) =>
   status
@@ -46,6 +57,15 @@ export default function Labeling() {
     corrugatedCartonCost: "",
   });
   const [autoOpenedFor, setAutoOpenedFor] = useState<string | null>(null);
+  const [eligiblePackaging, setEligiblePackaging] = useState<EligiblePackagingBatchDto[]>([]);
+  const [eligibleSearch, setEligibleSearch] = useState<string>("");
+  const [isEligibleLoading, setIsEligibleLoading] = useState<boolean>(false);
+  const [createDialog, setCreateDialog] = useState<{ open: boolean }>({ open: false });
+  const [selectedPackagingId, setSelectedPackagingId] = useState<string | null>(null);
+  const [isCreatingLabelingBatch, setIsCreatingLabelingBatch] = useState<boolean>(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ packagingId: string; batchNumber: string } | null>(null);
+  const [isDeletingLabeling, setIsDeletingLabeling] = useState<boolean>(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
@@ -78,6 +98,63 @@ export default function Labeling() {
     }
   };
 
+  const fetchEligiblePackagingBatches = async (product: "sap" | "treacle") => {
+    setIsEligibleLoading(true);
+    try {
+      const list = await DataService.getEligiblePackagingBatchesForLabeling(product);
+      setEligiblePackaging(list);
+    } catch (err) {
+      console.error("Failed to load eligible packaging batches", err);
+      toast.error("Unable to load packaging batches. Please try again.");
+      setEligiblePackaging([]);
+    } finally {
+      setIsEligibleLoading(false);
+    }
+  };
+
+  const openCreateLabelingDialog = () => {
+    setCreateDialog({ open: true });
+    setEligibleSearch("");
+    setSelectedPackagingId(null);
+  };
+
+  const handleCreateLabelingBatch = async () => {
+    if (!selectedPackagingId) {
+      toast.error("Select a packaging batch first.");
+      return;
+    }
+    setIsCreatingLabelingBatch(true);
+    try {
+      const created = await DataService.createLabelingBatch(selectedPackagingId);
+      toast.success(`Labeling batch created for ${created.batchNumber}`);
+      setCreateDialog({ open: false });
+      await loadBatches();
+    } catch (err) {
+      console.error("Failed to create labeling batch", err);
+      toast.error(err instanceof Error ? err.message : "Unable to create labeling batch");
+    } finally {
+      setIsCreatingLabelingBatch(false);
+    }
+  };
+
+  const handleDeleteLabelingBatch = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+    setIsDeletingLabeling(true);
+    try {
+      await DataService.deleteLabelingBatch(deleteTarget.packagingId);
+      toast.success(`Labeling batch for ${deleteTarget.batchNumber} deleted`);
+      setDeleteTarget(null);
+      await loadBatches();
+    } catch (err) {
+      console.error("Failed to delete labeling batch", err);
+      toast.error(err instanceof Error ? err.message : "Unable to delete labeling batch");
+    } finally {
+      setIsDeletingLabeling(false);
+    }
+  };
+
   useEffect(() => {
     void loadBatches();
   }, []);
@@ -97,6 +174,12 @@ export default function Labeling() {
       }
     }
   }, [isLoading, batches, location.state, autoOpenedFor]);
+
+  useEffect(() => {
+    if (createDialog.open) {
+      void fetchEligiblePackagingBatches(productTypeFilter);
+    }
+  }, [createDialog.open, productTypeFilter]);
 
   const handleRefresh = () => {
     void loadBatches();
@@ -263,6 +346,25 @@ export default function Labeling() {
     return metrics;
   }, [batches]);
 
+  const filteredEligiblePackaging = useMemo(() => {
+    const term = eligibleSearch.trim().toLowerCase();
+    if (!term) {
+      return eligiblePackaging;
+    }
+    return eligiblePackaging.filter((batch) => {
+      const composite = [
+        batch.batchNumber,
+        batch.productType,
+        batch.scheduledDate ?? "",
+        batch.finishedQuantity?.toString() ?? "",
+        batch.totalQuantity.toString(),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return composite.includes(term);
+    });
+  }, [eligiblePackaging, eligibleSearch]);
+
   const filteredBatches = batches.filter((batch) => {
     const matchesType = (batch.productType || "").toLowerCase() === productTypeFilter;
     if (!matchesType) {
@@ -301,13 +403,23 @@ export default function Labeling() {
                 Review packaged batches and capture labeling costs for sap and treacle production.
               </p>
             </div>
-            <Button
-              onClick={() => toast.success("Report downloaded")}
-              className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Download Report
-            </Button>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button
+                onClick={openCreateLabelingDialog}
+                className="bg-cta hover:bg-cta-hover text-cta-foreground"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Labeling Batch
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setReportDialogOpen(true)}
+                className="w-full sm:w-auto"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Generate report
+              </Button>
+            </div>
           </div>
 
           <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
@@ -473,6 +585,15 @@ export default function Labeling() {
                       >
                         {isCompleted ? "Update Labeling Data" : "Enter Labeling Data"}
                       </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="flex-1 sm:flex-none"
+                        onClick={() => setDeleteTarget({ packagingId: batch.packagingId, batchNumber: batch.batchNumber })}
+                        disabled={isDeletingLabeling && deleteTarget?.packagingId === batch.packagingId}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" /> Delete
+                      </Button>
                     </div>
                   </div>
                 );
@@ -480,6 +601,147 @@ export default function Labeling() {
           </div>
         </div>
       </main>
+
+  <ReportGenerationDialog stage="labeling" open={reportDialogOpen} onOpenChange={setReportDialogOpen} />
+
+      <Dialog
+        open={createDialog.open}
+        onOpenChange={(open) => {
+          if (!open && !isCreatingLabelingBatch) {
+            setCreateDialog({ open: false });
+            setSelectedPackagingId(null);
+          } else if (open) {
+            setCreateDialog({ open: true });
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add labeling batch</DialogTitle>
+            <DialogDescription>
+              Pick a packaging batch without labeling data to start tracking costs.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="packagingSearch">Search packaging batches</Label>
+                <Input
+                  id="packagingSearch"
+                  placeholder="Search by batch, status, or quantity"
+                  value={eligibleSearch}
+                  onChange={(event) => setEligibleSearch(event.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="sm:w-auto"
+                onClick={() => void fetchEligiblePackagingBatches(productTypeFilter)}
+                disabled={isEligibleLoading}
+              >
+                <RefreshCcw className={cn("h-4 w-4", isEligibleLoading && "animate-spin")} />
+                <span className="ml-2">Refresh</span>
+              </Button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto space-y-2">
+              {isEligibleLoading ? (
+                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+                  Loading packaging batches…
+                </div>
+              ) : filteredEligiblePackaging.length === 0 ? (
+                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+                  No packaging batches are waiting for labeling right now.
+                </div>
+              ) : (
+                filteredEligiblePackaging.map((batch) => {
+                  const isSelected = selectedPackagingId === batch.packagingId;
+                  return (
+                    <button
+                      key={batch.packagingId}
+                      type="button"
+                      onClick={() => setSelectedPackagingId(batch.packagingId)}
+                      className={cn(
+                        "w-full rounded-lg border p-4 text-left transition-colors",
+                        isSelected
+                          ? "border-cta bg-cta/10 text-foreground"
+                          : "hover:border-cta hover:bg-muted"
+                      )}
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-semibold">Batch {batch.batchNumber}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Scheduled {formatDate(batch.scheduledDate)} · {batch.bucketCount} bucket
+                            {batch.bucketCount === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <div className="text-sm text-muted-foreground sm:text-right">
+                          <div>{batch.productType.toUpperCase()}</div>
+                          <div>
+                            Finished qty: {formatVolumeByProduct(batch.finishedQuantity, batch.productType as LabelingBatchDto["productType"])}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+          <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (!isCreatingLabelingBatch) {
+                  setCreateDialog({ open: false });
+                  setSelectedPackagingId(null);
+                }
+              }}
+              disabled={isCreatingLabelingBatch}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleCreateLabelingBatch()}
+              disabled={isCreatingLabelingBatch || !selectedPackagingId}
+              className="bg-cta hover:bg-cta-hover"
+            >
+              {isCreatingLabelingBatch ? "Creating…" : "Add labeling batch"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingLabeling) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete labeling batch?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes labeling data for batch {deleteTarget?.batchNumber}. You can recreate it from the packaging screen later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingLabeling}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleDeleteLabelingBatch()}
+              disabled={isDeletingLabeling}
+            >
+              {isDeletingLabeling ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog
         open={labelingDialog.open}

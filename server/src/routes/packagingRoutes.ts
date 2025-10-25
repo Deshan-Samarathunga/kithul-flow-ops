@@ -5,6 +5,7 @@ import { auth, requireRole } from "../middleware/authMiddleware.js";
 import {
 	SUPPORTED_PRODUCTS,
 	getTableName,
+	normalizeProduct,
 	type ProductSlug,
 } from "./utils/productTables.js";
 
@@ -46,6 +47,10 @@ function mapPackagingRow(row: any) {
 }
 
 const PACKAGING_STATUSES = ["pending", "in-progress", "completed", "on-hold"] as const;
+
+const createPackagingSchema = z.object({
+	processingBatchId: z.string().min(1, "Processing batch id is required"),
+});
 
 const numericCost = z
 	.number()
@@ -141,6 +146,15 @@ type PackagingContext = {
 	row: any;
 };
 
+type ProcessingContext = {
+	productType: ProductSlug;
+	processingTable: string;
+	packagingTable: string;
+	batchBucketTable: string;
+	bucketTable: string;
+	row: any;
+};
+
 async function resolvePackagingContext(packagingId: string): Promise<PackagingContext | null> {
 	for (const productType of SUPPORTED_PRODUCTS) {
 		const packagingTable = getTableName("packagingBatches", productType);
@@ -157,6 +171,81 @@ async function resolvePackagingContext(packagingId: string): Promise<PackagingCo
 		}
 	}
 	return null;
+}
+
+async function resolveProcessingContextByBatchId(batchId: string): Promise<ProcessingContext | null> {
+	for (const productType of SUPPORTED_PRODUCTS) {
+		const processingTable = getTableName("processingBatches", productType);
+		const { rows } = await pool.query(`SELECT * FROM ${processingTable} WHERE batch_id = $1`, [batchId]);
+		if (rows.length > 0) {
+			return {
+				productType,
+				processingTable,
+				packagingTable: getTableName("packagingBatches", productType),
+				batchBucketTable: getTableName("processingBatchBuckets", productType),
+				bucketTable: getTableName("buckets", productType),
+				row: rows[0],
+			};
+		}
+	}
+	return null;
+}
+
+async function fetchEligibleProcessingBatches(productType?: ProductSlug) {
+	const products = productType ? [productType] : [...SUPPORTED_PRODUCTS];
+	const eligible: Array<{
+		processingBatchId: string;
+		batchNumber: string;
+		productType: string;
+		scheduledDate: string | null;
+		totalSapOutput: number | null;
+		totalQuantity: number;
+		bucketCount: number;
+	}> = [];
+
+	for (const product of products) {
+		const processingTable = getTableName("processingBatches", product);
+		const packagingTable = getTableName("packagingBatches", product);
+		const batchBucketTable = getTableName("processingBatchBuckets", product);
+		const bucketTable = getTableName("buckets", product);
+
+		const query = `
+			SELECT
+				pb.id,
+				pb.batch_id,
+				pb.batch_number,
+				pb.product_type,
+				pb.scheduled_date,
+				pb.total_sap_output,
+				COALESCE(SUM(b.quantity), 0) AS total_quantity,
+				COUNT(pbb.bucket_id) AS bucket_count
+			FROM ${processingTable} pb
+			LEFT JOIN ${packagingTable} pkg ON pkg.processing_batch_id = pb.id
+			LEFT JOIN ${batchBucketTable} pbb ON pbb.processing_batch_id = pb.id
+			LEFT JOIN ${bucketTable} b ON b.id = pbb.bucket_id
+			WHERE pb.status = 'completed' AND pkg.processing_batch_id IS NULL
+			GROUP BY pb.id, pb.batch_id, pb.batch_number, pb.product_type, pb.scheduled_date, pb.total_sap_output
+			ORDER BY pb.scheduled_date DESC, pb.batch_number ASC
+		`;
+
+		const { rows } = await pool.query(query);
+		for (const row of rows) {
+			eligible.push({
+				processingBatchId: row.batch_id as string,
+				batchNumber: row.batch_number as string,
+				productType: row.product_type as string,
+				scheduledDate:
+					row.scheduled_date instanceof Date
+						? row.scheduled_date.toISOString()
+						: (row.scheduled_date as string | null),
+				totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
+				totalQuantity: Number(row.total_quantity ?? 0),
+				bucketCount: Number(row.bucket_count ?? 0),
+			});
+		}
+	}
+
+	return eligible;
 }
 
 async function fetchPackagingSummaries(productType: ProductSlug) {
@@ -225,6 +314,61 @@ router.get("/batches", auth, requireRole("Packaging", "Processing", "Administrat
 	} catch (error) {
 		console.error("Error fetching packaging batches:", error);
 		res.status(500).json({ error: "Failed to fetch packaging batches" });
+	}
+});
+
+router.get(
+	"/batches/available-processing",
+	auth,
+	requireRole("Packaging", "Processing", "Administrator"),
+	async (req, res) => {
+		try {
+			const productParam = typeof req.query.productType === "string" ? normalizeProduct(req.query.productType) : null;
+			const eligible = await fetchEligibleProcessingBatches(productParam ?? undefined);
+			res.json({ batches: eligible });
+		} catch (error) {
+			console.error("Error fetching eligible processing batches for packaging:", error);
+			res.status(500).json({ error: "Failed to fetch eligible processing batches" });
+		}
+	}
+);
+
+router.post("/batches", auth, requireRole("Packaging", "Administrator"), async (req, res) => {
+	try {
+		const { processingBatchId } = createPackagingSchema.parse(req.body ?? {});
+		const context = await resolveProcessingContextByBatchId(processingBatchId);
+		if (!context) {
+			return res.status(404).json({ error: "Processing batch not found" });
+		}
+
+		const processingPk = Number(context.row.id);
+		const { rows: existing } = await pool.query(
+			`SELECT packaging_id FROM ${context.packagingTable} WHERE processing_batch_id = $1`,
+			[processingPk]
+		);
+		if (existing.length > 0) {
+			return res.status(400).json({ error: "Packaging batch already exists for this processing batch" });
+		}
+
+		const packagingId = `pkg${Date.now()}`;
+		await pool.query(
+			`INSERT INTO ${context.packagingTable} (packaging_id, processing_batch_id, status, started_at)
+			 VALUES ($1, $2, 'pending', NOW())`,
+			[packagingId, processingPk]
+		);
+
+		const created = await fetchPackagingBatchByPackagingId(packagingId);
+		if (!created) {
+			return res.status(500).json({ error: "Failed to load created packaging batch" });
+		}
+
+		res.status(201).json(created);
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			return res.status(400).json({ error: "Validation error", details: error.issues });
+		}
+		console.error("Error creating packaging batch:", error);
+		res.status(500).json({ error: "Failed to create packaging batch" });
 	}
 });
 
@@ -338,5 +482,26 @@ router.get("/batches", auth, requireRole("Packaging", "Processing", "Administrat
 			}
 		}
 	);
+
+router.delete(
+	"/batches/:packagingId",
+	auth,
+	requireRole("Packaging", "Administrator"),
+	async (req, res) => {
+		const { packagingId } = req.params;
+		try {
+			const context = await resolvePackagingContext(packagingId);
+			if (!context) {
+				return res.status(404).json({ error: "Packaging batch not found" });
+			}
+
+			await pool.query(`DELETE FROM ${context.packagingTable} WHERE packaging_id = $1`, [packagingId]);
+			res.status(204).send();
+		} catch (error) {
+			console.error("Error deleting packaging batch:", error);
+			res.status(500).json({ error: "Failed to delete packaging batch" });
+		}
+	}
+);
 
 export default router;

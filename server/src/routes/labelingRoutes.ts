@@ -5,6 +5,7 @@ import { auth, requireRole } from "../middleware/authMiddleware.js";
 import {
   SUPPORTED_PRODUCTS,
   getTableName,
+  normalizeProduct,
   type ProductSlug,
 } from "./utils/productTables.js";
 
@@ -59,6 +60,10 @@ const updateLabelingSchema = z.object({
   corrugatedCartonCost: numericCost,
 });
 
+const createLabelingSchema = z.object({
+  packagingId: z.string().min(1, "Packaging id is required"),
+});
+
 type LabelingDetails = ReturnType<typeof mapLabelingRow> & {
   packagingDbId: number;
   labelingDbId: number | null;
@@ -74,6 +79,79 @@ type LabelingContext = {
   packagingPk: number;
   labelingPk: number | null;
 };
+
+async function fetchEligiblePackagingBatches(productType?: ProductSlug) {
+  const products = productType ? [productType] : [...SUPPORTED_PRODUCTS];
+  const eligible: Array<{
+    packagingId: string;
+    batchNumber: string;
+    productType: string;
+    scheduledDate: string | null;
+    finishedQuantity: number | null;
+    totalSapOutput: number | null;
+    totalQuantity: number;
+    bucketCount: number;
+  }> = [];
+
+  for (const product of products) {
+    const packagingTable = getTableName("packagingBatches", product);
+    const processingBatchTable = getTableName("processingBatches", product);
+    const labelingTable = getTableName("labelingBatches", product);
+    const batchBucketTable = getTableName("processingBatchBuckets", product);
+    const bucketTable = getTableName("buckets", product);
+
+    const query = `
+      SELECT
+        pkg.id,
+        pkg.packaging_id,
+        pkg.finished_quantity,
+        pkg.started_at,
+        pb.batch_id,
+        pb.batch_number,
+        pb.product_type,
+        pb.scheduled_date,
+        pb.total_sap_output,
+        COALESCE(SUM(b.quantity), 0) AS total_quantity,
+        COUNT(pbb.bucket_id) AS bucket_count
+      FROM ${packagingTable} pkg
+      JOIN ${processingBatchTable} pb ON pb.id = pkg.processing_batch_id
+      LEFT JOIN ${labelingTable} lb ON lb.packaging_batch_id = pkg.id
+      LEFT JOIN ${batchBucketTable} pbb ON pbb.processing_batch_id = pb.id
+      LEFT JOIN ${bucketTable} b ON b.id = pbb.bucket_id
+      WHERE lb.packaging_batch_id IS NULL
+      GROUP BY
+        pkg.id,
+        pkg.packaging_id,
+        pkg.finished_quantity,
+        pkg.started_at,
+        pb.batch_id,
+        pb.batch_number,
+        pb.product_type,
+        pb.scheduled_date,
+        pb.total_sap_output
+      ORDER BY pkg.started_at DESC, pb.batch_number ASC
+    `;
+
+    const { rows } = await pool.query(query);
+    for (const row of rows) {
+      eligible.push({
+        packagingId: row.packaging_id as string,
+        batchNumber: row.batch_number as string,
+        productType: row.product_type as string,
+        scheduledDate:
+          row.scheduled_date instanceof Date
+            ? row.scheduled_date.toISOString()
+            : (row.scheduled_date as string | null),
+        finishedQuantity: row.finished_quantity !== null ? Number(row.finished_quantity) : null,
+        totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
+        totalQuantity: Number(row.total_quantity ?? 0),
+        bucketCount: Number(row.bucket_count ?? 0),
+      });
+    }
+  }
+
+  return eligible;
+}
 
 async function resolveLabelingContext(packagingId: string): Promise<LabelingContext | null> {
   for (const productType of SUPPORTED_PRODUCTS) {
@@ -264,6 +342,56 @@ router.get(
   }
 );
 
+router.get(
+  "/available-packaging",
+  auth,
+  requireRole("Labeling", "Packaging", "Administrator"),
+  async (req, res) => {
+    try {
+      const productParam = typeof req.query.productType === "string" ? normalizeProduct(req.query.productType) : null;
+      const eligible = await fetchEligiblePackagingBatches(productParam ?? undefined);
+      res.json({ batches: eligible });
+    } catch (error) {
+      console.error("Error fetching eligible packaging batches for labeling:", error);
+      res.status(500).json({ error: "Failed to fetch eligible packaging batches" });
+    }
+  }
+);
+
+router.post("/batches", auth, requireRole("Labeling", "Administrator"), async (req, res) => {
+  try {
+    const { packagingId } = createLabelingSchema.parse(req.body ?? {});
+    const context = await resolveLabelingContext(packagingId);
+    if (!context) {
+      return res.status(404).json({ error: "Packaging batch not found" });
+    }
+
+    if (context.labelingPk !== null) {
+      return res.status(400).json({ error: "Labeling batch already exists for this packaging" });
+    }
+
+    const labelingId = `lab${Date.now()}`;
+    await pool.query(
+      `INSERT INTO ${context.labelingTable} (labeling_id, packaging_batch_id, status)
+       VALUES ($1, $2, 'pending')`,
+      [labelingId, context.packagingPk]
+    );
+
+    const created = await fetchLabelingBatchByPackagingId(packagingId);
+    if (!created) {
+      return res.status(500).json({ error: "Failed to load created labeling batch" });
+    }
+
+    res.status(201).json(created);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation error", details: error.issues });
+    }
+    console.error("Error creating labeling batch:", error);
+    res.status(500).json({ error: "Failed to create labeling batch" });
+  }
+});
+
 router.patch(
   "/batches/:packagingId",
   auth,
@@ -398,6 +526,31 @@ router.patch(
       }
       console.error("Error updating labeling batch:", error);
       res.status(500).json({ error: "Failed to update labeling batch" });
+    }
+  }
+);
+
+router.delete(
+  "/batches/:packagingId",
+  auth,
+  requireRole("Labeling", "Administrator"),
+  async (req, res) => {
+    const { packagingId } = req.params;
+    try {
+      const context = await resolveLabelingContext(packagingId);
+      if (!context) {
+        return res.status(404).json({ error: "Labeling batch not found" });
+      }
+
+      if (context.labelingPk === null) {
+        return res.status(204).send();
+      }
+
+      await pool.query(`DELETE FROM ${context.labelingTable} WHERE id = $1`, [context.labelingPk]);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting labeling batch:", error);
+      res.status(500).json({ error: "Failed to delete labeling batch" });
     }
   }
 );
