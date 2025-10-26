@@ -12,6 +12,8 @@ import type { DailyProductionReport } from "@/lib/apiClient";
 type ReportStage = "field" | "processing" | "packaging" | "labeling";
 type ProductKey = "sap" | "treacle";
 
+type ProductMetricsMap<T> = Partial<Record<ProductKey, T>>;
+
 const productLabels: Record<ProductKey, string> = {
   sap: "Sap",
   treacle: "Treacle",
@@ -29,7 +31,7 @@ const stageMeta: Record<ReportStage, { title: string; description: string }> = {
   },
   processing: {
     title: "Processing daily report",
-    description: "Summarise processing throughput, output, and melting costs for the chosen date.",
+    description: "Summarise processing throughput, output, and gas usage for the chosen date.",
   },
   packaging: {
     title: "Packaging daily report",
@@ -70,7 +72,7 @@ type FieldStagePayload = {
   stage: "field";
   date: string;
   generatedAt: string;
-  perProduct: Record<ProductKey, FieldMetrics>;
+  perProduct: ProductMetricsMap<FieldMetrics>;
   totals: FieldTotals;
 };
 
@@ -78,7 +80,7 @@ type ProcessingStagePayload = {
   stage: "processing";
   date: string;
   generatedAt: string;
-  perProduct: Record<ProductKey, ProcessingMetrics>;
+  perProduct: ProductMetricsMap<ProcessingMetrics>;
   totals: ProcessingTotals;
 };
 
@@ -86,7 +88,7 @@ type PackagingStagePayload = {
   stage: "packaging";
   date: string;
   generatedAt: string;
-  perProduct: Record<ProductKey, PackagingMetrics & { totalCost: number }>;
+  perProduct: ProductMetricsMap<PackagingMetrics & { totalCost: number }>;
   totals: PackagingTotals & { totalCost: number };
 };
 
@@ -94,7 +96,7 @@ type LabelingStagePayload = {
   stage: "labeling";
   date: string;
   generatedAt: string;
-  perProduct: Record<ProductKey, LabelingMetrics & { totalCost: number }>;
+  perProduct: ProductMetricsMap<LabelingMetrics & { totalCost: number }>;
   totals: LabelingTotals & { totalCost: number };
 };
 
@@ -103,6 +105,178 @@ type StageReportPayload =
   | ProcessingStagePayload
   | PackagingStagePayload
   | LabelingStagePayload;
+
+type DetailSheetConfig = {
+  name: string;
+  data: string[][];
+  columnWidths: number[];
+};
+
+function buildDetailSheet(payload: StageReportPayload, stageName: string): DetailSheetConfig | null {
+  const detailName = `${stageName} Detail`;
+
+  switch (payload.stage) {
+    case "field": {
+      const entries = (Object.entries(payload.perProduct) as Array<[
+        ProductKey,
+        FieldMetrics | undefined
+      ]>).filter((entry): entry is [ProductKey, FieldMetrics] => entry[1] !== undefined);
+
+      const header = ["Product", "Draft IDs", "Drafts", "Buckets", "Quantity (L)"];
+      const rows = entries.map(([product, metrics]) => [
+        productLabels[product],
+        metrics.draftIds && metrics.draftIds.length > 0 ? metrics.draftIds.join(", ") : "—",
+        formatNumber(metrics.drafts),
+        formatNumber(metrics.buckets),
+        formatNumber(metrics.quantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+      ]);
+
+      rows.push([
+        "Totals",
+        payload.totals.draftIds && payload.totals.draftIds.length > 0
+          ? payload.totals.draftIds.join(", ")
+          : "—",
+        formatNumber(payload.totals.drafts),
+        formatNumber(payload.totals.buckets),
+        formatNumber(payload.totals.quantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+      ]);
+
+      return {
+        name: detailName,
+        data: [header, ...rows],
+        columnWidths: [16, 38, 12, 12, 18],
+      };
+    }
+    case "processing": {
+      const entries = (Object.entries(payload.perProduct) as Array<[
+        ProductKey,
+        ProcessingMetrics | undefined
+      ]>).filter((entry): entry is [ProductKey, ProcessingMetrics] => entry[1] !== undefined);
+
+      const header = [
+        "Product",
+        "Batches",
+        "Completed",
+        "Input (Sap L / Treacle kg)",
+        "Output (Sap L / Treacle kg)",
+        "Used gas (kg)",
+      ];
+
+      const rows = entries.map(([product, metrics]) => [
+        productLabels[product],
+        formatNumber(metrics.totalBatches),
+        formatNumber(metrics.completedBatches),
+        formatNumber(metrics.totalInput, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        formatNumber(metrics.totalOutput, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        formatNumber(metrics.totalGasUsedKg, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+      ]);
+
+      return {
+        name: detailName,
+        data: [header, ...rows],
+        columnWidths: [18, 12, 12, 26, 26, 18],
+      };
+    }
+    case "packaging": {
+      const entries = (Object.entries(payload.perProduct) as Array<[
+        ProductKey,
+        (PackagingMetrics & { totalCost: number }) | undefined
+      ]>).filter((entry): entry is [ProductKey, PackagingMetrics & { totalCost: number }] => entry[1] !== undefined);
+
+      const header = [
+        "Product",
+        "Batches",
+        "Completed",
+        "Finished qty (Sap L / Treacle kg)",
+        "Bottle cost",
+        "Lid cost",
+        "Alufoil cost",
+        "Vacuum bag cost",
+        "Parchment paper cost",
+        "Total packaging cost",
+      ];
+
+      const rows = entries.map(([product, metrics]) => [
+        productLabels[product],
+        formatNumber(metrics.totalBatches),
+        formatNumber(metrics.completedBatches),
+        formatNumber(metrics.finishedQuantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        formatCurrency(metrics.totalBottleCost),
+        formatCurrency(metrics.totalLidCost),
+        formatCurrency(metrics.totalAlufoilCost),
+        formatCurrency(metrics.totalVacuumBagCost),
+        formatCurrency(metrics.totalParchmentPaperCost),
+        formatCurrency(metrics.totalCost),
+      ]);
+
+      rows.push([
+        "Totals",
+        formatNumber(payload.totals.totalBatches),
+        formatNumber(payload.totals.completedBatches),
+        formatNumber(payload.totals.finishedQuantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        formatCurrency(payload.totals.totalBottleCost),
+        formatCurrency(payload.totals.totalLidCost),
+        formatCurrency(payload.totals.totalAlufoilCost),
+        formatCurrency(payload.totals.totalVacuumBagCost),
+        formatCurrency(payload.totals.totalParchmentPaperCost),
+        formatCurrency(payload.totals.totalCost),
+      ]);
+
+      return {
+        name: detailName,
+        data: [header, ...rows],
+        columnWidths: [18, 12, 12, 30, 18, 18, 18, 20, 24, 22],
+      };
+    }
+    case "labeling": {
+      const entries = (Object.entries(payload.perProduct) as Array<[
+        ProductKey,
+        (LabelingMetrics & { totalCost: number }) | undefined
+      ]>).filter((entry): entry is [ProductKey, LabelingMetrics & { totalCost: number }] => entry[1] !== undefined);
+
+      const header = [
+        "Product",
+        "Batches",
+        "Completed",
+        "Sticker cost",
+        "Shrink sleeve cost",
+        "Neck tag cost",
+        "Corrugated carton cost",
+        "Total labeling cost",
+      ];
+
+      const rows = entries.map(([product, metrics]) => [
+        productLabels[product],
+        formatNumber(metrics.totalBatches),
+        formatNumber(metrics.completedBatches),
+        formatCurrency(metrics.totalStickerCost),
+        formatCurrency(metrics.totalShrinkSleeveCost),
+        formatCurrency(metrics.totalNeckTagCost),
+        formatCurrency(metrics.totalCorrugatedCartonCost),
+        formatCurrency(metrics.totalCost),
+      ]);
+
+      rows.push([
+        "Totals",
+        formatNumber(payload.totals.totalBatches),
+        formatNumber(payload.totals.completedBatches),
+        formatCurrency(payload.totals.totalStickerCost),
+        formatCurrency(payload.totals.totalShrinkSleeveCost),
+        formatCurrency(payload.totals.totalNeckTagCost),
+        formatCurrency(payload.totals.totalCorrugatedCartonCost),
+        formatCurrency(payload.totals.totalCost),
+      ]);
+
+      return {
+        name: detailName,
+        data: [header, ...rows],
+        columnWidths: [18, 12, 12, 18, 22, 18, 26, 22],
+      };
+    }
+    default:
+      return null;
+  }
+}
 
 type ReportGenerationDialogProps = {
   open: boolean;
@@ -134,8 +308,16 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
         switch (stage) {
           case "field":
             return data.totals.fieldCollection.drafts > 0;
-          case "processing":
-            return data.totals.processing.completedBatches > 0;
+          case "processing": {
+            const totals = data.totals.processing;
+            return (
+              totals.completedBatches > 0 ||
+              totals.totalBatches > 0 ||
+              totals.totalOutput > 0 ||
+              totals.totalInput > 0 ||
+              totals.totalGasUsedKg > 0
+            );
+          }
           case "packaging":
             return data.totals.packaging.completedBatches > 0;
           case "labeling":
@@ -172,7 +354,7 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
     }
 
     if (stage === "field") {
-      const perProduct: Record<ProductKey, FieldMetrics> = {
+      const perProduct: ProductMetricsMap<FieldMetrics> = {
         sap: report.perProduct.sap.fieldCollection,
         treacle: report.perProduct.treacle.fieldCollection,
       };
@@ -186,7 +368,7 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
     }
 
     if (stage === "processing") {
-      const perProduct: Record<ProductKey, ProcessingMetrics> = {
+      const basePerProduct: ProductMetricsMap<ProcessingMetrics> = {
         sap: report.perProduct.sap.processing,
         treacle: report.perProduct.treacle.processing,
       };
@@ -194,13 +376,13 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
         stage,
         date: report.date,
         generatedAt: report.generatedAt,
-        perProduct,
+        perProduct: basePerProduct,
         totals: report.totals.processing,
       } satisfies ProcessingStagePayload;
     }
 
     if (stage === "packaging") {
-      const perProduct: Record<ProductKey, PackagingMetrics & { totalCost: number }> = {
+      const perProduct: ProductMetricsMap<PackagingMetrics & { totalCost: number }> = {
         sap: {
           ...report.perProduct.sap.packaging,
           totalCost:
@@ -239,7 +421,7 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
       } satisfies PackagingStagePayload;
     }
 
-    const perProduct: Record<ProductKey, LabelingMetrics & { totalCost: number }> = {
+    const perProduct: ProductMetricsMap<LabelingMetrics & { totalCost: number }> = {
       sap: {
         ...report.perProduct.sap.labeling,
         totalCost:
@@ -291,9 +473,8 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
     const merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = [];
     const sectionRows: number[] = [];
     const headerRows: number[] = [];
-    const productHeaderRows: number[] = [];
-    const metricRows: number[] = [];
-    const tableRows: Array<[string, string, string, string, string]> = [];
+  const productHeaderRows: number[] = [];
+  const metricRows: number[] = [];
 
     const padRow = (cells: ExcelRow): ExcelRow => {
       const copy = [...cells];
@@ -348,20 +529,12 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
       return rowIndex;
     };
 
-    const addTableRow = (section: string, product: string, metric: string, value: string, notes: string = "") => {
-      tableRows.push([section, product, metric, value, notes]);
-    };
-
     // Title & basic metadata
     const titleRowIndex = addTitleRow(stageMeta[stage].title);
     addBlankRow();
     addMetricRow({ label: "Report date", value: stagePayload.date });
     addMetricRow({ label: "Generated at", value: generatedAtDisplay });
     addBlankRow();
-
-    addTableRow("Report info", "", "Stage", stageName, "");
-    addTableRow("Report info", "", "Report date", stagePayload.date, "");
-    addTableRow("Report info", "", "Generated at", generatedAtDisplay, "");
 
     // Summary section
     const summaryCards = topCards
@@ -373,7 +546,6 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
       addHeaderRow(["Metric", "Value", "Notes"]);
       addMetricRows(summaryCards);
       addBlankRow();
-      summaryCards.forEach((metric) => addTableRow("Summary", "", metric.label, metric.value, metric.note ?? ""));
     }
 
     // Per-product sections and totals
@@ -382,8 +554,8 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
 
     switch (stagePayload.stage) {
       case "field": {
-        Object.entries(stagePayload.perProduct).forEach(([key, metrics]) => {
-          const product = key as ProductKey;
+        const entries = Object.entries(stagePayload.perProduct) as Array<[ProductKey, FieldMetrics]>;
+        entries.forEach(([product, metrics]) => {
           const unit = "L";
           const draftIdDisplay = metrics.draftIds && metrics.draftIds.length > 0 ? metrics.draftIds.join(", ") : "—";
           productSections.push({
@@ -424,14 +596,12 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
         break;
       }
       case "processing": {
-        Object.entries(stagePayload.perProduct).forEach(([key, metrics]) => {
-          const product = key as ProductKey;
+        const entries = Object.entries(stagePayload.perProduct) as Array<[ProductKey, ProcessingMetrics]>;
+        entries.forEach(([product, metrics]) => {
           const unit = productUnits[product];
           productSections.push({
             title: productLabels[product],
             metrics: [
-              { label: "Batches", value: formatNumber(metrics.totalBatches) },
-              { label: "Completed", value: formatNumber(metrics.completedBatches) },
               {
                 label: "Input",
                 value: formatNumber(metrics.totalInput, {
@@ -448,15 +618,18 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
                 }),
                 note: unit,
               },
-              { label: "Gas cost", value: formatCurrency(metrics.totalGasCost) },
-              { label: "Labor cost", value: formatCurrency(metrics.totalLaborCost) },
+              {
+                label: "Used gas (kg)",
+                value: formatNumber(metrics.totalGasUsedKg, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                }),
+              },
             ],
           });
         });
 
         totalsMetrics = [
-          { label: "Batches", value: formatNumber(stagePayload.totals.totalBatches) },
-          { label: "Completed", value: formatNumber(stagePayload.totals.completedBatches) },
           {
             label: "Input",
             value: formatNumber(stagePayload.totals.totalInput, {
@@ -473,14 +646,21 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
             }),
             note: "Sap in L, Treacle in kg",
           },
-          { label: "Gas cost", value: formatCurrency(stagePayload.totals.totalGasCost) },
-          { label: "Labor cost", value: formatCurrency(stagePayload.totals.totalLaborCost) },
+          {
+            label: "Used gas (kg)",
+            value: formatNumber(stagePayload.totals.totalGasUsedKg, {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            }),
+          },
         ];
         break;
       }
       case "packaging": {
-        Object.entries(stagePayload.perProduct).forEach(([key, metrics]) => {
-          const product = key as ProductKey;
+        const entries = Object.entries(stagePayload.perProduct) as Array<
+          [ProductKey, PackagingMetrics & { totalCost: number }]
+        >;
+        entries.forEach(([product, metrics]) => {
           const unit = productUnits[product];
           productSections.push({
             title: productLabels[product],
@@ -526,8 +706,10 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
         break;
       }
       case "labeling": {
-        Object.entries(stagePayload.perProduct).forEach(([key, metrics]) => {
-          const product = key as ProductKey;
+        const entries = Object.entries(stagePayload.perProduct) as Array<
+          [ProductKey, LabelingMetrics & { totalCost: number }]
+        >;
+        entries.forEach(([product, metrics]) => {
           productSections.push({
             title: productLabels[product],
             metrics: [
@@ -566,18 +748,12 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
         addMetricRows(section.metrics);
         addBlankRow();
       });
-      productSections.forEach((section) => {
-        section.metrics.forEach((metric) => {
-          addTableRow("Per product", section.title, metric.label, metric.value, metric.note ?? "");
-        });
-      });
     }
 
     if (totalsMetrics.length > 0) {
       addSectionHeader("Totals");
       addHeaderRow(["Metric", "Value", "Notes"]);
       addMetricRows(totalsMetrics);
-      totalsMetrics.forEach((metric) => addTableRow("Totals", "", metric.label, metric.value, metric.note ?? ""));
     }
 
     const worksheet = utils.aoa_to_sheet(rows);
@@ -649,26 +825,28 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
       applyStyle(worksheet, rowIndex, 0, metricLabelStyle);
     });
 
-    const tableSheetData: Array<Array<string>> = [
-      ["Section", "Product", "Metric", "Value", "Notes"],
-      ...tableRows,
-    ];
-    const tableSheet = utils.aoa_to_sheet(tableSheetData);
-    tableSheet["!cols"] = [{ wch: 18 }, { wch: 18 }, { wch: 28 }, { wch: 24 }, { wch: 32 }];
-
-    if (tableRows.length > 0) {
-      tableSheet["!autofilter"] = {
-        ref: utils.encode_range({ s: { r: 0, c: 0 }, e: { r: tableRows.length, c: 4 } }),
-      };
-    }
-
-    for (let col = 0; col < 5; col += 1) {
-      applyStyle(tableSheet, 0, col, tableHeaderStyle);
-    }
-
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, stageName);
-    utils.book_append_sheet(workbook, tableSheet, `${stageName} Table`);
+    const detailSheetConfig = buildDetailSheet(stagePayload, stageName);
+    if (detailSheetConfig) {
+      const { name, data, columnWidths } = detailSheetConfig;
+      const detailSheet = utils.aoa_to_sheet(data);
+      if (columnWidths.length > 0) {
+        detailSheet["!cols"] = columnWidths.map((width) => ({ wch: width }));
+      }
+      if (data.length > 1) {
+        detailSheet["!autofilter"] = {
+          ref: utils.encode_range({ s: { r: 0, c: 0 }, e: { r: data.length - 1, c: data[0].length - 1 } }),
+        };
+      }
+      for (let col = 0; col < (data[0]?.length ?? 0); col += 1) {
+        applyStyle(detailSheet, 0, col, tableHeaderStyle);
+      }
+      if (data.length > 1 && data[data.length - 1]?.[0] === "Totals") {
+        applyStyle(detailSheet, data.length - 1, 0, metricLabelStyle);
+      }
+      utils.book_append_sheet(workbook, detailSheet, name);
+    }
     writeFileXLSX(workbook, `${stagePayload.stage}-report-${stagePayload.date}.xlsx`);
     toast.success("Report Excel downloaded.");
   };
@@ -711,22 +889,9 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
       case "processing":
         cards.push(
           {
-            key: "batches",
-            label: "Processing batches",
-            value: formatNumber(stagePayload.totals.totalBatches),
-            helper: `Completed: ${formatNumber(stagePayload.totals.completedBatches)}`,
-          },
-          {
-            key: "output",
-            label: "Combined output",
-            value: formatNumber(stagePayload.totals.totalOutput, {
-              minimumFractionDigits: 1,
-              maximumFractionDigits: 1,
-            }),
-            helper: `Input: ${formatNumber(stagePayload.totals.totalInput, {
-              minimumFractionDigits: 1,
-              maximumFractionDigits: 1,
-            })} (Sap in L, Treacle in kg)`,
+            key: "completedBatches",
+            label: "Complete batches",
+            value: formatNumber(stagePayload.totals.completedBatches),
           }
         );
         break;
@@ -853,8 +1018,7 @@ function renderStageSections(payload: StageReportPayload) {
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(payload.perProduct).map(([key, metrics], index) => {
-                  const product = key as ProductKey;
+                {(Object.entries(payload.perProduct) as Array<[ProductKey, FieldMetrics]>).map(([product, metrics], index) => {
                   const unit = "L";
                   const rowClass = index % 2 === 0 ? "bg-card" : "bg-muted/30";
                   return (
@@ -877,8 +1041,7 @@ function renderStageSections(payload: StageReportPayload) {
         <section className="space-y-4">
           <h3 className="text-base font-semibold">Per product metrics</h3>
           <div className="space-y-4">
-            {Object.entries(payload.perProduct).map(([key, metrics]) => {
-              const product = key as ProductKey;
+            {(Object.entries(payload.perProduct) as Array<[ProductKey, ProcessingMetrics]>).map(([product, metrics]) => {
               const unit = productUnits[product];
               return (
                 <div key={product} className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
@@ -886,10 +1049,6 @@ function renderStageSections(payload: StageReportPayload) {
                     <div>
                       <p className="text-sm text-muted-foreground">Product lane</p>
                       <p className="text-lg font-semibold text-foreground">{productLabels[product]}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground sm:text-sm">
-                      <span>Batches: {formatNumber(metrics.totalBatches)}</span>
-                      <span>Completed: {formatNumber(metrics.completedBatches)}</span>
                     </div>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -901,8 +1060,13 @@ function renderStageSections(payload: StageReportPayload) {
                       label={`Output (${unit})`}
                       value={formatNumber(metrics.totalOutput, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                     />
-                    <Metric label="Gas cost" value={formatCurrency(metrics.totalGasCost)} />
-                    <Metric label="Labor cost" value={formatCurrency(metrics.totalLaborCost)} />
+                    <Metric
+                      label="Used gas (kg)"
+                      value={formatNumber(metrics.totalGasUsedKg, {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                      })}
+                    />
                   </div>
                 </div>
               );
@@ -915,8 +1079,9 @@ function renderStageSections(payload: StageReportPayload) {
         <section className="space-y-4">
           <h3 className="text-base font-semibold">Per product metrics</h3>
           <div className="space-y-4">
-            {Object.entries(payload.perProduct).map(([key, metrics]) => {
-              const product = key as ProductKey;
+            {(Object.entries(payload.perProduct) as Array<
+              [ProductKey, PackagingMetrics & { totalCost: number }]
+            >).map(([product, metrics]) => {
               const unit = productUnits[product];
               return (
                 <div key={product} className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
@@ -952,8 +1117,9 @@ function renderStageSections(payload: StageReportPayload) {
         <section className="space-y-4">
           <h3 className="text-base font-semibold">Per product metrics</h3>
           <div className="space-y-4">
-            {Object.entries(payload.perProduct).map(([key, metrics]) => {
-              const product = key as ProductKey;
+            {(Object.entries(payload.perProduct) as Array<
+              [ProductKey, LabelingMetrics & { totalCost: number }]
+            >).map(([product, metrics]) => {
               return (
                 <div key={product} className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
                   <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">

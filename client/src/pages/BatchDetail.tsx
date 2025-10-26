@@ -1,9 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import DataService from "@/lib/dataService";
@@ -25,6 +34,12 @@ export default function BatchDetail() {
   const [selectedBuckets, setSelectedBuckets] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [bucketSearch, setBucketSearch] = useState<string>("");
+  const [productionDialogOpen, setProductionDialogOpen] = useState(false);
+  const [productionForm, setProductionForm] = useState({
+    totalSapOutput: "",
+    usedGasKg: "",
+  });
+  const [isSavingProduction, setIsSavingProduction] = useState(false);
 
   const isEditable = batch?.status !== "completed" && batch?.status !== "cancelled";
 
@@ -93,6 +108,22 @@ export default function BatchDetail() {
     );
   }, [availableBuckets]);
 
+  useEffect(() => {
+    if (!batch) {
+  setProductionForm({ totalSapOutput: "", usedGasKg: "" });
+      return;
+    }
+
+    setProductionForm({
+      totalSapOutput:
+        batch.totalSapOutput !== null && batch.totalSapOutput !== undefined
+          ? String(batch.totalSapOutput)
+          : "",
+      usedGasKg:
+        batch.gasUsedKg !== null && batch.gasUsedKg !== undefined ? String(batch.gasUsedKg) : "",
+    });
+  }, [batch]);
+
   const handleToggleBucket = (bucketId: string) => {
     if (!isEditable) {
       return;
@@ -131,6 +162,43 @@ export default function BatchDetail() {
     }
   };
 
+  const handleSaveProduction = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!batchId || !batch) {
+      return;
+    }
+
+    const parsedOutput = parseFloat(productionForm.totalSapOutput);
+  const parsedGas = parseFloat(productionForm.usedGasKg);
+
+    if (
+      Number.isNaN(parsedOutput) ||
+      Number.isNaN(parsedGas) ||
+      parsedOutput < 0 ||
+      parsedGas < 0
+    ) {
+      toast.error("Please enter valid non-negative numbers for production fields.");
+      return;
+    }
+
+    setIsSavingProduction(true);
+    try {
+      const updated = await DataService.updateProcessingBatch(batchId, {
+        totalSapOutput: parsedOutput,
+        gasUsedKg: parsedGas,
+      });
+      setBatch(updated);
+      toast.success("Production data saved");
+      setProductionDialogOpen(false);
+    } catch (err: unknown) {
+      console.error("Failed to save production data", err);
+      const message = err instanceof Error ? err.message : "Unable to save production data.";
+      toast.error(message);
+    } finally {
+      setIsSavingProduction(false);
+    }
+  };
+
   const formatNumber = (value: number | null | undefined, fractionDigits = 1) => {
     if (value === null || value === undefined) {
       return "—";
@@ -147,6 +215,31 @@ export default function BatchDetail() {
       return value;
     }
     return new Date(parsed).toLocaleDateString();
+  };
+
+  const formatOutputQuantity = (value: number | null | undefined) => {
+    if (value === null || value === undefined || !batch) {
+      return "Not recorded";
+    }
+    const unit = batch.productType === "sap" ? "L" : "kg";
+    const digits = batch.productType === "sap" ? 1 : 2;
+    return `${Number(value).toFixed(digits)} ${unit}`;
+  };
+
+  const formatGasAmount = (value: number | null | undefined) => {
+    if (value === null || value === undefined) {
+      return "Not recorded";
+    }
+    return `${Number(value).toFixed(2)} kg`;
+  };
+
+  const formatBatchQuantity = (value: number | null | undefined) => {
+    if (value === null || value === undefined || !batch) {
+      return "—";
+    }
+    const unit = batch.productType === "sap" ? "L" : "kg";
+    const digits = batch.productType === "sap" ? 1 : 2;
+    return `${Number(value).toFixed(digits)} ${unit}`;
   };
 
   const sortedBuckets = useMemo(() => {
@@ -216,6 +309,9 @@ export default function BatchDetail() {
         .slice(0, MAX_BUCKET_SELECTION);
   const noSelectedBuckets = !isEditable && bucketsToRender.length === 0;
 
+  const productionOutputLabel = batch?.productType === "sap" ? "Sap out after melting (L)" : "Output quantity (kg)";
+  const productionOutputStep = batch?.productType === "sap" ? "0.1" : "0.01";
+
   if (!batchId) {
     return <div className="p-6">No batch selected.</div>;
   }
@@ -257,18 +353,63 @@ export default function BatchDetail() {
                 </p>
               </div>
               {isEditable ? (
-                <Button
-                  onClick={handleSaveBatch}
-                  className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
-                  disabled={isSaving}
-                >
-                  {isSaving ? "Saving…" : "Save Batch"}
-                </Button>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto sm:justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setProductionDialogOpen(true)}
+                    className="w-full sm:w-auto"
+                  >
+                    {batch.totalSapOutput !== null && batch.totalSapOutput !== undefined
+                      ? "Edit production data"
+                      : "Add production data"}
+                  </Button>
+                  <Button
+                    onClick={handleSaveBatch}
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving…" : "Save Batch"}
+                  </Button>
+                </div>
               ) : (
-                <div className="text-sm text-muted-foreground w-full sm:w-auto text-center sm:text-right">
-                  Submitted batches are read-only. Reopen the batch to make changes.
+                <div className="flex flex-col gap-2 w-full sm:w-auto text-sm text-muted-foreground sm:items-end">
+                  <div className="text-center sm:text-right">
+                    Submitted batches are read-only. Reopen the batch to make changes.
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={() => setProductionDialogOpen(true)}
+                  >
+                    View production data
+                  </Button>
                 </div>
               )}
+            </div>
+
+            <div className="mb-6 space-y-3">
+              <h2 className="text-base sm:text-lg font-semibold">Production details</h2>
+              <div className="rounded-lg border bg-card p-4 sm:p-6 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Output quantity</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {formatOutputQuantity(batch.totalSapOutput)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Used gas amount</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {formatGasAmount(batch.gasUsedKg)}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isEditable
+                    ? "Select \"Add production data\" to record melting output and gas usage for this batch."
+                    : "Reopen the batch if you need to update production data."}
+                </p>
+              </div>
             </div>
 
             <div className="mb-6">
@@ -404,6 +545,106 @@ export default function BatchDetail() {
                 </div>
               )}
             </div>
+
+            <Dialog
+              open={productionDialogOpen}
+              onOpenChange={(open) => {
+                if (!open && !isSavingProduction) {
+                  setProductionDialogOpen(open);
+                }
+              }}
+            >
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Production data</DialogTitle>
+                  <DialogDescription>
+                    {isEditable
+                      ? `Record melting output and gas usage for batch ${batch.batchNumber}.`
+                      : `Production data for batch ${batch.batchNumber}. Reopen the batch to make changes.`}
+                  </DialogDescription>
+                </DialogHeader>
+                {isEditable ? (
+                  <form onSubmit={handleSaveProduction} className="space-y-5">
+                    {batch.productType === "sap" && (
+                      <div className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Sap in</span>
+                          <span className="font-medium text-foreground">
+                            {formatBatchQuantity(batch.totalQuantity)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label htmlFor="production-output">{productionOutputLabel}</Label>
+                      <Input
+                        id="production-output"
+                        type="number"
+                        min="0"
+                        step={productionOutputStep}
+                        value={productionForm.totalSapOutput}
+                        onChange={(event) =>
+                          setProductionForm((prev) => ({
+                            ...prev,
+                            totalSapOutput: event.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="production-gas">Used gas amount</Label>
+                      <Input
+                        id="production-gas"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={productionForm.usedGasKg}
+                        onChange={(event) =>
+                          setProductionForm((prev) => ({ ...prev, usedGasKg: event.target.value }))
+                        }
+                        required
+                      />
+                    </div>
+                    <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setProductionDialogOpen(false)}
+                        disabled={isSavingProduction}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="bg-cta hover:bg-cta-hover text-cta-foreground"
+                        disabled={isSavingProduction}
+                      >
+                        {isSavingProduction ? "Saving…" : "Save production data"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                ) : (
+                  <div className="space-y-4 text-sm">
+                    <div className="grid gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Output quantity</p>
+                        <p className="font-medium text-foreground">{formatOutputQuantity(batch.totalSapOutput)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Used gas amount</p>
+                        <p className="font-medium text-foreground">{formatGasAmount(batch.gasUsedKg)}</p>
+                      </div>
+                    </div>
+                    <DialogFooter className="flex justify-end">
+                      <Button type="button" variant="outline" onClick={() => setProductionDialogOpen(false)}>
+                        Close
+                      </Button>
+                    </DialogFooter>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </>
         ) : (
           <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Batch not found.</div>

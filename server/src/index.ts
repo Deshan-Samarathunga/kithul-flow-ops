@@ -13,7 +13,7 @@ import packagingRoutes from "./routes/packagingRoutes.js";
 import labelingRoutes from "./routes/labelingRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import { auth, requireRole } from "./middleware/authMiddleware.js";
-import { pool } from "./db.js";
+import { pool, initializeDatabase } from "./db.js";
 
 const app = express();
 
@@ -129,7 +129,17 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // ---- start
-app.listen(PORT, () => {
-  console.log(`[server] http://localhost:${PORT}`);
-  console.log(`[cors] allowing origin: ${ORIGIN}`);
-});
+async function start() {
+  try {
+    await initializeDatabase();
+    app.listen(PORT, () => {
+      console.log(`[server] http://localhost:${PORT}`);
+      console.log(`[cors] allowing origin: ${ORIGIN}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server", error);
+    process.exit(1);
+  }
+}
+
+void start();

@@ -39,8 +39,7 @@ export type ProcessingBatchDto = {
   bucketCount: number;
   totalQuantity: number;
   totalSapOutput?: number | null;
-  gasCost?: number | null;
-  laborCost?: number | null;
+  gasUsedKg?: number | null;
   bucketIds?: string[];
 };
 
@@ -127,8 +126,7 @@ export type DailyProductionReport = {
       completedBatches: number;
       totalOutput: number;
       totalInput: number;
-      totalGasCost: number;
-      totalLaborCost: number;
+      totalGasUsedKg: number;
     };
     packaging: {
       totalBatches: number;
@@ -161,8 +159,7 @@ export type DailyProductionReport = {
       completedBatches: number;
       totalOutput: number;
       totalInput: number;
-      totalGasCost: number;
-      totalLaborCost: number;
+      totalGasUsedKg: number;
     };
     packaging: {
       totalBatches: number;
@@ -426,8 +423,7 @@ class ApiClient {
       productType?: string;
       notes?: string;
       totalSapOutput?: number | null;
-      gasCost?: number | null;
-      laborCost?: number | null;
+      gasUsedKg?: number | null;
     }
   ) {
     return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}`, {
