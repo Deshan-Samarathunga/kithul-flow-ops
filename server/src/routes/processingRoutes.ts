@@ -23,7 +23,11 @@ const createBatchSchema = z.object({
 	notes: z.string().optional(),
 });
 
-const numericMetric = z.number().min(0, "Value must be greater than or equal to 0").nullable().optional();
+const numericMeasurement = z
+	.number()
+	.min(0, "Value must be greater than or equal to 0")
+	.nullable()
+	.optional();
 
 const updateBatchSchema = z.object({
   status: z.enum(BATCH_STATUSES).optional(),
@@ -33,9 +37,8 @@ const updateBatchSchema = z.object({
     .refine((val) => (val ? !Number.isNaN(Date.parse(val)) : true), "Invalid scheduled date"),
   productType: z.enum(PRODUCT_TYPES).optional(),
   notes: z.string().optional(),
-  totalSapOutput: numericMetric,
-  gasCost: numericMetric,
-  laborCost: numericMetric,
+	totalSapOutput: numericMeasurement,
+	gasUsedKg: numericMeasurement,
 });
 
 const updateBatchBucketsSchema = z.object({
@@ -175,8 +178,7 @@ async function fetchProcessingBatchSummaries(productType: ProductSlug) {
 			pb.product_type,
 			pb.status,
 			pb.total_sap_output,
-			pb.gas_cost,
-			pb.labor_cost,
+			pb.used_gas_kg,
 			pb.created_at,
 			pb.updated_at,
 			COALESCE(SUM(b.quantity), 0) AS total_quantity,
@@ -192,8 +194,7 @@ async function fetchProcessingBatchSummaries(productType: ProductSlug) {
 			pb.product_type,
 			pb.status,
 			pb.total_sap_output,
-			pb.gas_cost,
-			pb.labor_cost,
+			pb.used_gas_kg,
 			pb.created_at,
 			pb.updated_at
 		ORDER BY pb.scheduled_date ASC, pb.created_at ASC
@@ -219,8 +220,7 @@ async function fetchProcessingBatch(batchId: string) {
 			pb.status,
 			pb.notes,
 			pb.total_sap_output,
-			pb.gas_cost,
-			pb.labor_cost,
+			pb.used_gas_kg,
 			pb.created_by,
 			pb.created_at,
 			pb.updated_at,
@@ -239,8 +239,7 @@ async function fetchProcessingBatch(batchId: string) {
 			pb.status,
 			pb.notes,
 			pb.total_sap_output,
-			pb.gas_cost,
-			pb.labor_cost,
+			pb.used_gas_kg,
 			pb.created_by,
 			pb.created_at,
 			pb.updated_at
@@ -274,8 +273,7 @@ async function fetchProcessingBatch(batchId: string) {
 		status: batchRow.status as string,
 		notes: batchRow.notes as string | null,
 		totalSapOutput: batchRow.total_sap_output !== null ? Number(batchRow.total_sap_output) : null,
-		gasCost: batchRow.gas_cost !== null ? Number(batchRow.gas_cost) : null,
-		laborCost: batchRow.labor_cost !== null ? Number(batchRow.labor_cost) : null,
+		gasUsedKg: batchRow.used_gas_kg !== null ? Number(batchRow.used_gas_kg) : null,
 		createdBy: batchRow.created_by as string,
 		createdAt:
 			batchRow.created_at instanceof Date
@@ -335,8 +333,7 @@ router.get("/batches", auth, requireRole("Processing", "Administrator"), async (
 			productType: row.product_type as string,
 			status: row.status as string,
 			totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
-			gasCost: row.gas_cost !== null ? Number(row.gas_cost) : null,
-			laborCost: row.labor_cost !== null ? Number(row.labor_cost) : null,
+			gasUsedKg: row.used_gas_kg !== null ? Number(row.used_gas_kg) : null,
 			createdAt:
 				row.created_at instanceof Date
 					? row.created_at.toISOString()
@@ -392,7 +389,7 @@ router.post("/batches", auth, requireRole("Processing", "Administrator"), async 
 					created_by
 				)
 				VALUES ($1, $2, $3, $4, 'in-progress', $5, $6)
-				RETURNING batch_id, batch_number, scheduled_date, product_type, status, created_at, updated_at, total_sap_output, gas_cost, labor_cost
+				RETURNING batch_id, batch_number, scheduled_date, product_type, status, created_at, updated_at, total_sap_output, used_gas_kg
 			`;
 
 			const { rows } = await client.query(insertQuery, [
@@ -418,8 +415,7 @@ router.post("/batches", auth, requireRole("Processing", "Administrator"), async 
 				productType: created.product_type,
 				status: created.status,
 				totalSapOutput: created.total_sap_output !== null ? Number(created.total_sap_output) : null,
-				gasCost: created.gas_cost !== null ? Number(created.gas_cost) : null,
-				laborCost: created.labor_cost !== null ? Number(created.labor_cost) : null,
+				gasUsedKg: created.used_gas_kg !== null ? Number(created.used_gas_kg) : null,
 				createdAt:
 					created.created_at instanceof Date
 						? created.created_at.toISOString()
@@ -501,15 +497,9 @@ router.patch("/batches/:batchId", auth, requireRole("Processing", "Administrator
 			paramIndex++;
 		}
 
-		if (validated.gasCost !== undefined) {
-			updateClauses.push(`gas_cost = $${paramIndex}`);
-			params.push(validated.gasCost);
-			paramIndex++;
-		}
-
-		if (validated.laborCost !== undefined) {
-			updateClauses.push(`labor_cost = $${paramIndex}`);
-			params.push(validated.laborCost);
+		if (validated.gasUsedKg !== undefined) {
+			updateClauses.push(`used_gas_kg = $${paramIndex}`);
+			params.push(validated.gasUsedKg);
 			paramIndex++;
 		}
 
