@@ -30,6 +30,8 @@ import { useAuth } from "@/lib/auth";
 import DataService from "@/lib/dataService";
 import type { EligibleProcessingBatchDto, PackagingBatchDto } from "@/lib/apiClient";
 import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
+import { ProductTypeSelector } from "@/components/ProductTypeSelector";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
 export default function Packaging() {
   const navigate = useNavigate();
@@ -52,12 +54,12 @@ export default function Packaging() {
   const [eligibleProcessing, setEligibleProcessing] = useState<EligibleProcessingBatchDto[]>([]);
   const [eligibleSearch, setEligibleSearch] = useState<string>("");
   const [isEligibleLoading, setIsEligibleLoading] = useState<boolean>(false);
-  const [createDialog, setCreateDialog] = useState<{ open: boolean }>({ open: false });
+  const [createDialog, setCreateDialog] = usePersistentState<{ open: boolean }>("packaging.createDialogOpen", { open: false });
   const [selectedProcessingId, setSelectedProcessingId] = useState<string | null>(null);
   const [isCreatingPackagingBatch, setIsCreatingPackagingBatch] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<{ packagingId: string; batchNumber: string } | null>(null);
   const [isDeletingPackaging, setIsDeletingPackaging] = useState<boolean>(false);
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = usePersistentState<boolean>("packaging.reportDialogOpen", false);
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
   const apiBase = useMemo(() => {
@@ -65,12 +67,11 @@ export default function Packaging() {
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">("sap");
-  const productTypeOptions: Array<{ value: "sap" | "treacle"; label: string }> = [
-    { value: "sap", label: "Sap" },
-    { value: "treacle", label: "Treacle" },
-  ];
+  const [searchQuery, setSearchQuery] = usePersistentState<string>("packaging.search", "");
+  const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem("packaging.productType") : null;
+    return saved === "treacle" || saved === "sap" ? saved : "sap";
+  });
 
   const packagingMetrics = useMemo(() => {
     type Metrics = { total: number; active: number; completed: number };
@@ -194,6 +195,16 @@ export default function Packaging() {
   useEffect(() => {
     void loadBatches();
   }, []);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("packaging.productType", productTypeFilter);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [productTypeFilter]);
 
   useEffect(() => {
     if (createDialog.open) {
@@ -440,35 +451,11 @@ export default function Packaging() {
 
           <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="flex items-center gap-1 bg-muted/60 rounded-full p-1 w-full sm:w-auto">
-                {productTypeOptions.map((option) => {
-                  const isActive = option.value === productTypeFilter;
-                  const optionMetrics = packagingMetrics[option.value];
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setProductTypeFilter(option.value)}
-                      className={cn(
-                        "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                        isActive
-                          ? "bg-cta text-cta-foreground shadow"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <span>{option.label}</span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                          isActive ? "bg-white/25 text-white" : "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {optionMetrics.total}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <ProductTypeSelector
+                value={productTypeFilter}
+                onChange={setProductTypeFilter}
+                metrics={packagingMetrics}
+              />
 
               <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
                 <div className="relative w-full sm:w-64">

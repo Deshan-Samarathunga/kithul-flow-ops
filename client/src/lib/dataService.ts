@@ -209,8 +209,7 @@ export class DataService {
       productType?: string;
       notes?: string;
       totalSapOutput?: number | null;
-      usedGasKg?: number | null;
-      laborCost?: number | null;
+      gasUsedKg?: number | null;
     }
   ) {
     try {

@@ -34,7 +34,7 @@ type ProcessingMetrics = {
   completedBatches: number;
   totalOutput: number;
   totalInput: number;
-  totalUsedGasKg: number;
+  totalGasUsedKg: number;
 };
 
 type PackagingMetrics = {
@@ -79,7 +79,7 @@ const emptyProcessing = (): ProcessingMetrics => ({
   completedBatches: 0,
   totalOutput: 0,
   totalInput: 0,
-  totalUsedGasKg: 0,
+  totalGasUsedKg: 0,
 });
 
 const emptyPackaging = (): PackagingMetrics => ({
@@ -162,12 +162,13 @@ async function fetchProcessingMetrics(product: ProductSlug, targetDate: string):
     SELECT
       COUNT(*) AS total_batches,
       COUNT(*) FILTER (WHERE LOWER(pb.status) = 'completed') AS completed_batches,
-      COALESCE(SUM(pb.total_sap_output), 0) AS total_output,
-  COALESCE(SUM(pb.used_gas_kg), 0) AS total_used_gas_kg,
+  COALESCE(SUM(pb.total_sap_output), 0) AS total_output,
+  COALESCE(SUM(pb.used_gas_kg), 0) AS total_gas_used_kg,
       COALESCE(SUM(bucket_totals.total_input), 0) AS total_input
     FROM ${processingTable} pb
     LEFT JOIN bucket_totals ON bucket_totals.processing_batch_id = pb.id
     WHERE pb.scheduled_date::date = $1
+      AND LOWER(pb.status) IN ('completed', 'submitted')
   `;
   const { rows } = await pool.query(query, [targetDate]);
   const row = rows[0] ?? {};
@@ -176,7 +177,7 @@ async function fetchProcessingMetrics(product: ProductSlug, targetDate: string):
     completedBatches: toNumber(row.completed_batches),
     totalOutput: toNumber(row.total_output),
     totalInput: toNumber(row.total_input),
-  totalUsedGasKg: toNumber(row.total_used_gas_kg),
+    totalGasUsedKg: toNumber(row.total_gas_used_kg),
   };
 }
 
@@ -295,7 +296,7 @@ router.get(
         totals.processing.completedBatches += report.processing.completedBatches;
         totals.processing.totalOutput += report.processing.totalOutput;
         totals.processing.totalInput += report.processing.totalInput;
-         totals.processing.totalUsedGasKg += report.processing.totalUsedGasKg;
+        totals.processing.totalGasUsedKg += report.processing.totalGasUsedKg;
 
         totals.packaging.totalBatches += report.packaging.totalBatches;
         totals.packaging.completedBatches += report.packaging.completedBatches;

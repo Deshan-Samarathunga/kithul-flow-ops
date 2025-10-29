@@ -22,7 +22,11 @@ const createBatchSchema = z.object({
 	productType: z.enum(PRODUCT_TYPES).optional(),
 });
 
-const numericMetric = z.number().min(0, "Value must be greater than or equal to 0").nullable().optional();
+const numericMeasurement = z
+	.number()
+	.min(0, "Value must be greater than or equal to 0")
+	.nullable()
+	.optional();
 
 const updateBatchSchema = z.object({
 	status: z.enum(BATCH_STATUSES).optional(),
@@ -31,8 +35,9 @@ const updateBatchSchema = z.object({
 		.optional()
 		.refine((val) => (val ? !Number.isNaN(Date.parse(val)) : true), "Invalid scheduled date"),
 	productType: z.enum(PRODUCT_TYPES).optional(),
-	totalSapOutput: numericMetric,
-	usedGasKg: numericMetric,
+	notes: z.string().optional(),
+	totalSapOutput: numericMeasurement,
+	gasUsedKg: numericMeasurement,
 });
 
 const updateBatchBucketsSchema = z.object({
@@ -264,7 +269,7 @@ async function fetchProcessingBatch(batchId: string) {
 		productType: batchRow.product_type as string,
 		status: batchRow.status as string,
 		totalSapOutput: batchRow.total_sap_output !== null ? Number(batchRow.total_sap_output) : null,
-		usedGasKg: batchRow.used_gas_kg !== null ? Number(batchRow.used_gas_kg) : null,
+		gasUsedKg: batchRow.used_gas_kg !== null ? Number(batchRow.used_gas_kg) : null,
 		createdBy: batchRow.created_by as string,
 		createdAt:
 			batchRow.created_at instanceof Date
@@ -324,7 +329,7 @@ router.get("/batches", auth, requireRole("Processing", "Administrator"), async (
 			productType: row.product_type as string,
 			status: row.status as string,
 			totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
-			usedGasKg: row.used_gas_kg !== null ? Number(row.used_gas_kg) : null,
+			gasUsedKg: row.used_gas_kg !== null ? Number(row.used_gas_kg) : null,
 			createdAt:
 				row.created_at instanceof Date
 					? row.created_at.toISOString()
@@ -404,7 +409,7 @@ router.post("/batches", auth, requireRole("Processing", "Administrator"), async 
 				productType: created.product_type,
 				status: created.status,
 				totalSapOutput: created.total_sap_output !== null ? Number(created.total_sap_output) : null,
-				usedGasKg: created.used_gas_kg !== null ? Number(created.used_gas_kg) : null,
+				gasUsedKg: created.used_gas_kg !== null ? Number(created.used_gas_kg) : null,
 				createdAt:
 					created.created_at instanceof Date
 						? created.created_at.toISOString()
@@ -480,9 +485,9 @@ router.patch("/batches/:batchId", auth, requireRole("Processing", "Administrator
 			paramIndex++;
 		}
 
-		if (validated.usedGasKg !== undefined) {
+		if (validated.gasUsedKg !== undefined) {
 			updateClauses.push(`used_gas_kg = $${paramIndex}`);
-			params.push(validated.usedGasKg);
+			params.push(validated.gasUsedKg);
 			paramIndex++;
 		}
 

@@ -186,8 +186,8 @@ CREATE INDEX IF NOT EXISTS idx_treacle_processing_batches_status
 CREATE INDEX IF NOT EXISTS idx_treacle_processing_batches_sched
   ON public.treacle_processing_batches (scheduled_date DESC);
 
-COMMENT ON TABLE public.sap_processing_batches IS 'Processing stage batches for SAP (supports up to fifteen buckets).';
-COMMENT ON TABLE public.treacle_processing_batches IS 'Processing stage batches for Treacle (supports up to fifteen buckets).';
+COMMENT ON TABLE public.sap_processing_batches IS 'Processing stage batches for SAP (tracks used gas in kg; supports up to fifteen buckets).';
+COMMENT ON TABLE public.treacle_processing_batches IS 'Processing stage batches for Treacle (tracks used gas in kg; supports up to fifteen buckets).';
 
 CREATE TABLE IF NOT EXISTS public.sap_processing_batch_buckets (
   id BIGSERIAL PRIMARY KEY,

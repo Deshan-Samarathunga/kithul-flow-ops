@@ -174,6 +174,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setHydrated(true);
     localStorage.removeItem("auth");
     sessionStorage.clear();
+    try {
+      // Preserve tabs, filters, product types, and searches on logout.
+      // Only clear transient dialog open states.
+      const dialogKeys = [
+        "packaging.reportDialogOpen",
+        "packaging.createDialogOpen",
+        "labeling.reportDialogOpen",
+        "labeling.createDialogOpen",
+      ];
+      dialogKeys.forEach((k) => localStorage.removeItem(k));
+    } catch {
+      // ignore
+    }
   }
 
   const value = useMemo(

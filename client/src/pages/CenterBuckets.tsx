@@ -8,6 +8,9 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { DataService } from "@/lib/dataService";
+import { usePersistentTab } from "@/hooks/usePersistentTab";
+import { usePersistentState } from "@/hooks/usePersistentState";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,9 +45,16 @@ export default function CenterBuckets() {
   }, []);
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = usePersistentState<string>(
+    `centerBuckets.search.${centerId ?? "all"}`,
+    ""
+  );
   const productTypeParam = searchParams.get("productType");
-  const [activeTab, setActiveTab] = useState(productTypeParam || "sap");
+  const [activeTab, setActiveTab] = usePersistentTab(
+    `tabs.centerBuckets.${centerId ?? "all"}`,
+    "sap"
+  );
+
   const [buckets, setBuckets] = useState<BucketListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +66,7 @@ export default function CenterBuckets() {
     if (productTypeParam && (productTypeParam === "sap" || productTypeParam === "treacle")) {
       setActiveTab(productTypeParam);
     }
-  }, [productTypeParam]);
+  }, [productTypeParam, setActiveTab]);
 
   // Define the 4 collection centers mapping
   const collectionCenters = {
