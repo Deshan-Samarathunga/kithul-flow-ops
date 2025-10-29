@@ -31,6 +31,7 @@ import DataService from "@/lib/dataService";
 import type { EligiblePackagingBatchDto, LabelingBatchDto } from "@/lib/apiClient";
 import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
 import { ProductTypeSelector } from "@/components/ProductTypeSelector";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
 const formatStatusLabel = (status: string) =>
   status
@@ -45,8 +46,11 @@ export default function Labeling() {
   const [batches, setBatches] = useState<LabelingBatchDto[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">("sap");
+  const [searchQuery, setSearchQuery] = usePersistentState<string>("labeling.search", "");
+  const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem("labeling.productType") : null;
+    return saved === "treacle" || saved === "sap" ? saved : "sap";
+  });
   const [isSavingLabeling, setIsSavingLabeling] = useState(false);
   const [labelingDialog, setLabelingDialog] = useState<{ open: boolean; batch: LabelingBatchDto | null }>(
     { open: false, batch: null }
@@ -61,12 +65,12 @@ export default function Labeling() {
   const [eligiblePackaging, setEligiblePackaging] = useState<EligiblePackagingBatchDto[]>([]);
   const [eligibleSearch, setEligibleSearch] = useState<string>("");
   const [isEligibleLoading, setIsEligibleLoading] = useState<boolean>(false);
-  const [createDialog, setCreateDialog] = useState<{ open: boolean }>({ open: false });
+  const [createDialog, setCreateDialog] = usePersistentState<{ open: boolean }>("labeling.createDialogOpen", { open: false });
   const [selectedPackagingId, setSelectedPackagingId] = useState<string | null>(null);
   const [isCreatingLabelingBatch, setIsCreatingLabelingBatch] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<{ packagingId: string; batchNumber: string } | null>(null);
   const [isDeletingLabeling, setIsDeletingLabeling] = useState<boolean>(false);
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = usePersistentState<boolean>("labeling.reportDialogOpen", false);
 
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
@@ -155,6 +159,16 @@ export default function Labeling() {
   useEffect(() => {
     void loadBatches();
   }, []);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("labeling.productType", productTypeFilter);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [productTypeFilter]);
 
   useEffect(() => {
     if (!isLoading && batches.length > 0) {

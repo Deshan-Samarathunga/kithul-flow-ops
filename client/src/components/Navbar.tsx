@@ -150,10 +150,10 @@ export const Navbar = ({ userRole = "Guest", userName = "User", userAvatar, onLo
           </SheetContent>
         </Sheet>
 
-        {/* Logo */}
-        <Link to="/" className="flex items-center space-x-2">
+        {/* Logo (non-clickable) */}
+        <div className="flex items-center space-x-2 select-none cursor-default">
           <div className="text-lg sm:text-xl font-bold text-white">Kithul Flow</div>
-        </Link>
+        </div>
 
         {/* Breadcrumbs - Center (Desktop) */}
         <div className="hidden lg:flex items-center space-x-2 text-sm text-white/90 absolute left-1/2 -translate-x-1/2">

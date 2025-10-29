@@ -11,6 +11,8 @@ import { adminListUsers, AdminUser, adminDeleteUser, adminListCenters, AdminCent
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CenterForm } from "@/components/CenterForm";
 import { ToggleSelector } from "@/components/ToggleSelector";
+import { usePersistentTab } from "@/hooks/usePersistentTab";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
 const ROLES_FOR_EMPLOYEES = [
   "Field Collection",
@@ -22,6 +24,7 @@ const ROLES_FOR_EMPLOYEES = [
 export default function Admin() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [adminTab, setAdminTab] = usePersistentTab("tabs.admin", "employees");
 
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
@@ -34,14 +37,20 @@ export default function Admin() {
   const [employees, setEmployees] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
-  const [employeeSearchQuery, setEmployeeSearchQuery] = useState("");
-  const [employeeRoleFilter, setEmployeeRoleFilter] = useState<"all" | "Field Collection" | "Processing" | "Packaging" | "Labeling">("all");
+  const [employeeSearchQuery, setEmployeeSearchQuery] = usePersistentState<string>("admin.employees.search", "");
+  const [employeeRoleFilter, setEmployeeRoleFilter] = usePersistentTab("filters.admin.employeeRole", "all") as unknown as [
+    "all" | "Field Collection" | "Processing" | "Packaging" | "Labeling",
+    (v: "all" | "Field Collection" | "Processing" | "Packaging" | "Labeling") => void
+  ];
   
   // Centers state
   const [centers, setCenters] = useState<AdminCenter[]>([]);
   const [centersLoading, setCentersLoading] = useState(false);
-  const [centerSearchQuery, setCenterSearchQuery] = useState("");
-  const [centerStatusFilter, setCenterStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [centerSearchQuery, setCenterSearchQuery] = usePersistentState<string>("admin.centers.search", "");
+  const [centerStatusFilter, setCenterStatusFilter] = usePersistentTab("filters.admin.centerStatus", "all") as unknown as [
+    "all" | "active" | "inactive",
+    (v: "all" | "active" | "inactive") => void
+  ];
   const [showCenterForm, setShowCenterForm] = useState(false);
   const [editingCenter, setEditingCenter] = useState<AdminCenter | null>(null);
   const [deleteCenterTarget, setDeleteCenterTarget] = useState<AdminCenter | null>(null);
@@ -203,7 +212,7 @@ export default function Admin() {
           <p className="text-sm text-muted-foreground">Manage employees, collection centers, monitoring and reports.</p>
         </div>
 
-        <Tabs defaultValue="employees" className="w-full">
+        <Tabs value={adminTab} onValueChange={setAdminTab} className="w-full">
           <TabsList className="mb-6 w-full sm:w-auto grid grid-cols-4 sm:inline-flex">
             <TabsTrigger value="employees" className="text-xs sm:text-sm">
               Employees
