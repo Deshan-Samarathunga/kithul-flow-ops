@@ -31,6 +31,7 @@ import DataService from "@/lib/dataService";
 import type { EligibleProcessingBatchDto, PackagingBatchDto } from "@/lib/apiClient";
 import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
 import { ProductTypeSelector } from "@/components/ProductTypeSelector";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
 export default function Packaging() {
   const navigate = useNavigate();
@@ -53,12 +54,12 @@ export default function Packaging() {
   const [eligibleProcessing, setEligibleProcessing] = useState<EligibleProcessingBatchDto[]>([]);
   const [eligibleSearch, setEligibleSearch] = useState<string>("");
   const [isEligibleLoading, setIsEligibleLoading] = useState<boolean>(false);
-  const [createDialog, setCreateDialog] = useState<{ open: boolean }>({ open: false });
+  const [createDialog, setCreateDialog] = usePersistentState<{ open: boolean }>("packaging.createDialogOpen", { open: false });
   const [selectedProcessingId, setSelectedProcessingId] = useState<string | null>(null);
   const [isCreatingPackagingBatch, setIsCreatingPackagingBatch] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<{ packagingId: string; batchNumber: string } | null>(null);
   const [isDeletingPackaging, setIsDeletingPackaging] = useState<boolean>(false);
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = usePersistentState<boolean>("packaging.reportDialogOpen", false);
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
   const apiBase = useMemo(() => {
@@ -66,8 +67,11 @@ export default function Packaging() {
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">("sap");
+  const [searchQuery, setSearchQuery] = usePersistentState<string>("packaging.search", "");
+  const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem("packaging.productType") : null;
+    return saved === "treacle" || saved === "sap" ? saved : "sap";
+  });
 
   const packagingMetrics = useMemo(() => {
     type Metrics = { total: number; active: number; completed: number };
@@ -191,6 +195,16 @@ export default function Packaging() {
   useEffect(() => {
     void loadBatches();
   }, []);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("packaging.productType", productTypeFilter);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [productTypeFilter]);
 
   useEffect(() => {
     if (createDialog.open) {

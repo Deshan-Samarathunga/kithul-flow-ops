@@ -36,18 +36,23 @@ export default function Processing() {
   const [submittingBatchId, setSubmittingBatchId] = useState<string | null>(null);
   const [reopeningBatchId, setReopeningBatchId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">("sap");
+  const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem("processing.productType") : null;
+    return saved === "treacle" || saved === "sap" ? saved : "sap";
+  });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; batchNumber: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
+
   const apiBase = useMemo(() => {
     const raw = import.meta.env.VITE_API_URL || "";
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
   const selectedProductLabel = productTypeFilter === "sap" ? "Sap" : "Treacle";
+
   const handleLogout = () => {
     logout();
     navigate("/");
@@ -70,6 +75,16 @@ export default function Processing() {
   useEffect(() => {
     void loadBatches();
   }, []);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("processing.productType", productTypeFilter);
+      }
+    } catch {
+      // no-op if storage is unavailable
+    }
+  }, [productTypeFilter]);
 
   const handleCreateBatch = async () => {
     setIsCreating(true);
