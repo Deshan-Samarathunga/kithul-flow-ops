@@ -70,3 +70,59 @@ export async function adminDeleteUser(id: number) {
     method: "DELETE",
   });
 }
+
+export type AdminCenter = {
+  id: number;
+  centerId: string;
+  centerName: string;
+  location: string;
+  centerAgent: string;
+  contactPhone?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function adminListCenters() {
+  const data = await apiFetch<{ centers: AdminCenter[] }>("/api/admin/centers");
+  return data.centers;
+}
+
+export async function adminGetCenter(id: number) {
+  return apiFetch<AdminCenter>(`/api/admin/centers/${id}`);
+}
+
+export async function adminCreateCenter(payload: {
+  centerId: string;
+  centerName: string;
+  location: string;
+  centerAgent: string;
+  contactPhone?: string;
+}) {
+  return apiFetch<AdminCenter>("/api/admin/centers", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function adminUpdateCenter(
+  id: number,
+  payload: {
+    centerName?: string;
+    location?: string;
+    centerAgent?: string;
+    contactPhone?: string;
+    isActive?: boolean;
+  }
+) {
+  return apiFetch<AdminCenter>(`/api/admin/centers/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function adminDeleteCenter(id: number) {
+  await apiFetch<undefined>(`/api/admin/centers/${id}`, {
+    method: "DELETE",
+  });
+}

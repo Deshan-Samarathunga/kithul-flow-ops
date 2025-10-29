@@ -47,6 +47,66 @@ const updateUserSchema = z
     message: "No changes provided",
   });
 
+const createCenterSchema = z.object({
+  centerId: z
+    .string()
+    .min(2)
+    .max(20)
+    .regex(/^[a-zA-Z0-9_-]+$/, "Center ID may only contain letters, numbers, hyphens, and underscores")
+    .transform((s) => s.trim()),
+  centerName: z
+    .string()
+    .min(2)
+    .max(100)
+    .transform((s) => s.trim()),
+  location: z
+    .string()
+    .min(2)
+    .max(100)
+    .transform((s) => s.trim()),
+  centerAgent: z
+    .string()
+    .min(2)
+    .max(100)
+    .transform((s) => s.trim()),
+  contactPhone: z
+    .string()
+    .max(20)
+    .optional()
+    .transform((s) => s?.trim() || null),
+});
+
+const updateCenterSchema = z
+  .object({
+    centerName: z
+      .string()
+      .min(2)
+      .max(100)
+      .transform((s) => s.trim())
+      .optional(),
+    location: z
+      .string()
+      .min(2)
+      .max(100)
+      .transform((s) => s.trim())
+      .optional(),
+    centerAgent: z
+      .string()
+      .min(2)
+      .max(100)
+      .transform((s) => s.trim())
+      .optional(),
+    contactPhone: z
+      .string()
+      .max(20)
+      .optional()
+      .transform((s) => s?.trim() || null),
+    isActive: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "No changes provided",
+  });
+
 const toClientUser = (row: any) =>
   row && {
     id: row.id,
@@ -56,6 +116,19 @@ const toClientUser = (row: any) =>
     isActive: true,
     createdAt: row.created_at,
     profileImage: row.profile_image ?? null,
+  };
+
+const toClientCenter = (row: any) =>
+  row && {
+    id: row.id,
+    centerId: row.center_id,
+    centerName: row.center_name,
+    location: row.location,
+    centerAgent: row.center_agent,
+    contactPhone: row.contact_phone,
+    isActive: row.is_active,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 
 router.get("/roles", (_req, res) => {
@@ -282,6 +355,189 @@ router.delete("/users/:userId", async (req, res) => {
     res.status(204).send();
   } catch (error) {
     console.error("ADMIN USER DELETE ERROR:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Collection Centers Management
+router.get("/centers", async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, center_id, center_name, location, center_agent, contact_phone, is_active, created_at, updated_at
+       FROM collection_centers
+       ORDER BY center_name`
+    );
+    res.json({ centers: rows.map(toClientCenter) });
+  } catch (error) {
+    console.error("ADMIN LIST CENTERS ERROR:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/centers/:centerId", async (req, res) => {
+  const centerId = Number(req.params.centerId);
+  if (!Number.isFinite(centerId) || centerId <= 0) {
+    return res.status(400).json({ error: "Invalid center id" });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, center_id, center_name, location, center_agent, contact_phone, is_active, created_at, updated_at
+       FROM collection_centers
+       WHERE id = $1`,
+      [centerId]
+    );
+    const center = rows[0];
+    if (!center) return res.status(404).json({ error: "Center not found" });
+    res.json(toClientCenter(center));
+  } catch (error) {
+    console.error("ADMIN GET CENTER ERROR:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post("/centers", async (req, res) => {
+  const parsed = createCenterSchema.safeParse((req as any).body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+  }
+
+  const { centerId, centerName, location, centerAgent, contactPhone } = parsed.data;
+
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO collection_centers (
+         center_id,
+         center_name,
+         location,
+         center_agent,
+         contact_phone
+       )
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, center_id, center_name, location, center_agent, contact_phone, is_active, created_at, updated_at`,
+      [centerId, centerName, location, centerAgent, contactPhone]
+    );
+
+    const created = rows[0];
+    res.status(201).json(toClientCenter(created));
+  } catch (error: any) {
+    if (error?.code === "23505" && error.constraint?.includes("center_id")) {
+      return res.status(409).json({ error: "Center ID already exists" });
+    }
+    console.error("ADMIN CENTER CREATE ERROR:", error);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.patch("/centers/:centerId", async (req, res) => {
+  const parsed = updateCenterSchema.safeParse((req as any).body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Invalid payload" });
+  }
+
+  const centerId = Number(req.params.centerId);
+  if (!Number.isFinite(centerId) || centerId <= 0) {
+    return res.status(400).json({ error: "Invalid center id" });
+  }
+
+  try {
+    const { rows: existingRows } = await pool.query(
+      `SELECT id, center_id, center_name, location, center_agent, contact_phone, is_active
+       FROM collection_centers WHERE id = $1`,
+      [centerId]
+    );
+    const existing = existingRows[0];
+    if (!existing) {
+      return res.status(404).json({ error: "Center not found" });
+    }
+
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    if (parsed.data.centerName !== undefined) {
+      updates.push(`center_name = $${updates.length + 1}`);
+      params.push(parsed.data.centerName);
+    }
+
+    if (parsed.data.location !== undefined) {
+      updates.push(`location = $${updates.length + 1}`);
+      params.push(parsed.data.location);
+    }
+
+    if (parsed.data.centerAgent !== undefined) {
+      updates.push(`center_agent = $${updates.length + 1}`);
+      params.push(parsed.data.centerAgent);
+    }
+
+    if (parsed.data.contactPhone !== undefined) {
+      updates.push(`contact_phone = $${updates.length + 1}`);
+      params.push(parsed.data.contactPhone);
+    }
+
+    if (parsed.data.isActive !== undefined) {
+      updates.push(`is_active = $${updates.length + 1}`);
+      params.push(parsed.data.isActive);
+    }
+
+    if (updates.length === 0) {
+      return res.json(toClientCenter(existing));
+    }
+
+    params.push(centerId);
+
+    const { rows } = await pool.query(
+      `UPDATE collection_centers
+       SET ${updates.join(", ")}, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $${params.length}
+       RETURNING id, center_id, center_name, location, center_agent, contact_phone, is_active, created_at, updated_at`,
+      params
+    );
+    const updated = rows[0];
+
+    res.json(toClientCenter(updated));
+  } catch (error) {
+    console.error("ADMIN CENTER UPDATE ERROR:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.delete("/centers/:centerId", async (req, res) => {
+  const centerId = Number(req.params.centerId);
+  if (!Number.isFinite(centerId) || centerId <= 0) {
+    return res.status(400).json({ error: "Invalid center id" });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, center_id, center_name FROM collection_centers WHERE id = $1`,
+      [centerId]
+    );
+    const existing = rows[0];
+    if (!existing) {
+      return res.status(404).json({ error: "Center not found" });
+    }
+
+    // Check if center has associated buckets
+    const { rows: bucketRows } = await pool.query(
+      `SELECT 1 FROM (
+        SELECT collection_center_id FROM sap_buckets
+        UNION ALL
+        SELECT collection_center_id FROM treacle_buckets
+      ) buckets WHERE collection_center_id = $1 LIMIT 1`,
+      [centerId]
+    );
+
+    if (bucketRows.length > 0) {
+      return res.status(400).json({ 
+        error: "Cannot delete center with associated buckets. Deactivate instead." 
+      });
+    }
+
+    await pool.query(`DELETE FROM collection_centers WHERE id = $1`, [centerId]);
+
+    res.status(204).send();
+  } catch (error) {
+    console.error("ADMIN CENTER DELETE ERROR:", error);
     res.status(500).json({ error: "Server error" });
   }
 });

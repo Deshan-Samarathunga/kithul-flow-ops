@@ -20,6 +20,7 @@ import type { ProcessingBatchDto } from "@/lib/apiClient";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
+import { ProductTypeSelector } from "@/components/ProductTypeSelector";
 
 function normalizeStatus(status: string | null | undefined) {
   return String(status ?? "").trim().toLowerCase();
@@ -46,10 +47,6 @@ export default function Processing() {
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
-  const productTypeOptions: Array<{ value: "sap" | "treacle"; label: string }> = [
-    { value: "sap", label: "Sap" },
-    { value: "treacle", label: "Treacle" },
-  ];
   const selectedProductLabel = productTypeFilter === "sap" ? "Sap" : "Treacle";
   const handleLogout = () => {
     logout();
@@ -252,35 +249,11 @@ export default function Processing() {
 
           <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="flex items-center gap-1 bg-muted/60 rounded-full p-1 w-full sm:w-auto">
-                {productTypeOptions.map((option) => {
-                  const isActive = option.value === productTypeFilter;
-                  const metrics = batchMetrics[option.value];
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setProductTypeFilter(option.value)}
-                      className={cn(
-                        "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                        isActive
-                          ? "bg-cta text-cta-foreground shadow"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <span>{option.label}</span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                          isActive ? "bg-white/25 text-white" : "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {metrics.total}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <ProductTypeSelector
+                value={productTypeFilter}
+                onChange={setProductTypeFilter}
+                metrics={batchMetrics}
+              />
 
               <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
                 <div className="relative w-full sm:w-64">
