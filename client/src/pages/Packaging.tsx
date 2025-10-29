@@ -45,11 +45,11 @@ export default function Packaging() {
   );
   const [packagingForm, setPackagingForm] = useState({
     finishedQuantity: "",
-    bottleCost: "",
-    lidCost: "",
-    alufoilCost: "",
-    vacuumBagCost: "",
-    parchmentPaperCost: "",
+    bottleQuantity: "",
+    lidQuantity: "",
+    alufoilQuantity: "",
+    vacuumBagQuantity: "",
+    parchmentPaperQuantity: "",
   });
   const [eligibleProcessing, setEligibleProcessing] = useState<EligibleProcessingBatchDto[]>([]);
   const [eligibleSearch, setEligibleSearch] = useState<string>("");
@@ -236,14 +236,11 @@ export default function Packaging() {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
 
-  const formatCurrencyValue = (value: number | null | undefined) => {
+  const formatMaterialQuantity = (value: number | null | undefined) => {
     if (value === null || value === undefined) {
       return "—";
     }
-    return `Rs ${Number(value).toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
+    return Number(value).toLocaleString();
   };
 
   const formatVolumeByProduct = (
@@ -264,16 +261,17 @@ export default function Packaging() {
         batch.finishedQuantity !== null && batch.finishedQuantity !== undefined
           ? String(batch.finishedQuantity)
           : "",
-      bottleCost:
-        batch.bottleCost !== null && batch.bottleCost !== undefined ? String(batch.bottleCost) : "",
-      lidCost: batch.lidCost !== null && batch.lidCost !== undefined ? String(batch.lidCost) : "",
-      alufoilCost:
-        batch.alufoilCost !== null && batch.alufoilCost !== undefined ? String(batch.alufoilCost) : "",
-      vacuumBagCost:
-        batch.vacuumBagCost !== null && batch.vacuumBagCost !== undefined ? String(batch.vacuumBagCost) : "",
-      parchmentPaperCost:
-        batch.parchmentPaperCost !== null && batch.parchmentPaperCost !== undefined
-          ? String(batch.parchmentPaperCost)
+      bottleQuantity:
+        batch.bottleQuantity !== null && batch.bottleQuantity !== undefined ? String(batch.bottleQuantity) : "",
+      lidQuantity:
+        batch.lidQuantity !== null && batch.lidQuantity !== undefined ? String(batch.lidQuantity) : "",
+      alufoilQuantity:
+        batch.alufoilQuantity !== null && batch.alufoilQuantity !== undefined ? String(batch.alufoilQuantity) : "",
+      vacuumBagQuantity:
+        batch.vacuumBagQuantity !== null && batch.vacuumBagQuantity !== undefined ? String(batch.vacuumBagQuantity) : "",
+      parchmentPaperQuantity:
+        batch.parchmentPaperQuantity !== null && batch.parchmentPaperQuantity !== undefined
+          ? String(batch.parchmentPaperQuantity)
           : "",
     });
   };
@@ -282,11 +280,11 @@ export default function Packaging() {
     setPackagingDialog({ open: false, batch: null });
     setPackagingForm({
       finishedQuantity: "",
-      bottleCost: "",
-      lidCost: "",
-      alufoilCost: "",
-      vacuumBagCost: "",
-      parchmentPaperCost: "",
+      bottleQuantity: "",
+      lidQuantity: "",
+      alufoilQuantity: "",
+      vacuumBagQuantity: "",
+      parchmentPaperQuantity: "",
     });
   };
 
@@ -300,11 +298,11 @@ export default function Packaging() {
     const productType = (targetBatch.productType || "").toLowerCase();
     const payload: {
       finishedQuantity?: number | null;
-      bottleCost?: number | null;
-      lidCost?: number | null;
-      alufoilCost?: number | null;
-      vacuumBagCost?: number | null;
-      parchmentPaperCost?: number | null;
+      bottleQuantity?: number | null;
+      lidQuantity?: number | null;
+      alufoilQuantity?: number | null;
+      vacuumBagQuantity?: number | null;
+      parchmentPaperQuantity?: number | null;
     } = {};
 
     const parseNumber = (value: string) => {
@@ -319,21 +317,21 @@ export default function Packaging() {
     }
     payload.finishedQuantity = finishedQuantityValue;
 
-    const parseCost = parseNumber;
+    const parseQuantity = parseNumber;
 
     if (productType === "sap") {
-      const bottle = parseCost(packagingForm.bottleCost);
-      const lid = parseCost(packagingForm.lidCost);
+      const bottle = parseQuantity(packagingForm.bottleQuantity);
+      const lid = parseQuantity(packagingForm.lidQuantity);
       if (Number.isNaN(bottle) || Number.isNaN(lid) || bottle < 0 || lid < 0) {
-        toast.error("Enter valid non-negative values for bottle and lid costs.");
+        toast.error("Enter valid non-negative quantities for bottles and lids.");
         return;
       }
-      payload.bottleCost = bottle;
-      payload.lidCost = lid;
+      payload.bottleQuantity = bottle;
+      payload.lidQuantity = lid;
     } else if (productType === "treacle") {
-      const alufoil = parseCost(packagingForm.alufoilCost);
-      const vacuum = parseCost(packagingForm.vacuumBagCost);
-      const parchment = parseCost(packagingForm.parchmentPaperCost);
+      const alufoil = parseQuantity(packagingForm.alufoilQuantity);
+      const vacuum = parseQuantity(packagingForm.vacuumBagQuantity);
+      const parchment = parseQuantity(packagingForm.parchmentPaperQuantity);
       if (
         Number.isNaN(alufoil) ||
         Number.isNaN(vacuum) ||
@@ -342,12 +340,12 @@ export default function Packaging() {
         vacuum < 0 ||
         parchment < 0
       ) {
-        toast.error("Enter valid non-negative values for treacle packaging costs.");
+        toast.error("Enter valid non-negative quantities for treacle packaging materials.");
         return;
       }
-      payload.alufoilCost = alufoil;
-      payload.vacuumBagCost = vacuum;
-      payload.parchmentPaperCost = parchment;
+      payload.alufoilQuantity = alufoil;
+      payload.vacuumBagQuantity = vacuum;
+      payload.parchmentPaperQuantity = parchment;
     } else {
       toast.error("Unsupported product type for packaging data.");
       return;
@@ -429,7 +427,7 @@ export default function Packaging() {
             <div className="space-y-1">
               <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Packaging</h1>
               <p className="text-sm text-muted-foreground">
-                Review completed processing batches and record packaging costs.
+                Review completed processing batches and record packaging material usage.
               </p>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
@@ -520,18 +518,18 @@ export default function Packaging() {
                   batch.finishedQuantity !== null && batch.finishedQuantity !== undefined;
                 const hasPackagingData = isSap
                   ? hasFinishedQuantity &&
-                    batch.bottleCost !== null &&
-                    batch.bottleCost !== undefined &&
-                    batch.lidCost !== null &&
-                    batch.lidCost !== undefined
+                    batch.bottleQuantity !== null &&
+                    batch.bottleQuantity !== undefined &&
+                    batch.lidQuantity !== null &&
+                    batch.lidQuantity !== undefined
                   : isTreacle
                   ? hasFinishedQuantity &&
-                    batch.alufoilCost !== null &&
-                    batch.alufoilCost !== undefined &&
-                    batch.vacuumBagCost !== null &&
-                    batch.vacuumBagCost !== undefined &&
-                    batch.parchmentPaperCost !== null &&
-                    batch.parchmentPaperCost !== undefined
+                    batch.alufoilQuantity !== null &&
+                    batch.alufoilQuantity !== undefined &&
+                    batch.vacuumBagQuantity !== null &&
+                    batch.vacuumBagQuantity !== undefined &&
+                    batch.parchmentPaperQuantity !== null &&
+                    batch.parchmentPaperQuantity !== undefined
                   : false;
 
                 return (
@@ -563,27 +561,27 @@ export default function Packaging() {
                         {isSap ? (
                           <>
                             <div className="rounded-lg bg-muted/30 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Bottle Cost</p>
-                              <p className="mt-1 text-sm font-medium text-foreground">{formatCurrencyValue(batch.bottleCost ?? null)}</p>
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Bottle Quantity</p>
+                              <p className="mt-1 text-sm font-medium text-foreground">{formatMaterialQuantity(batch.bottleQuantity ?? null)}</p>
                             </div>
                             <div className="rounded-lg bg-muted/30 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Lid Cost</p>
-                              <p className="mt-1 text-sm font-medium text-foreground">{formatCurrencyValue(batch.lidCost ?? null)}</p>
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Lid Quantity</p>
+                              <p className="mt-1 text-sm font-medium text-foreground">{formatMaterialQuantity(batch.lidQuantity ?? null)}</p>
                             </div>
                           </>
                         ) : (
                           <>
                             <div className="rounded-lg bg-muted/30 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Alufoil Cost</p>
-                              <p className="mt-1 text-sm font-medium text-foreground">{formatCurrencyValue(batch.alufoilCost ?? null)}</p>
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Alufoil Quantity</p>
+                              <p className="mt-1 text-sm font-medium text-foreground">{formatMaterialQuantity(batch.alufoilQuantity ?? null)}</p>
                             </div>
                             <div className="rounded-lg bg-muted/30 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Vacuum Bag Cost</p>
-                              <p className="mt-1 text-sm font-medium text-foreground">{formatCurrencyValue(batch.vacuumBagCost ?? null)}</p>
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Vacuum Bag Quantity</p>
+                              <p className="mt-1 text-sm font-medium text-foreground">{formatMaterialQuantity(batch.vacuumBagQuantity ?? null)}</p>
                             </div>
                             <div className="rounded-lg bg-muted/30 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Parchment Paper Cost</p>
-                              <p className="mt-1 text-sm font-medium text-foreground">{formatCurrencyValue(batch.parchmentPaperCost ?? null)}</p>
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Parchment Paper Quantity</p>
+                              <p className="mt-1 text-sm font-medium text-foreground">{formatMaterialQuantity(batch.parchmentPaperQuantity ?? null)}</p>
                             </div>
                           </>
                         )}
@@ -781,8 +779,8 @@ export default function Packaging() {
             <DialogTitle>{dialogTitle}</DialogTitle>
             <DialogDescription>
               {packagingDialog.batch
-                ? `Capture packaging costs for batch ${packagingDialog.batch.batchNumber}.`
-                : "Capture packaging costs for this batch."}
+                ? `Capture packaging quantities for batch ${packagingDialog.batch.batchNumber}.`
+                : "Capture packaging quantities for this batch."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSavePackagingData} className="space-y-5">
@@ -821,29 +819,29 @@ export default function Packaging() {
             {isSapDialog && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="bottleCost">Bottle cost</Label>
+                  <Label htmlFor="bottleQuantity">Bottle quantity</Label>
                   <Input
-                    id="bottleCost"
+                    id="bottleQuantity"
                     type="number"
                     min="0"
-                    step="0.01"
-                    value={packagingForm.bottleCost}
+                    step="1"
+                    value={packagingForm.bottleQuantity}
                     onChange={(event) =>
-                      setPackagingForm((prev) => ({ ...prev, bottleCost: event.target.value }))
+                      setPackagingForm((prev) => ({ ...prev, bottleQuantity: event.target.value }))
                     }
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lidCost">Lid cost</Label>
+                  <Label htmlFor="lidQuantity">Lid quantity</Label>
                   <Input
-                    id="lidCost"
+                    id="lidQuantity"
                     type="number"
                     min="0"
-                    step="0.01"
-                    value={packagingForm.lidCost}
+                    step="1"
+                    value={packagingForm.lidQuantity}
                     onChange={(event) =>
-                      setPackagingForm((prev) => ({ ...prev, lidCost: event.target.value }))
+                      setPackagingForm((prev) => ({ ...prev, lidQuantity: event.target.value }))
                     }
                     required
                   />
@@ -854,43 +852,43 @@ export default function Packaging() {
             {isTreacleDialog && (
               <div className="grid gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="alufoilCost">Alufoil cost</Label>
+                  <Label htmlFor="alufoilQuantity">Alufoil quantity</Label>
                   <Input
-                    id="alufoilCost"
+                    id="alufoilQuantity"
                     type="number"
                     min="0"
-                    step="0.01"
-                    value={packagingForm.alufoilCost}
+                    step="1"
+                    value={packagingForm.alufoilQuantity}
                     onChange={(event) =>
-                      setPackagingForm((prev) => ({ ...prev, alufoilCost: event.target.value }))
+                      setPackagingForm((prev) => ({ ...prev, alufoilQuantity: event.target.value }))
                     }
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="vacuumBagCost">Vacuum bag cost</Label>
+                  <Label htmlFor="vacuumBagQuantity">Vacuum bag quantity</Label>
                   <Input
-                    id="vacuumBagCost"
+                    id="vacuumBagQuantity"
                     type="number"
                     min="0"
-                    step="0.01"
-                    value={packagingForm.vacuumBagCost}
+                    step="1"
+                    value={packagingForm.vacuumBagQuantity}
                     onChange={(event) =>
-                      setPackagingForm((prev) => ({ ...prev, vacuumBagCost: event.target.value }))
+                      setPackagingForm((prev) => ({ ...prev, vacuumBagQuantity: event.target.value }))
                     }
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="parchmentPaperCost">Parchment paper cost</Label>
+                  <Label htmlFor="parchmentPaperQuantity">Parchment paper quantity</Label>
                   <Input
-                    id="parchmentPaperCost"
+                    id="parchmentPaperQuantity"
                     type="number"
                     min="0"
-                    step="0.01"
-                    value={packagingForm.parchmentPaperCost}
+                    step="1"
+                    value={packagingForm.parchmentPaperQuantity}
                     onChange={(event) =>
-                      setPackagingForm((prev) => ({ ...prev, parchmentPaperCost: event.target.value }))
+                      setPackagingForm((prev) => ({ ...prev, parchmentPaperQuantity: event.target.value }))
                     }
                     required
                   />

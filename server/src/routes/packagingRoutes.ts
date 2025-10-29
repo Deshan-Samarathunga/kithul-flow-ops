@@ -37,12 +37,12 @@ function mapPackagingRow(row: any) {
 		totalQuantity: Number(row.total_quantity ?? 0),
 		totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
 		finishedQuantity: row.finished_quantity !== null ? Number(row.finished_quantity) : null,
-		bottleCost: row.bottle_cost !== null ? Number(row.bottle_cost) : null,
-		lidCost: row.lid_cost !== null ? Number(row.lid_cost) : null,
-		alufoilCost: row.alufoil_cost !== null ? Number(row.alufoil_cost) : null,
-		vacuumBagCost: row.vacuum_bag_cost !== null ? Number(row.vacuum_bag_cost) : null,
-		parchmentPaperCost:
-			row.parchment_paper_cost !== null ? Number(row.parchment_paper_cost) : null,
+		bottleQuantity: row.bottle_quantity !== null ? Number(row.bottle_quantity) : null,
+		lidQuantity: row.lid_quantity !== null ? Number(row.lid_quantity) : null,
+		alufoilQuantity: row.alufoil_quantity !== null ? Number(row.alufoil_quantity) : null,
+		vacuumBagQuantity: row.vacuum_bag_quantity !== null ? Number(row.vacuum_bag_quantity) : null,
+		parchmentPaperQuantity:
+			row.parchment_paper_quantity !== null ? Number(row.parchment_paper_quantity) : null,
 	};
 }
 
@@ -52,9 +52,9 @@ const createPackagingSchema = z.object({
 	processingBatchId: z.string().min(1, "Processing batch id is required"),
 });
 
-const numericCost = z
+const numericQuantity = z
 	.number()
-	.min(0, "Cost must be greater than or equal to 0")
+	.min(0, "Quantity must be greater than or equal to 0")
 	.nullable()
 	.optional();
 
@@ -69,11 +69,11 @@ const updatePackagingSchema = z.object({
 		.number()
 		.min(0, "Finished quantity must be greater than or equal to 0")
 		.optional(),
-	bottleCost: numericCost,
-	lidCost: numericCost,
-	alufoilCost: numericCost,
-	vacuumBagCost: numericCost,
-	parchmentPaperCost: numericCost,
+	bottleQuantity: numericQuantity,
+	lidQuantity: numericQuantity,
+	alufoilQuantity: numericQuantity,
+	vacuumBagQuantity: numericQuantity,
+	parchmentPaperQuantity: numericQuantity,
 });
 
 async function fetchPackagingBatchByPackagingId(packagingId: string) {
@@ -89,11 +89,11 @@ async function fetchPackagingBatchByPackagingId(packagingId: string) {
       pkg.started_at,
       pkg.updated_at AS packaging_updated_at,
       pkg.notes AS packaging_notes,
-      pkg.bottle_cost,
-      pkg.lid_cost,
-      pkg.alufoil_cost,
-      pkg.vacuum_bag_cost,
-      pkg.parchment_paper_cost,
+	  pkg.bottle_quantity,
+	  pkg.lid_quantity,
+	  pkg.alufoil_quantity,
+	  pkg.vacuum_bag_quantity,
+	  pkg.parchment_paper_quantity,
       pkg.finished_quantity,
       pb.id AS processing_pk,
       pb.batch_id,
@@ -115,11 +115,11 @@ async function fetchPackagingBatchByPackagingId(packagingId: string) {
       pkg.started_at,
       pkg.updated_at,
       pkg.notes,
-      pkg.bottle_cost,
-      pkg.lid_cost,
-      pkg.alufoil_cost,
-      pkg.vacuum_bag_cost,
-      pkg.parchment_paper_cost,
+	  pkg.bottle_quantity,
+	  pkg.lid_quantity,
+	  pkg.alufoil_quantity,
+	  pkg.vacuum_bag_quantity,
+	  pkg.parchment_paper_quantity,
       pkg.finished_quantity,
       pb.id,
       pb.batch_id,
@@ -267,11 +267,11 @@ async function fetchPackagingSummaries(productType: ProductSlug) {
 			pb.scheduled_date,
 			pb.total_sap_output,
 			pkg.notes AS packaging_notes,
-			pkg.bottle_cost,
-			pkg.lid_cost,
-			pkg.alufoil_cost,
-			pkg.vacuum_bag_cost,
-			pkg.parchment_paper_cost,
+			pkg.bottle_quantity,
+			pkg.lid_quantity,
+			pkg.alufoil_quantity,
+			pkg.vacuum_bag_quantity,
+			pkg.parchment_paper_quantity,
 			pkg.finished_quantity,
 			COALESCE(SUM(b.quantity), 0) AS total_quantity,
 			COUNT(pbb.bucket_id) AS bucket_count
@@ -291,11 +291,11 @@ async function fetchPackagingSummaries(productType: ProductSlug) {
 			pb.scheduled_date,
 			pb.total_sap_output,
 			pkg.notes,
-			pkg.bottle_cost,
-			pkg.lid_cost,
-			pkg.alufoil_cost,
-			pkg.vacuum_bag_cost,
-			pkg.parchment_paper_cost,
+			pkg.bottle_quantity,
+			pkg.lid_quantity,
+			pkg.alufoil_quantity,
+			pkg.vacuum_bag_quantity,
+			pkg.parchment_paper_quantity,
 			pkg.finished_quantity
 		ORDER BY pkg.started_at DESC, pkg.packaging_id ASC
 	`;
@@ -389,19 +389,19 @@ router.post("/batches", auth, requireRole("Packaging", "Administrator"), async (
 				const productType = (existing.productType || "").toLowerCase();
 
 				if (productType === "sap") {
-					if (validated.bottleCost === undefined || validated.lidCost === undefined) {
+					if (validated.bottleQuantity === undefined || validated.lidQuantity === undefined) {
 						return res
 							.status(400)
-							.json({ error: "Bottle cost and lid cost are required for sap packaging." });
+							.json({ error: "Bottle and lid quantities are required for sap packaging." });
 					}
 				} else if (productType === "treacle") {
 					if (
-						validated.alufoilCost === undefined ||
-						validated.vacuumBagCost === undefined ||
-						validated.parchmentPaperCost === undefined
+						validated.alufoilQuantity === undefined ||
+						validated.vacuumBagQuantity === undefined ||
+						validated.parchmentPaperQuantity === undefined
 					) {
 						return res.status(400).json({
-							error: "Alufoil, vacuum bag, and parchment paper costs are required for treacle packaging.",
+							error: "Alufoil, vacuum bag, and parchment paper quantities are required for treacle packaging.",
 						});
 					}
 				}
@@ -415,7 +415,7 @@ router.post("/batches", auth, requireRole("Packaging", "Administrator"), async (
 				const params: any[] = [];
 				let paramIndex = 1;
 
-				const applyCostUpdate = (
+				const applyQuantityUpdate = (
 					field: keyof typeof validated,
 					dbColumn: string
 				) => {
@@ -427,12 +427,12 @@ router.post("/batches", auth, requireRole("Packaging", "Administrator"), async (
 					}
 				};
 
-				applyCostUpdate("finishedQuantity", "finished_quantity");
-				applyCostUpdate("bottleCost", "bottle_cost");
-				applyCostUpdate("lidCost", "lid_cost");
-				applyCostUpdate("alufoilCost", "alufoil_cost");
-				applyCostUpdate("vacuumBagCost", "vacuum_bag_cost");
-				applyCostUpdate("parchmentPaperCost", "parchment_paper_cost");
+				applyQuantityUpdate("finishedQuantity", "finished_quantity");
+				applyQuantityUpdate("bottleQuantity", "bottle_quantity");
+				applyQuantityUpdate("lidQuantity", "lid_quantity");
+				applyQuantityUpdate("alufoilQuantity", "alufoil_quantity");
+				applyQuantityUpdate("vacuumBagQuantity", "vacuum_bag_quantity");
+				applyQuantityUpdate("parchmentPaperQuantity", "parchment_paper_quantity");
 
 				if (validated.status) {
 					updateClauses.push(`status = $${paramIndex}`);

@@ -69,11 +69,11 @@ export type PackagingBatchDto = {
   totalSapOutput?: number | null;
   finishedQuantity?: number | null;
   notes?: string | null;
-  bottleCost?: number | null;
-  lidCost?: number | null;
-  alufoilCost?: number | null;
-  vacuumBagCost?: number | null;
-  parchmentPaperCost?: number | null;
+  bottleQuantity?: number | null;
+  lidQuantity?: number | null;
+  alufoilQuantity?: number | null;
+  vacuumBagQuantity?: number | null;
+  parchmentPaperQuantity?: number | null;
 };
 
 export type LabelingBatchDto = {
@@ -93,10 +93,10 @@ export type LabelingBatchDto = {
   totalQuantity: number;
   totalSapOutput?: number | null;
   finishedQuantity?: number | null;
-  stickerCost?: number | null;
-  shrinkSleeveCost?: number | null;
-  neckTagCost?: number | null;
-  corrugatedCartonCost?: number | null;
+  stickerQuantity?: number | null;
+  shrinkSleeveQuantity?: number | null;
+  neckTagQuantity?: number | null;
+  corrugatedCartonQuantity?: number | null;
 };
 
 export type EligiblePackagingBatchDto = {
@@ -132,19 +132,19 @@ export type DailyProductionReport = {
       totalBatches: number;
       completedBatches: number;
       finishedQuantity: number;
-      totalBottleCost: number;
-      totalLidCost: number;
-      totalAlufoilCost: number;
-      totalVacuumBagCost: number;
-      totalParchmentPaperCost: number;
+      totalBottleQuantity: number;
+      totalLidQuantity: number;
+      totalAlufoilQuantity: number;
+      totalVacuumBagQuantity: number;
+      totalParchmentPaperQuantity: number;
     };
     labeling: {
       totalBatches: number;
       completedBatches: number;
-      totalStickerCost: number;
-      totalShrinkSleeveCost: number;
-      totalNeckTagCost: number;
-      totalCorrugatedCartonCost: number;
+      totalStickerQuantity: number;
+      totalShrinkSleeveQuantity: number;
+      totalNeckTagQuantity: number;
+      totalCorrugatedCartonQuantity: number;
     };
   }>;
   totals: {
@@ -165,19 +165,19 @@ export type DailyProductionReport = {
       totalBatches: number;
       completedBatches: number;
       finishedQuantity: number;
-      totalBottleCost: number;
-      totalLidCost: number;
-      totalAlufoilCost: number;
-      totalVacuumBagCost: number;
-      totalParchmentPaperCost: number;
+      totalBottleQuantity: number;
+      totalLidQuantity: number;
+      totalAlufoilQuantity: number;
+      totalVacuumBagQuantity: number;
+      totalParchmentPaperQuantity: number;
     };
     labeling: {
       totalBatches: number;
       completedBatches: number;
-      totalStickerCost: number;
-      totalShrinkSleeveCost: number;
-      totalNeckTagCost: number;
-      totalCorrugatedCartonCost: number;
+      totalStickerQuantity: number;
+      totalShrinkSleeveQuantity: number;
+      totalNeckTagQuantity: number;
+      totalCorrugatedCartonQuantity: number;
     };
   };
 };
@@ -491,11 +491,11 @@ class ApiClient {
       status?: string;
       notes?: string;
       finishedQuantity?: number | null;
-      bottleCost?: number | null;
-      lidCost?: number | null;
-      alufoilCost?: number | null;
-      vacuumBagCost?: number | null;
-      parchmentPaperCost?: number | null;
+      bottleQuantity?: number | null;
+      lidQuantity?: number | null;
+      alufoilQuantity?: number | null;
+      vacuumBagQuantity?: number | null;
+      parchmentPaperQuantity?: number | null;
     }
   ) {
     return this.request<PackagingBatchDto>(`/packaging/batches/${packagingId}`, {
@@ -547,10 +547,10 @@ class ApiClient {
     payload: {
       status?: string;
       notes?: string;
-      stickerCost?: number | null;
-      shrinkSleeveCost?: number | null;
-      neckTagCost?: number | null;
-      corrugatedCartonCost?: number | null;
+      stickerQuantity?: number | null;
+      shrinkSleeveQuantity?: number | null;
+      neckTagQuantity?: number | null;
+      corrugatedCartonQuantity?: number | null;
     }
   ) {
     return this.request<LabelingBatchDto>(`/labeling/batches/${packagingId}`, {

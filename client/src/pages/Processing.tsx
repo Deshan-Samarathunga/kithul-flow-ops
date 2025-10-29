@@ -159,6 +159,8 @@ export default function Processing() {
 
   const formatOutputQuantity = (batch: ProcessingBatchDto) =>
     formatVolumeByProduct(batch.totalSapOutput ?? null, batch.productType);
+  const formatOutputQuantity = (batch: ProcessingBatchDto) =>
+    formatVolumeByProduct(batch.totalSapOutput ?? null, batch.productType);
 
   const batchMetrics = useMemo(() => {
     type Metric = { total: number; active: number; completed: number };

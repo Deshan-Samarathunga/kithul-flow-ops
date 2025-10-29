@@ -20,7 +20,6 @@ const createBatchSchema = z.object({
 		.optional()
 		.refine((val) => (val ? !Number.isNaN(Date.parse(val)) : true), "Invalid scheduled date"),
 	productType: z.enum(PRODUCT_TYPES).optional(),
-	notes: z.string().optional(),
 });
 
 const numericMeasurement = z
@@ -30,13 +29,13 @@ const numericMeasurement = z
 	.optional();
 
 const updateBatchSchema = z.object({
-  status: z.enum(BATCH_STATUSES).optional(),
-  scheduledDate: z
-    .string()
-    .optional()
-    .refine((val) => (val ? !Number.isNaN(Date.parse(val)) : true), "Invalid scheduled date"),
-  productType: z.enum(PRODUCT_TYPES).optional(),
-  notes: z.string().optional(),
+	status: z.enum(BATCH_STATUSES).optional(),
+	scheduledDate: z
+		.string()
+		.optional()
+		.refine((val) => (val ? !Number.isNaN(Date.parse(val)) : true), "Invalid scheduled date"),
+	productType: z.enum(PRODUCT_TYPES).optional(),
+	notes: z.string().optional(),
 	totalSapOutput: numericMeasurement,
 	gasUsedKg: numericMeasurement,
 });
@@ -218,7 +217,6 @@ async function fetchProcessingBatch(batchId: string) {
 			pb.scheduled_date,
 			pb.product_type,
 			pb.status,
-			pb.notes,
 			pb.total_sap_output,
 			pb.used_gas_kg,
 			pb.created_by,
@@ -237,7 +235,6 @@ async function fetchProcessingBatch(batchId: string) {
 			pb.scheduled_date,
 			pb.product_type,
 			pb.status,
-			pb.notes,
 			pb.total_sap_output,
 			pb.used_gas_kg,
 			pb.created_by,
@@ -271,7 +268,6 @@ async function fetchProcessingBatch(batchId: string) {
 				: (batchRow.scheduled_date as string | null),
 		productType: batchRow.product_type as string,
 		status: batchRow.status as string,
-		notes: batchRow.notes as string | null,
 		totalSapOutput: batchRow.total_sap_output !== null ? Number(batchRow.total_sap_output) : null,
 		gasUsedKg: batchRow.used_gas_kg !== null ? Number(batchRow.used_gas_kg) : null,
 		createdBy: batchRow.created_by as string,
@@ -385,10 +381,9 @@ router.post("/batches", auth, requireRole("Processing", "Administrator"), async 
 					scheduled_date,
 					product_type,
 					status,
-					notes,
 					created_by
 				)
-				VALUES ($1, $2, $3, $4, 'in-progress', $5, $6)
+				VALUES ($1, $2, $3, $4, 'in-progress', $5)
 				RETURNING batch_id, batch_number, scheduled_date, product_type, status, created_at, updated_at, total_sap_output, used_gas_kg
 			`;
 
@@ -397,7 +392,6 @@ router.post("/batches", auth, requireRole("Processing", "Administrator"), async 
 				nextBatchNumber,
 				scheduledDate,
 				productType,
-				validated.notes ?? null,
 				user.userId,
 			]);
 
@@ -483,12 +477,6 @@ router.patch("/batches/:batchId", auth, requireRole("Processing", "Administrator
 
 		if (validated.productType && normalizeProduct(validated.productType) !== context.productType) {
 			return res.status(400).json({ error: "Cannot move batch between products" });
-		}
-
-		if (validated.notes !== undefined) {
-			updateClauses.push(`notes = $${paramIndex}`);
-			params.push(validated.notes ?? null);
-			paramIndex++;
 		}
 
 		if (validated.totalSapOutput !== undefined) {
@@ -634,22 +622,6 @@ router.post(
 			if (batchRow.status !== "completed") {
 				await client.query(
 					`UPDATE ${context.batchTable} SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-					[batchRow.id]
-				);
-			}
-
-			const packagingId = `pkg${Date.now()}`;
-			const insertPackaging = await client.query(
-				`INSERT INTO ${context.packagingTable} (packaging_id, processing_batch_id, status)
-				 VALUES ($1, $2, 'pending')
-				 ON CONFLICT (processing_batch_id) DO NOTHING
-				 RETURNING packaging_id`,
-				[packagingId, batchRow.id]
-			);
-
-			if (insertPackaging.rows.length === 0) {
-				await client.query(
-					`UPDATE ${context.packagingTable} SET updated_at = CURRENT_TIMESTAMP WHERE processing_batch_id = $1`,
 					[batchRow.id]
 				);
 			}
