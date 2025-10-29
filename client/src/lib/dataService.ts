@@ -209,7 +209,7 @@ export class DataService {
       productType?: string;
       notes?: string;
       totalSapOutput?: number | null;
-      gasCost?: number | null;
+      usedGasKg?: number | null;
       laborCost?: number | null;
     }
   ) {
@@ -301,11 +301,11 @@ export class DataService {
       status?: string;
       notes?: string;
       finishedQuantity?: number | null;
-      bottleCost?: number | null;
-      lidCost?: number | null;
-      alufoilCost?: number | null;
-      vacuumBagCost?: number | null;
-      parchmentPaperCost?: number | null;
+      bottleQuantity?: number | null;
+      lidQuantity?: number | null;
+      alufoilQuantity?: number | null;
+      vacuumBagQuantity?: number | null;
+      parchmentPaperQuantity?: number | null;
     }
   ) {
     try {
@@ -359,10 +359,10 @@ export class DataService {
     data: {
       status?: string;
       notes?: string;
-      stickerCost?: number | null;
-      shrinkSleeveCost?: number | null;
-      neckTagCost?: number | null;
-      corrugatedCartonCost?: number | null;
+      stickerQuantity?: number | null;
+      shrinkSleeveQuantity?: number | null;
+      neckTagQuantity?: number | null;
+      corrugatedCartonQuantity?: number | null;
     }
   ) {
     try {

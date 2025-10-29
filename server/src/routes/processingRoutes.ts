@@ -20,22 +20,19 @@ const createBatchSchema = z.object({
 		.optional()
 		.refine((val) => (val ? !Number.isNaN(Date.parse(val)) : true), "Invalid scheduled date"),
 	productType: z.enum(PRODUCT_TYPES).optional(),
-	notes: z.string().optional(),
 });
 
 const numericMetric = z.number().min(0, "Value must be greater than or equal to 0").nullable().optional();
 
 const updateBatchSchema = z.object({
-  status: z.enum(BATCH_STATUSES).optional(),
-  scheduledDate: z
-    .string()
-    .optional()
-    .refine((val) => (val ? !Number.isNaN(Date.parse(val)) : true), "Invalid scheduled date"),
-  productType: z.enum(PRODUCT_TYPES).optional(),
-  notes: z.string().optional(),
-  totalSapOutput: numericMetric,
-  gasCost: numericMetric,
-  laborCost: numericMetric,
+	status: z.enum(BATCH_STATUSES).optional(),
+	scheduledDate: z
+		.string()
+		.optional()
+		.refine((val) => (val ? !Number.isNaN(Date.parse(val)) : true), "Invalid scheduled date"),
+	productType: z.enum(PRODUCT_TYPES).optional(),
+	totalSapOutput: numericMetric,
+	usedGasKg: numericMetric,
 });
 
 const updateBatchBucketsSchema = z.object({
@@ -175,8 +172,7 @@ async function fetchProcessingBatchSummaries(productType: ProductSlug) {
 			pb.product_type,
 			pb.status,
 			pb.total_sap_output,
-			pb.gas_cost,
-			pb.labor_cost,
+			pb.used_gas_kg,
 			pb.created_at,
 			pb.updated_at,
 			COALESCE(SUM(b.quantity), 0) AS total_quantity,
@@ -192,8 +188,7 @@ async function fetchProcessingBatchSummaries(productType: ProductSlug) {
 			pb.product_type,
 			pb.status,
 			pb.total_sap_output,
-			pb.gas_cost,
-			pb.labor_cost,
+			pb.used_gas_kg,
 			pb.created_at,
 			pb.updated_at
 		ORDER BY pb.scheduled_date ASC, pb.created_at ASC
@@ -217,10 +212,8 @@ async function fetchProcessingBatch(batchId: string) {
 			pb.scheduled_date,
 			pb.product_type,
 			pb.status,
-			pb.notes,
 			pb.total_sap_output,
-			pb.gas_cost,
-			pb.labor_cost,
+			pb.used_gas_kg,
 			pb.created_by,
 			pb.created_at,
 			pb.updated_at,
@@ -237,10 +230,8 @@ async function fetchProcessingBatch(batchId: string) {
 			pb.scheduled_date,
 			pb.product_type,
 			pb.status,
-			pb.notes,
 			pb.total_sap_output,
-			pb.gas_cost,
-			pb.labor_cost,
+			pb.used_gas_kg,
 			pb.created_by,
 			pb.created_at,
 			pb.updated_at
@@ -272,10 +263,8 @@ async function fetchProcessingBatch(batchId: string) {
 				: (batchRow.scheduled_date as string | null),
 		productType: batchRow.product_type as string,
 		status: batchRow.status as string,
-		notes: batchRow.notes as string | null,
 		totalSapOutput: batchRow.total_sap_output !== null ? Number(batchRow.total_sap_output) : null,
-		gasCost: batchRow.gas_cost !== null ? Number(batchRow.gas_cost) : null,
-		laborCost: batchRow.labor_cost !== null ? Number(batchRow.labor_cost) : null,
+		usedGasKg: batchRow.used_gas_kg !== null ? Number(batchRow.used_gas_kg) : null,
 		createdBy: batchRow.created_by as string,
 		createdAt:
 			batchRow.created_at instanceof Date
@@ -335,8 +324,7 @@ router.get("/batches", auth, requireRole("Processing", "Administrator"), async (
 			productType: row.product_type as string,
 			status: row.status as string,
 			totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
-			gasCost: row.gas_cost !== null ? Number(row.gas_cost) : null,
-			laborCost: row.labor_cost !== null ? Number(row.labor_cost) : null,
+			usedGasKg: row.used_gas_kg !== null ? Number(row.used_gas_kg) : null,
 			createdAt:
 				row.created_at instanceof Date
 					? row.created_at.toISOString()
@@ -388,11 +376,10 @@ router.post("/batches", auth, requireRole("Processing", "Administrator"), async 
 					scheduled_date,
 					product_type,
 					status,
-					notes,
 					created_by
 				)
-				VALUES ($1, $2, $3, $4, 'in-progress', $5, $6)
-				RETURNING batch_id, batch_number, scheduled_date, product_type, status, created_at, updated_at, total_sap_output, gas_cost, labor_cost
+				VALUES ($1, $2, $3, $4, 'in-progress', $5)
+				RETURNING batch_id, batch_number, scheduled_date, product_type, status, created_at, updated_at, total_sap_output, used_gas_kg
 			`;
 
 			const { rows } = await client.query(insertQuery, [
@@ -400,7 +387,6 @@ router.post("/batches", auth, requireRole("Processing", "Administrator"), async 
 				nextBatchNumber,
 				scheduledDate,
 				productType,
-				validated.notes ?? null,
 				user.userId,
 			]);
 
@@ -418,8 +404,7 @@ router.post("/batches", auth, requireRole("Processing", "Administrator"), async 
 				productType: created.product_type,
 				status: created.status,
 				totalSapOutput: created.total_sap_output !== null ? Number(created.total_sap_output) : null,
-				gasCost: created.gas_cost !== null ? Number(created.gas_cost) : null,
-				laborCost: created.labor_cost !== null ? Number(created.labor_cost) : null,
+				usedGasKg: created.used_gas_kg !== null ? Number(created.used_gas_kg) : null,
 				createdAt:
 					created.created_at instanceof Date
 						? created.created_at.toISOString()
@@ -489,27 +474,15 @@ router.patch("/batches/:batchId", auth, requireRole("Processing", "Administrator
 			return res.status(400).json({ error: "Cannot move batch between products" });
 		}
 
-		if (validated.notes !== undefined) {
-			updateClauses.push(`notes = $${paramIndex}`);
-			params.push(validated.notes ?? null);
-			paramIndex++;
-		}
-
 		if (validated.totalSapOutput !== undefined) {
 			updateClauses.push(`total_sap_output = $${paramIndex}`);
 			params.push(validated.totalSapOutput);
 			paramIndex++;
 		}
 
-		if (validated.gasCost !== undefined) {
-			updateClauses.push(`gas_cost = $${paramIndex}`);
-			params.push(validated.gasCost);
-			paramIndex++;
-		}
-
-		if (validated.laborCost !== undefined) {
-			updateClauses.push(`labor_cost = $${paramIndex}`);
-			params.push(validated.laborCost);
+		if (validated.usedGasKg !== undefined) {
+			updateClauses.push(`used_gas_kg = $${paramIndex}`);
+			params.push(validated.usedGasKg);
 			paramIndex++;
 		}
 
@@ -644,22 +617,6 @@ router.post(
 			if (batchRow.status !== "completed") {
 				await client.query(
 					`UPDATE ${context.batchTable} SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-					[batchRow.id]
-				);
-			}
-
-			const packagingId = `pkg${Date.now()}`;
-			const insertPackaging = await client.query(
-				`INSERT INTO ${context.packagingTable} (packaging_id, processing_batch_id, status)
-				 VALUES ($1, $2, 'pending')
-				 ON CONFLICT (processing_batch_id) DO NOTHING
-				 RETURNING packaging_id`,
-				[packagingId, batchRow.id]
-			);
-
-			if (insertPackaging.rows.length === 0) {
-				await client.query(
-					`UPDATE ${context.packagingTable} SET updated_at = CURRENT_TIMESTAMP WHERE processing_batch_id = $1`,
 					[batchRow.id]
 				);
 			}

@@ -29,15 +29,15 @@ const stageMeta: Record<ReportStage, { title: string; description: string }> = {
   },
   processing: {
     title: "Processing daily report",
-    description: "Summarise processing throughput, output, and melting costs for the chosen date.",
+    description: "Summarise processing throughput, output, and gas usage for the chosen date.",
   },
   packaging: {
     title: "Packaging daily report",
-    description: "Track packaging batches, finished quantities, and material costs for the date.",
+    description: "Track packaging batches, finished quantities, and material quantities for the date.",
   },
   labeling: {
     title: "Labeling daily report",
-    description: "Inspect labeling progress and accessory costs captured for the selected day.",
+    description: "Inspect labeling progress and accessory quantities captured for the selected day.",
   },
 };
 
@@ -86,16 +86,16 @@ type PackagingStagePayload = {
   stage: "packaging";
   date: string;
   generatedAt: string;
-  perProduct: Record<ProductKey, PackagingMetrics & { totalCost: number }>;
-  totals: PackagingTotals & { totalCost: number };
+  perProduct: Record<ProductKey, PackagingMetrics & { totalMaterialsQuantity: number }>;
+  totals: PackagingTotals & { totalMaterialsQuantity: number };
 };
 
 type LabelingStagePayload = {
   stage: "labeling";
   date: string;
   generatedAt: string;
-  perProduct: Record<ProductKey, LabelingMetrics & { totalCost: number }>;
-  totals: LabelingTotals & { totalCost: number };
+  perProduct: Record<ProductKey, LabelingMetrics & { totalAccessoryQuantity: number }>;
+  totals: LabelingTotals & { totalAccessoryQuantity: number };
 };
 
 type StageReportPayload =
@@ -200,24 +200,24 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
     }
 
     if (stage === "packaging") {
-      const perProduct: Record<ProductKey, PackagingMetrics & { totalCost: number }> = {
+      const perProduct: Record<ProductKey, PackagingMetrics & { totalMaterialsQuantity: number }> = {
         sap: {
           ...report.perProduct.sap.packaging,
-          totalCost:
-            report.perProduct.sap.packaging.totalBottleCost +
-            report.perProduct.sap.packaging.totalLidCost +
-            report.perProduct.sap.packaging.totalAlufoilCost +
-            report.perProduct.sap.packaging.totalVacuumBagCost +
-            report.perProduct.sap.packaging.totalParchmentPaperCost,
+          totalMaterialsQuantity:
+            report.perProduct.sap.packaging.totalBottleQuantity +
+            report.perProduct.sap.packaging.totalLidQuantity +
+            report.perProduct.sap.packaging.totalAlufoilQuantity +
+            report.perProduct.sap.packaging.totalVacuumBagQuantity +
+            report.perProduct.sap.packaging.totalParchmentPaperQuantity,
         },
         treacle: {
           ...report.perProduct.treacle.packaging,
-          totalCost:
-            report.perProduct.treacle.packaging.totalBottleCost +
-            report.perProduct.treacle.packaging.totalLidCost +
-            report.perProduct.treacle.packaging.totalAlufoilCost +
-            report.perProduct.treacle.packaging.totalVacuumBagCost +
-            report.perProduct.treacle.packaging.totalParchmentPaperCost,
+          totalMaterialsQuantity:
+            report.perProduct.treacle.packaging.totalBottleQuantity +
+            report.perProduct.treacle.packaging.totalLidQuantity +
+            report.perProduct.treacle.packaging.totalAlufoilQuantity +
+            report.perProduct.treacle.packaging.totalVacuumBagQuantity +
+            report.perProduct.treacle.packaging.totalParchmentPaperQuantity,
         },
       };
 
@@ -229,32 +229,32 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
         perProduct,
         totals: {
           ...totals,
-          totalCost:
-            totals.totalBottleCost +
-            totals.totalLidCost +
-            totals.totalAlufoilCost +
-            totals.totalVacuumBagCost +
-            totals.totalParchmentPaperCost,
+          totalMaterialsQuantity:
+            totals.totalBottleQuantity +
+            totals.totalLidQuantity +
+            totals.totalAlufoilQuantity +
+            totals.totalVacuumBagQuantity +
+            totals.totalParchmentPaperQuantity,
         },
       } satisfies PackagingStagePayload;
     }
 
-    const perProduct: Record<ProductKey, LabelingMetrics & { totalCost: number }> = {
+    const perProduct: Record<ProductKey, LabelingMetrics & { totalAccessoryQuantity: number }> = {
       sap: {
         ...report.perProduct.sap.labeling,
-        totalCost:
-          report.perProduct.sap.labeling.totalStickerCost +
-          report.perProduct.sap.labeling.totalShrinkSleeveCost +
-          report.perProduct.sap.labeling.totalNeckTagCost +
-          report.perProduct.sap.labeling.totalCorrugatedCartonCost,
+        totalAccessoryQuantity:
+          report.perProduct.sap.labeling.totalStickerQuantity +
+          report.perProduct.sap.labeling.totalShrinkSleeveQuantity +
+          report.perProduct.sap.labeling.totalNeckTagQuantity +
+          report.perProduct.sap.labeling.totalCorrugatedCartonQuantity,
       },
       treacle: {
         ...report.perProduct.treacle.labeling,
-        totalCost:
-          report.perProduct.treacle.labeling.totalStickerCost +
-          report.perProduct.treacle.labeling.totalShrinkSleeveCost +
-          report.perProduct.treacle.labeling.totalNeckTagCost +
-          report.perProduct.treacle.labeling.totalCorrugatedCartonCost,
+        totalAccessoryQuantity:
+          report.perProduct.treacle.labeling.totalStickerQuantity +
+          report.perProduct.treacle.labeling.totalShrinkSleeveQuantity +
+          report.perProduct.treacle.labeling.totalNeckTagQuantity +
+          report.perProduct.treacle.labeling.totalCorrugatedCartonQuantity,
       },
     };
 
@@ -266,11 +266,11 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
       perProduct,
       totals: {
         ...totals,
-        totalCost:
-          totals.totalStickerCost +
-          totals.totalShrinkSleeveCost +
-          totals.totalNeckTagCost +
-          totals.totalCorrugatedCartonCost,
+        totalAccessoryQuantity:
+          totals.totalStickerQuantity +
+          totals.totalShrinkSleeveQuantity +
+          totals.totalNeckTagQuantity +
+          totals.totalCorrugatedCartonQuantity,
       },
     } satisfies LabelingStagePayload;
   }, [report, stage]);
@@ -448,7 +448,13 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
                 }),
                 note: unit,
               },
-              { label: "Gas cost", value: formatCurrency(metrics.totalGasCost) },
+              {
+                label: "Gas used",
+                value: `${formatNumber(metrics.totalUsedGasKg, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                })} kg`,
+              },
               { label: "Labor cost", value: formatCurrency(metrics.totalLaborCost) },
             ],
           });
@@ -473,7 +479,13 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
             }),
             note: "Sap in L, Treacle in kg",
           },
-          { label: "Gas cost", value: formatCurrency(stagePayload.totals.totalGasCost) },
+          {
+            label: "Gas used",
+            value: `${formatNumber(stagePayload.totals.totalUsedGasKg, {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            })} kg`,
+          },
           { label: "Labor cost", value: formatCurrency(stagePayload.totals.totalLaborCost) },
         ];
         break;
@@ -495,12 +507,12 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
                 }),
                 note: unit,
               },
-              { label: "Bottle cost", value: formatCurrency(metrics.totalBottleCost) },
-              { label: "Lid cost", value: formatCurrency(metrics.totalLidCost) },
-              { label: "Alufoil cost", value: formatCurrency(metrics.totalAlufoilCost) },
-              { label: "Vacuum bag cost", value: formatCurrency(metrics.totalVacuumBagCost) },
-              { label: "Parchment paper cost", value: formatCurrency(metrics.totalParchmentPaperCost) },
-              { label: "Total packaging cost", value: formatCurrency(metrics.totalCost) },
+              { label: "Bottle quantity", value: formatNumber(metrics.totalBottleQuantity) },
+              { label: "Lid quantity", value: formatNumber(metrics.totalLidQuantity) },
+              { label: "Alufoil quantity", value: formatNumber(metrics.totalAlufoilQuantity) },
+              { label: "Vacuum bag quantity", value: formatNumber(metrics.totalVacuumBagQuantity) },
+              { label: "Parchment paper quantity", value: formatNumber(metrics.totalParchmentPaperQuantity) },
+              { label: "Total materials quantity", value: formatNumber(metrics.totalMaterialsQuantity) },
             ],
           });
         });
@@ -516,12 +528,12 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
             }),
             note: "Sap in L, Treacle in kg",
           },
-          { label: "Bottle cost", value: formatCurrency(stagePayload.totals.totalBottleCost) },
-          { label: "Lid cost", value: formatCurrency(stagePayload.totals.totalLidCost) },
-          { label: "Alufoil cost", value: formatCurrency(stagePayload.totals.totalAlufoilCost) },
-          { label: "Vacuum bag cost", value: formatCurrency(stagePayload.totals.totalVacuumBagCost) },
-          { label: "Parchment paper cost", value: formatCurrency(stagePayload.totals.totalParchmentPaperCost) },
-          { label: "Total packaging cost", value: formatCurrency(stagePayload.totals.totalCost) },
+          { label: "Bottle quantity", value: formatNumber(stagePayload.totals.totalBottleQuantity) },
+          { label: "Lid quantity", value: formatNumber(stagePayload.totals.totalLidQuantity) },
+          { label: "Alufoil quantity", value: formatNumber(stagePayload.totals.totalAlufoilQuantity) },
+          { label: "Vacuum bag quantity", value: formatNumber(stagePayload.totals.totalVacuumBagQuantity) },
+          { label: "Parchment paper quantity", value: formatNumber(stagePayload.totals.totalParchmentPaperQuantity) },
+          { label: "Total materials quantity", value: formatNumber(stagePayload.totals.totalMaterialsQuantity) },
         ];
         break;
       }
@@ -533,11 +545,11 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
             metrics: [
               { label: "Batches", value: formatNumber(metrics.totalBatches) },
               { label: "Completed", value: formatNumber(metrics.completedBatches) },
-              { label: "Sticker cost", value: formatCurrency(metrics.totalStickerCost) },
-              { label: "Shrink sleeve cost", value: formatCurrency(metrics.totalShrinkSleeveCost) },
-              { label: "Neck tag cost", value: formatCurrency(metrics.totalNeckTagCost) },
-              { label: "Corrugated carton cost", value: formatCurrency(metrics.totalCorrugatedCartonCost) },
-              { label: "Total labeling cost", value: formatCurrency(metrics.totalCost) },
+              { label: "Sticker quantity", value: formatNumber(metrics.totalStickerQuantity) },
+              { label: "Shrink sleeve quantity", value: formatNumber(metrics.totalShrinkSleeveQuantity) },
+              { label: "Neck tag quantity", value: formatNumber(metrics.totalNeckTagQuantity) },
+              { label: "Corrugated carton quantity", value: formatNumber(metrics.totalCorrugatedCartonQuantity) },
+              { label: "Total accessory quantity", value: formatNumber(metrics.totalAccessoryQuantity) },
             ],
           });
         });
@@ -545,11 +557,11 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
         totalsMetrics = [
           { label: "Batches", value: formatNumber(stagePayload.totals.totalBatches) },
           { label: "Completed", value: formatNumber(stagePayload.totals.completedBatches) },
-          { label: "Sticker cost", value: formatCurrency(stagePayload.totals.totalStickerCost) },
-          { label: "Shrink sleeve cost", value: formatCurrency(stagePayload.totals.totalShrinkSleeveCost) },
-          { label: "Neck tag cost", value: formatCurrency(stagePayload.totals.totalNeckTagCost) },
-          { label: "Corrugated carton cost", value: formatCurrency(stagePayload.totals.totalCorrugatedCartonCost) },
-          { label: "Total labeling cost", value: formatCurrency(stagePayload.totals.totalCost) },
+          { label: "Sticker quantity", value: formatNumber(stagePayload.totals.totalStickerQuantity) },
+          { label: "Shrink sleeve quantity", value: formatNumber(stagePayload.totals.totalShrinkSleeveQuantity) },
+          { label: "Neck tag quantity", value: formatNumber(stagePayload.totals.totalNeckTagQuantity) },
+          { label: "Corrugated carton quantity", value: formatNumber(stagePayload.totals.totalCorrugatedCartonQuantity) },
+          { label: "Total accessory quantity", value: formatNumber(stagePayload.totals.totalAccessoryQuantity) },
         ];
         break;
       }
@@ -745,7 +757,7 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
               minimumFractionDigits: 1,
               maximumFractionDigits: 1,
             }),
-            helper: `Total packaging cost: ${formatCurrency(stagePayload.totals.totalCost)}`,
+            helper: `Materials total: ${formatNumber(stagePayload.totals.totalMaterialsQuantity)}`,
           }
         );
         break;
@@ -758,10 +770,10 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
             helper: `Completed: ${formatNumber(stagePayload.totals.completedBatches)}`,
           },
           {
-            key: "cost",
-            label: "Total labeling cost",
-            value: formatCurrency(stagePayload.totals.totalCost),
-            helper: `Sticker cost: ${formatCurrency(stagePayload.totals.totalStickerCost)}`,
+            key: "accessories",
+            label: "Accessory quantity",
+            value: formatNumber(stagePayload.totals.totalAccessoryQuantity),
+            helper: `Stickers: ${formatNumber(stagePayload.totals.totalStickerQuantity)}`,
           }
         );
         break;
@@ -901,7 +913,13 @@ function renderStageSections(payload: StageReportPayload) {
                       label={`Output (${unit})`}
                       value={formatNumber(metrics.totalOutput, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                     />
-                    <Metric label="Gas cost" value={formatCurrency(metrics.totalGasCost)} />
+                    <Metric
+                      label="Gas used (kg)"
+                      value={`${formatNumber(metrics.totalUsedGasKg, {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                      })}`}
+                    />
                     <Metric label="Labor cost" value={formatCurrency(metrics.totalLaborCost)} />
                   </div>
                 </div>
@@ -934,12 +952,12 @@ function renderStageSections(payload: StageReportPayload) {
                     </div>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    <Metric label="Bottle cost" value={formatCurrency(metrics.totalBottleCost)} />
-                    <Metric label="Lid cost" value={formatCurrency(metrics.totalLidCost)} />
-                    <Metric label="Alufoil cost" value={formatCurrency(metrics.totalAlufoilCost)} />
-                    <Metric label="Vacuum bag cost" value={formatCurrency(metrics.totalVacuumBagCost)} />
-                    <Metric label="Parchment paper cost" value={formatCurrency(metrics.totalParchmentPaperCost)} />
-                    <Metric label="Total packaging cost" value={formatCurrency(metrics.totalCost)} />
+                    <Metric label="Bottle quantity" value={formatNumber(metrics.totalBottleQuantity)} />
+                    <Metric label="Lid quantity" value={formatNumber(metrics.totalLidQuantity)} />
+                    <Metric label="Alufoil quantity" value={formatNumber(metrics.totalAlufoilQuantity)} />
+                    <Metric label="Vacuum bag quantity" value={formatNumber(metrics.totalVacuumBagQuantity)} />
+                    <Metric label="Parchment paper quantity" value={formatNumber(metrics.totalParchmentPaperQuantity)} />
+                    <Metric label="Materials total" value={formatNumber(metrics.totalMaterialsQuantity)} />
                   </div>
                 </div>
               );
@@ -967,11 +985,11 @@ function renderStageSections(payload: StageReportPayload) {
                     </div>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    <Metric label="Sticker cost" value={formatCurrency(metrics.totalStickerCost)} />
-                    <Metric label="Shrink sleeve cost" value={formatCurrency(metrics.totalShrinkSleeveCost)} />
-                    <Metric label="Neck tag cost" value={formatCurrency(metrics.totalNeckTagCost)} />
-                    <Metric label="Corrugated carton cost" value={formatCurrency(metrics.totalCorrugatedCartonCost)} />
-                    <Metric label="Total labeling cost" value={formatCurrency(metrics.totalCost)} />
+                    <Metric label="Sticker quantity" value={formatNumber(metrics.totalStickerQuantity)} />
+                    <Metric label="Shrink sleeve quantity" value={formatNumber(metrics.totalShrinkSleeveQuantity)} />
+                    <Metric label="Neck tag quantity" value={formatNumber(metrics.totalNeckTagQuantity)} />
+                    <Metric label="Corrugated carton quantity" value={formatNumber(metrics.totalCorrugatedCartonQuantity)} />
+                    <Metric label="Accessory total" value={formatNumber(metrics.totalAccessoryQuantity)} />
                   </div>
                 </div>
               );

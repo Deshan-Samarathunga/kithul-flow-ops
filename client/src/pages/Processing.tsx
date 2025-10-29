@@ -51,7 +51,7 @@ export default function Processing() {
   );
   const [productionForm, setProductionForm] = useState({
     totalSapOutput: "",
-    gasCost: "",
+    usedGasKg: "",
     laborCost: "",
   });
   const [isSavingProduction, setIsSavingProduction] = useState(false);
@@ -190,6 +190,13 @@ export default function Processing() {
     })}`;
   };
 
+  const formatUsedGasKg = (value: number | null | undefined) => {
+    if (value === null || value === undefined) {
+      return "—";
+    }
+    return `${Number(value).toFixed(2)} kg`;
+  };
+
   const openProductionDialogForBatch = (batch: ProcessingBatchDto) => {
     setProductionDialog({ open: true, batch });
     setProductionForm({
@@ -197,14 +204,17 @@ export default function Processing() {
         batch.totalSapOutput !== null && batch.totalSapOutput !== undefined
           ? String(batch.totalSapOutput)
           : "",
-      gasCost: batch.gasCost !== null && batch.gasCost !== undefined ? String(batch.gasCost) : "",
+      usedGasKg:
+        batch.usedGasKg !== null && batch.usedGasKg !== undefined
+          ? String(batch.usedGasKg)
+          : "",
       laborCost: batch.laborCost !== null && batch.laborCost !== undefined ? String(batch.laborCost) : "",
     });
   };
 
   const closeProductionDialog = () => {
     setProductionDialog({ open: false, batch: null });
-    setProductionForm({ totalSapOutput: "", gasCost: "", laborCost: "" });
+    setProductionForm({ totalSapOutput: "", usedGasKg: "", laborCost: "" });
   };
 
   const handleSaveProductionData = async (event: FormEvent<HTMLFormElement>) => {
@@ -215,15 +225,15 @@ export default function Processing() {
     }
 
     const parsedTotal = parseFloat(productionForm.totalSapOutput);
-    const parsedGas = parseFloat(productionForm.gasCost);
+    const parsedUsedGas = parseFloat(productionForm.usedGasKg);
     const parsedLabor = parseFloat(productionForm.laborCost);
 
     if (
       Number.isNaN(parsedTotal) ||
-      Number.isNaN(parsedGas) ||
+      Number.isNaN(parsedUsedGas) ||
       Number.isNaN(parsedLabor) ||
       parsedTotal < 0 ||
-      parsedGas < 0 ||
+      parsedUsedGas < 0 ||
       parsedLabor < 0
     ) {
       toast.error("Please enter valid non-negative numbers for all production fields.");
@@ -234,7 +244,7 @@ export default function Processing() {
     try {
       await DataService.updateProcessingBatch(targetBatch.id, {
         totalSapOutput: parsedTotal,
-        gasCost: parsedGas,
+        usedGasKg: parsedUsedGas,
         laborCost: parsedLabor,
       });
       toast.success(`Production data saved for batch ${targetBatch.batchNumber}`);
@@ -534,8 +544,8 @@ export default function Processing() {
                     const hasProductionData =
                       batch.totalSapOutput !== null &&
                       batch.totalSapOutput !== undefined &&
-                      batch.gasCost !== null &&
-                      batch.gasCost !== undefined &&
+                      batch.usedGasKg !== null &&
+                      batch.usedGasKg !== undefined &&
                       batch.laborCost !== null &&
                       batch.laborCost !== undefined;
                     const outputSummaryLabel = batch.productType === "sap" ? "Sap Output" : "Output Quantity";
@@ -568,7 +578,7 @@ export default function Processing() {
                             </div>
                             <div className="rounded-lg bg-white/50 px-3 py-2 shadow-sm">
                               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Gas Cost</p>
-                              <p className="mt-1 text-sm font-medium text-foreground">{formatCurrencyValue(batch.gasCost)}</p>
+                              <p className="mt-1 text-sm font-medium text-foreground">{formatUsedGasKg(batch.usedGasKg)}</p>
                             </div>
                             <div className="rounded-lg bg-white/50 px-3 py-2 shadow-sm">
                               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Labor Cost</p>
@@ -694,15 +704,15 @@ export default function Processing() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="gasCost">Gas cost</Label>
+                <Label htmlFor="usedGasKg">Used gas (kg)</Label>
                 <Input
-                  id="gasCost"
+                  id="usedGasKg"
                   type="number"
                   min="0"
                   step="0.01"
-                  value={productionForm.gasCost}
+                  value={productionForm.usedGasKg}
                   onChange={(event) =>
-                    setProductionForm((prev) => ({ ...prev, gasCost: event.target.value }))
+                    setProductionForm((prev) => ({ ...prev, usedGasKg: event.target.value }))
                   }
                   required
                 />

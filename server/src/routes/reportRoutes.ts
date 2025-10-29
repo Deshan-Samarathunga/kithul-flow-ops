@@ -34,28 +34,27 @@ type ProcessingMetrics = {
   completedBatches: number;
   totalOutput: number;
   totalInput: number;
-  totalGasCost: number;
-  totalLaborCost: number;
+  totalUsedGasKg: number;
 };
 
 type PackagingMetrics = {
   totalBatches: number;
   completedBatches: number;
   finishedQuantity: number;
-  totalBottleCost: number;
-  totalLidCost: number;
-  totalAlufoilCost: number;
-  totalVacuumBagCost: number;
-  totalParchmentPaperCost: number;
+  totalBottleQuantity: number;
+  totalLidQuantity: number;
+  totalAlufoilQuantity: number;
+  totalVacuumBagQuantity: number;
+  totalParchmentPaperQuantity: number;
 };
 
 type LabelingMetrics = {
   totalBatches: number;
   completedBatches: number;
-  totalStickerCost: number;
-  totalShrinkSleeveCost: number;
-  totalNeckTagCost: number;
-  totalCorrugatedCartonCost: number;
+  totalStickerQuantity: number;
+  totalShrinkSleeveQuantity: number;
+  totalNeckTagQuantity: number;
+  totalCorrugatedCartonQuantity: number;
 };
 
 type ProductReport = {
@@ -80,28 +79,27 @@ const emptyProcessing = (): ProcessingMetrics => ({
   completedBatches: 0,
   totalOutput: 0,
   totalInput: 0,
-  totalGasCost: 0,
-  totalLaborCost: 0,
+  totalUsedGasKg: 0,
 });
 
 const emptyPackaging = (): PackagingMetrics => ({
   totalBatches: 0,
   completedBatches: 0,
   finishedQuantity: 0,
-  totalBottleCost: 0,
-  totalLidCost: 0,
-  totalAlufoilCost: 0,
-  totalVacuumBagCost: 0,
-  totalParchmentPaperCost: 0,
+  totalBottleQuantity: 0,
+  totalLidQuantity: 0,
+  totalAlufoilQuantity: 0,
+  totalVacuumBagQuantity: 0,
+  totalParchmentPaperQuantity: 0,
 });
 
 const emptyLabeling = (): LabelingMetrics => ({
   totalBatches: 0,
   completedBatches: 0,
-  totalStickerCost: 0,
-  totalShrinkSleeveCost: 0,
-  totalNeckTagCost: 0,
-  totalCorrugatedCartonCost: 0,
+  totalStickerQuantity: 0,
+  totalShrinkSleeveQuantity: 0,
+  totalNeckTagQuantity: 0,
+  totalCorrugatedCartonQuantity: 0,
 });
 
 const toStringArray = (value: unknown): string[] => {
@@ -165,8 +163,7 @@ async function fetchProcessingMetrics(product: ProductSlug, targetDate: string):
       COUNT(*) AS total_batches,
       COUNT(*) FILTER (WHERE LOWER(pb.status) = 'completed') AS completed_batches,
       COALESCE(SUM(pb.total_sap_output), 0) AS total_output,
-      COALESCE(SUM(pb.gas_cost), 0) AS total_gas_cost,
-      COALESCE(SUM(pb.labor_cost), 0) AS total_labor_cost,
+  COALESCE(SUM(pb.used_gas_kg), 0) AS total_used_gas_kg,
       COALESCE(SUM(bucket_totals.total_input), 0) AS total_input
     FROM ${processingTable} pb
     LEFT JOIN bucket_totals ON bucket_totals.processing_batch_id = pb.id
@@ -179,8 +176,7 @@ async function fetchProcessingMetrics(product: ProductSlug, targetDate: string):
     completedBatches: toNumber(row.completed_batches),
     totalOutput: toNumber(row.total_output),
     totalInput: toNumber(row.total_input),
-    totalGasCost: toNumber(row.total_gas_cost),
-    totalLaborCost: toNumber(row.total_labor_cost),
+  totalUsedGasKg: toNumber(row.total_used_gas_kg),
   };
 }
 
@@ -191,11 +187,11 @@ async function fetchPackagingMetrics(product: ProductSlug, targetDate: string): 
       COUNT(*) AS total_batches,
       COUNT(*) FILTER (WHERE LOWER(status) = 'completed') AS completed_batches,
       COALESCE(SUM(finished_quantity), 0) AS finished_quantity,
-      COALESCE(SUM(bottle_cost), 0) AS total_bottle_cost,
-      COALESCE(SUM(lid_cost), 0) AS total_lid_cost,
-      COALESCE(SUM(alufoil_cost), 0) AS total_alufoil_cost,
-      COALESCE(SUM(vacuum_bag_cost), 0) AS total_vacuum_bag_cost,
-      COALESCE(SUM(parchment_paper_cost), 0) AS total_parchment_paper_cost
+      COALESCE(SUM(bottle_quantity), 0) AS total_bottle_quantity,
+      COALESCE(SUM(lid_quantity), 0) AS total_lid_quantity,
+      COALESCE(SUM(alufoil_quantity), 0) AS total_alufoil_quantity,
+      COALESCE(SUM(vacuum_bag_quantity), 0) AS total_vacuum_bag_quantity,
+      COALESCE(SUM(parchment_paper_quantity), 0) AS total_parchment_paper_quantity
     FROM ${packagingTable}
     WHERE started_at::date = $1
   `;
@@ -205,11 +201,11 @@ async function fetchPackagingMetrics(product: ProductSlug, targetDate: string): 
     totalBatches: toNumber(row.total_batches),
     completedBatches: toNumber(row.completed_batches),
     finishedQuantity: toNumber(row.finished_quantity),
-    totalBottleCost: toNumber(row.total_bottle_cost),
-    totalLidCost: toNumber(row.total_lid_cost),
-    totalAlufoilCost: toNumber(row.total_alufoil_cost),
-    totalVacuumBagCost: toNumber(row.total_vacuum_bag_cost),
-    totalParchmentPaperCost: toNumber(row.total_parchment_paper_cost),
+    totalBottleQuantity: toNumber(row.total_bottle_quantity),
+    totalLidQuantity: toNumber(row.total_lid_quantity),
+    totalAlufoilQuantity: toNumber(row.total_alufoil_quantity),
+    totalVacuumBagQuantity: toNumber(row.total_vacuum_bag_quantity),
+    totalParchmentPaperQuantity: toNumber(row.total_parchment_paper_quantity),
   };
 }
 
@@ -219,10 +215,10 @@ async function fetchLabelingMetrics(product: ProductSlug, targetDate: string): P
     SELECT
       COUNT(*) AS total_batches,
       COUNT(*) FILTER (WHERE LOWER(status) = 'completed') AS completed_batches,
-      COALESCE(SUM(sticker_cost), 0) AS total_sticker_cost,
-      COALESCE(SUM(shrink_sleeve_cost), 0) AS total_shrink_sleeve_cost,
-      COALESCE(SUM(neck_tag_cost), 0) AS total_neck_tag_cost,
-      COALESCE(SUM(corrugated_carton_cost), 0) AS total_corrugated_carton_cost
+      COALESCE(SUM(sticker_quantity), 0) AS total_sticker_quantity,
+      COALESCE(SUM(shrink_sleeve_quantity), 0) AS total_shrink_sleeve_quantity,
+      COALESCE(SUM(neck_tag_quantity), 0) AS total_neck_tag_quantity,
+      COALESCE(SUM(corrugated_carton_quantity), 0) AS total_corrugated_carton_quantity
     FROM ${labelingTable}
     WHERE created_at::date = $1
   `;
@@ -231,10 +227,10 @@ async function fetchLabelingMetrics(product: ProductSlug, targetDate: string): P
   return {
     totalBatches: toNumber(row.total_batches),
     completedBatches: toNumber(row.completed_batches),
-    totalStickerCost: toNumber(row.total_sticker_cost),
-    totalShrinkSleeveCost: toNumber(row.total_shrink_sleeve_cost),
-    totalNeckTagCost: toNumber(row.total_neck_tag_cost),
-    totalCorrugatedCartonCost: toNumber(row.total_corrugated_carton_cost),
+    totalStickerQuantity: toNumber(row.total_sticker_quantity),
+    totalShrinkSleeveQuantity: toNumber(row.total_shrink_sleeve_quantity),
+    totalNeckTagQuantity: toNumber(row.total_neck_tag_quantity),
+    totalCorrugatedCartonQuantity: toNumber(row.total_corrugated_carton_quantity),
   };
 }
 
@@ -299,24 +295,23 @@ router.get(
         totals.processing.completedBatches += report.processing.completedBatches;
         totals.processing.totalOutput += report.processing.totalOutput;
         totals.processing.totalInput += report.processing.totalInput;
-        totals.processing.totalGasCost += report.processing.totalGasCost;
-        totals.processing.totalLaborCost += report.processing.totalLaborCost;
+         totals.processing.totalUsedGasKg += report.processing.totalUsedGasKg;
 
         totals.packaging.totalBatches += report.packaging.totalBatches;
         totals.packaging.completedBatches += report.packaging.completedBatches;
         totals.packaging.finishedQuantity += report.packaging.finishedQuantity;
-        totals.packaging.totalBottleCost += report.packaging.totalBottleCost;
-        totals.packaging.totalLidCost += report.packaging.totalLidCost;
-        totals.packaging.totalAlufoilCost += report.packaging.totalAlufoilCost;
-        totals.packaging.totalVacuumBagCost += report.packaging.totalVacuumBagCost;
-        totals.packaging.totalParchmentPaperCost += report.packaging.totalParchmentPaperCost;
+         totals.packaging.totalBottleQuantity += report.packaging.totalBottleQuantity;
+         totals.packaging.totalLidQuantity += report.packaging.totalLidQuantity;
+         totals.packaging.totalAlufoilQuantity += report.packaging.totalAlufoilQuantity;
+         totals.packaging.totalVacuumBagQuantity += report.packaging.totalVacuumBagQuantity;
+         totals.packaging.totalParchmentPaperQuantity += report.packaging.totalParchmentPaperQuantity;
 
         totals.labeling.totalBatches += report.labeling.totalBatches;
         totals.labeling.completedBatches += report.labeling.completedBatches;
-        totals.labeling.totalStickerCost += report.labeling.totalStickerCost;
-        totals.labeling.totalShrinkSleeveCost += report.labeling.totalShrinkSleeveCost;
-        totals.labeling.totalNeckTagCost += report.labeling.totalNeckTagCost;
-        totals.labeling.totalCorrugatedCartonCost += report.labeling.totalCorrugatedCartonCost;
+         totals.labeling.totalStickerQuantity += report.labeling.totalStickerQuantity;
+         totals.labeling.totalShrinkSleeveQuantity += report.labeling.totalShrinkSleeveQuantity;
+         totals.labeling.totalNeckTagQuantity += report.labeling.totalNeckTagQuantity;
+         totals.labeling.totalCorrugatedCartonQuantity += report.labeling.totalCorrugatedCartonQuantity;
       }
 
       res.json({

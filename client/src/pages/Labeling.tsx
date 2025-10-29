@@ -51,10 +51,10 @@ export default function Labeling() {
     { open: false, batch: null }
   );
   const [labelingForm, setLabelingForm] = useState({
-    stickerCost: "",
-    shrinkSleeveCost: "",
-    neckTagCost: "",
-    corrugatedCartonCost: "",
+    stickerQuantity: "",
+    shrinkSleeveQuantity: "",
+    neckTagQuantity: "",
+    corrugatedCartonQuantity: "",
   });
   const [autoOpenedFor, setAutoOpenedFor] = useState<string | null>(null);
   const [eligiblePackaging, setEligiblePackaging] = useState<EligiblePackagingBatchDto[]>([]);
@@ -196,14 +196,11 @@ export default function Labeling() {
     return new Date(parsed).toLocaleDateString();
   };
 
-  const formatCurrencyValue = (value: number | null | undefined) => {
+  const formatAccessoryQuantity = (value: number | null | undefined) => {
     if (value === null || value === undefined) {
       return "—";
     }
-    return `Rs ${Number(value).toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
+    return Number(value).toLocaleString();
   };
 
   const formatVolumeByProduct = (
@@ -220,24 +217,29 @@ export default function Labeling() {
   const openLabelingDialogForBatch = (batch: LabelingBatchDto) => {
     setLabelingDialog({ open: true, batch });
     setLabelingForm({
-      stickerCost:
-        batch.stickerCost !== null && batch.stickerCost !== undefined ? String(batch.stickerCost) : "",
-      shrinkSleeveCost:
-        batch.shrinkSleeveCost !== null && batch.shrinkSleeveCost !== undefined
-          ? String(batch.shrinkSleeveCost)
+      stickerQuantity:
+        batch.stickerQuantity !== null && batch.stickerQuantity !== undefined ? String(batch.stickerQuantity) : "",
+      shrinkSleeveQuantity:
+        batch.shrinkSleeveQuantity !== null && batch.shrinkSleeveQuantity !== undefined
+          ? String(batch.shrinkSleeveQuantity)
           : "",
-      neckTagCost:
-        batch.neckTagCost !== null && batch.neckTagCost !== undefined ? String(batch.neckTagCost) : "",
-      corrugatedCartonCost:
-        batch.corrugatedCartonCost !== null && batch.corrugatedCartonCost !== undefined
-          ? String(batch.corrugatedCartonCost)
+      neckTagQuantity:
+        batch.neckTagQuantity !== null && batch.neckTagQuantity !== undefined ? String(batch.neckTagQuantity) : "",
+      corrugatedCartonQuantity:
+        batch.corrugatedCartonQuantity !== null && batch.corrugatedCartonQuantity !== undefined
+          ? String(batch.corrugatedCartonQuantity)
           : "",
     });
   };
 
   const closeLabelingDialog = () => {
     setLabelingDialog({ open: false, batch: null });
-    setLabelingForm({ stickerCost: "", shrinkSleeveCost: "", neckTagCost: "", corrugatedCartonCost: "" });
+    setLabelingForm({
+      stickerQuantity: "",
+      shrinkSleeveQuantity: "",
+      neckTagQuantity: "",
+      corrugatedCartonQuantity: "",
+    });
   };
 
   const handleSaveLabelingData = async (event: FormEvent<HTMLFormElement>) => {
@@ -253,49 +255,49 @@ export default function Labeling() {
       return Number.isNaN(numeric) ? NaN : numeric;
     };
 
-    const stickerCost = parseNumber(labelingForm.stickerCost);
-    const corrugatedCartonCost = parseNumber(labelingForm.corrugatedCartonCost);
+    const stickerQuantity = parseNumber(labelingForm.stickerQuantity);
+    const corrugatedCartonQuantity = parseNumber(labelingForm.corrugatedCartonQuantity);
 
     if (
-      Number.isNaN(stickerCost) ||
-      Number.isNaN(corrugatedCartonCost) ||
-      stickerCost < 0 ||
-      corrugatedCartonCost < 0
+      Number.isNaN(stickerQuantity) ||
+      Number.isNaN(corrugatedCartonQuantity) ||
+      stickerQuantity < 0 ||
+      corrugatedCartonQuantity < 0
     ) {
-      toast.error("Enter valid non-negative sticker and corrugated carton costs.");
+      toast.error("Enter valid non-negative sticker and corrugated carton quantities.");
       return;
     }
 
     const payload: {
-      stickerCost?: number | null;
-      shrinkSleeveCost?: number | null;
-      neckTagCost?: number | null;
-      corrugatedCartonCost?: number | null;
+      stickerQuantity?: number | null;
+      shrinkSleeveQuantity?: number | null;
+      neckTagQuantity?: number | null;
+      corrugatedCartonQuantity?: number | null;
     } = {
-      stickerCost,
-      corrugatedCartonCost,
+      stickerQuantity,
+      corrugatedCartonQuantity,
     };
 
     if (productType === "sap") {
-      const shrinkSleeveCost = parseNumber(labelingForm.shrinkSleeveCost);
-      const neckTagCost = parseNumber(labelingForm.neckTagCost);
+      const shrinkSleeveQuantity = parseNumber(labelingForm.shrinkSleeveQuantity);
+      const neckTagQuantity = parseNumber(labelingForm.neckTagQuantity);
 
       if (
-        Number.isNaN(shrinkSleeveCost) ||
-        Number.isNaN(neckTagCost) ||
-        shrinkSleeveCost < 0 ||
-        neckTagCost < 0
+        Number.isNaN(shrinkSleeveQuantity) ||
+        Number.isNaN(neckTagQuantity) ||
+        shrinkSleeveQuantity < 0 ||
+        neckTagQuantity < 0
       ) {
-        toast.error("Enter valid non-negative shrink sleeve and neck tag costs for sap labeling.");
+        toast.error("Enter valid non-negative shrink sleeve and neck tag quantities for sap labeling.");
         return;
       }
 
-      payload.shrinkSleeveCost = shrinkSleeveCost;
-      payload.neckTagCost = neckTagCost;
+      payload.shrinkSleeveQuantity = shrinkSleeveQuantity;
+      payload.neckTagQuantity = neckTagQuantity;
     } else if (productType === "treacle") {
       // For treacle, ignore shrink sleeve and neck tag inputs
-      payload.shrinkSleeveCost = null;
-      payload.neckTagCost = null;
+      payload.shrinkSleeveQuantity = null;
+      payload.neckTagQuantity = null;
     } else {
       toast.error("Unsupported product type for labeling data.");
       return;
@@ -329,10 +331,12 @@ export default function Labeling() {
       }
       metrics[key].total += 1;
 
-      const hasSticker = batch.stickerCost !== null && batch.stickerCost !== undefined;
-      const hasCarton = batch.corrugatedCartonCost !== null && batch.corrugatedCartonCost !== undefined;
-      const hasShrink = batch.shrinkSleeveCost !== null && batch.shrinkSleeveCost !== undefined;
-      const hasNeck = batch.neckTagCost !== null && batch.neckTagCost !== undefined;
+      const hasSticker = batch.stickerQuantity !== null && batch.stickerQuantity !== undefined;
+      const hasCarton =
+        batch.corrugatedCartonQuantity !== null && batch.corrugatedCartonQuantity !== undefined;
+      const hasShrink =
+        batch.shrinkSleeveQuantity !== null && batch.shrinkSleeveQuantity !== undefined;
+      const hasNeck = batch.neckTagQuantity !== null && batch.neckTagQuantity !== undefined;
       const isCompleted =
         key === "sap" ? hasSticker && hasCarton && hasShrink && hasNeck : hasSticker && hasCarton;
 
@@ -378,8 +382,8 @@ export default function Labeling() {
       batch.batchNumber,
       batch.productType,
       formatDate(batch.scheduledDate),
-      batch.stickerCost?.toString(),
-      batch.corrugatedCartonCost?.toString(),
+      batch.stickerQuantity?.toString(),
+      batch.corrugatedCartonQuantity?.toString(),
     ]
       .filter(Boolean)
       .join(" ")
@@ -414,7 +418,7 @@ export default function Labeling() {
             <div className="space-y-1">
               <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Labeling</h1>
               <p className="text-sm text-muted-foreground">
-                Review packaged batches and capture labeling costs for sap and treacle production.
+                Review packaged batches and capture labeling accessory quantities for sap and treacle production.
               </p>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
@@ -525,13 +529,17 @@ export default function Labeling() {
                 const productType = (batch.productType || "").toLowerCase();
                 const isSap = productType === "sap";
                 const isTreacle = productType === "treacle";
-                const hasSticker = batch.stickerCost !== null && batch.stickerCost !== undefined;
-                const hasCarton = batch.corrugatedCartonCost !== null && batch.corrugatedCartonCost !== undefined;
-                const hasShrink = batch.shrinkSleeveCost !== null && batch.shrinkSleeveCost !== undefined;
-                const hasNeck = batch.neckTagCost !== null && batch.neckTagCost !== undefined;
-                const costCompleted = isSap ? hasSticker && hasCarton && hasShrink && hasNeck : hasSticker && hasCarton;
+                const hasSticker = batch.stickerQuantity !== null && batch.stickerQuantity !== undefined;
+                const hasCarton =
+                  batch.corrugatedCartonQuantity !== null && batch.corrugatedCartonQuantity !== undefined;
+                const hasShrink =
+                  batch.shrinkSleeveQuantity !== null && batch.shrinkSleeveQuantity !== undefined;
+                const hasNeck = batch.neckTagQuantity !== null && batch.neckTagQuantity !== undefined;
+                const quantitiesCaptured = isSap
+                  ? hasSticker && hasCarton && hasShrink && hasNeck
+                  : hasSticker && hasCarton;
                 const rawStatus = batch.labelingStatus || "pending";
-                const isCompleted = rawStatus === "completed" || costCompleted;
+                const isCompleted = rawStatus === "completed" || quantitiesCaptured;
                 const statusVariant = isCompleted ? "completed" : "in-progress";
                 const statusLabel = isCompleted ? "Completed" : formatStatusLabel(rawStatus);
 
@@ -553,31 +561,31 @@ export default function Labeling() {
                     {(isSap || isTreacle) && (
                       <div className="mt-4 grid gap-3 text-xs sm:grid-cols-3">
                         <div className="rounded-lg bg-muted/30 px-3 py-2">
-                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Sticker Cost</p>
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Sticker Quantity</p>
                           <p className="mt-1 text-sm font-medium text-foreground">
-                            {formatCurrencyValue(batch.stickerCost ?? null)}
+                            {formatAccessoryQuantity(batch.stickerQuantity ?? null)}
                           </p>
                         </div>
                         {isSap && (
                           <>
                             <div className="rounded-lg bg-muted/30 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Shrink Sleeve Cost</p>
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Shrink Sleeve Quantity</p>
                               <p className="mt-1 text-sm font-medium text-foreground">
-                                {formatCurrencyValue(batch.shrinkSleeveCost ?? null)}
+                                {formatAccessoryQuantity(batch.shrinkSleeveQuantity ?? null)}
                               </p>
                             </div>
                             <div className="rounded-lg bg-muted/30 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Neck Tag Cost</p>
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Neck Tag Quantity</p>
                               <p className="mt-1 text-sm font-medium text-foreground">
-                                {formatCurrencyValue(batch.neckTagCost ?? null)}
+                                {formatAccessoryQuantity(batch.neckTagQuantity ?? null)}
                               </p>
                             </div>
                           </>
                         )}
                         <div className="rounded-lg bg-muted/30 px-3 py-2">
-                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Corrugated Carton Cost</p>
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Corrugated Carton Quantity</p>
                           <p className="mt-1 text-sm font-medium text-foreground">
-                            {formatCurrencyValue(batch.corrugatedCartonCost ?? null)}
+                            {formatAccessoryQuantity(batch.corrugatedCartonQuantity ?? null)}
                           </p>
                         </div>
                       </div>
@@ -633,7 +641,7 @@ export default function Labeling() {
           <DialogHeader>
             <DialogTitle>Add labeling batch</DialogTitle>
             <DialogDescription>
-              Pick a packaging batch without labeling data to start tracking costs.
+              Pick a packaging batch without labeling data to start tracking accessory usage.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -770,8 +778,8 @@ export default function Labeling() {
             <DialogTitle>Labeling details</DialogTitle>
             <DialogDescription>
               {labelingDialog.batch
-                ? `Record labeling costs for batch ${labelingDialog.batch.batchNumber}.`
-                : "Record labeling costs for the batch."}
+                ? `Record labeling accessory quantities for batch ${labelingDialog.batch.batchNumber}.`
+                : "Record labeling accessory quantities for the batch."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveLabelingData} className="space-y-5">
@@ -790,15 +798,15 @@ export default function Labeling() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="stickerCost">Sticker cost</Label>
+              <Label htmlFor="stickerQuantity">Sticker quantity</Label>
               <Input
-                id="stickerCost"
+                id="stickerQuantity"
                 type="number"
                 min="0"
-                step="0.01"
-                value={labelingForm.stickerCost}
+                step="1"
+                value={labelingForm.stickerQuantity}
                 onChange={(event) =>
-                  setLabelingForm((prev) => ({ ...prev, stickerCost: event.target.value }))
+                  setLabelingForm((prev) => ({ ...prev, stickerQuantity: event.target.value }))
                 }
                 required
               />
@@ -807,29 +815,29 @@ export default function Labeling() {
             {labelingDialog.batch?.productType?.toLowerCase() === "sap" && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="shrinkSleeveCost">Shrink sleeve cost</Label>
+                  <Label htmlFor="shrinkSleeveQuantity">Shrink sleeve quantity</Label>
                   <Input
-                    id="shrinkSleeveCost"
+                    id="shrinkSleeveQuantity"
                     type="number"
                     min="0"
-                    step="0.01"
-                    value={labelingForm.shrinkSleeveCost}
+                    step="1"
+                    value={labelingForm.shrinkSleeveQuantity}
                     onChange={(event) =>
-                      setLabelingForm((prev) => ({ ...prev, shrinkSleeveCost: event.target.value }))
+                      setLabelingForm((prev) => ({ ...prev, shrinkSleeveQuantity: event.target.value }))
                     }
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="neckTagCost">Neck tag cost</Label>
+                  <Label htmlFor="neckTagQuantity">Neck tag quantity</Label>
                   <Input
-                    id="neckTagCost"
+                    id="neckTagQuantity"
                     type="number"
                     min="0"
-                    step="0.01"
-                    value={labelingForm.neckTagCost}
+                    step="1"
+                    value={labelingForm.neckTagQuantity}
                     onChange={(event) =>
-                      setLabelingForm((prev) => ({ ...prev, neckTagCost: event.target.value }))
+                      setLabelingForm((prev) => ({ ...prev, neckTagQuantity: event.target.value }))
                     }
                     required
                   />
@@ -838,15 +846,15 @@ export default function Labeling() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="corrugatedCartonCost">Corrugated carton cost</Label>
+              <Label htmlFor="corrugatedCartonQuantity">Corrugated carton quantity</Label>
               <Input
-                id="corrugatedCartonCost"
+                id="corrugatedCartonQuantity"
                 type="number"
                 min="0"
-                step="0.01"
-                value={labelingForm.corrugatedCartonCost}
+                step="1"
+                value={labelingForm.corrugatedCartonQuantity}
                 onChange={(event) =>
-                  setLabelingForm((prev) => ({ ...prev, corrugatedCartonCost: event.target.value }))
+                  setLabelingForm((prev) => ({ ...prev, corrugatedCartonQuantity: event.target.value }))
                 }
                 required
               />
