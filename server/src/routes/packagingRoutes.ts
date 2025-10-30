@@ -372,6 +372,25 @@ router.post("/batches", auth, requireRole("Packaging", "Administrator"), async (
 	}
 });
 
+router.get(
+	"/batches/:packagingId",
+	auth,
+	requireRole("Packaging", "Processing", "Administrator"),
+	async (req, res) => {
+		try {
+			const { packagingId } = req.params;
+			const batch = await fetchPackagingBatchByPackagingId(packagingId);
+			if (!batch) {
+				return res.status(404).json({ error: "Packaging batch not found" });
+			}
+			res.json(batch);
+		} catch (error) {
+			console.error("Error fetching packaging batch:", error);
+			res.status(500).json({ error: "Failed to fetch packaging batch" });
+		}
+	}
+);
+
 	router.patch(
 		"/batches/:packagingId",
 		auth,

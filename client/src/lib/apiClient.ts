@@ -462,6 +462,10 @@ class ApiClient {
     return this.request<{ batches: PackagingBatchDto[] }>(`/packaging/batches`);
   }
 
+  async getPackagingBatch(packagingId: string) {
+    return this.request<PackagingBatchDto>(`/packaging/batches/${packagingId}`);
+  }
+
   async getEligibleProcessingBatchesForPackaging(params?: { productType?: string }) {
     const searchParams = new URLSearchParams();
     if (params?.productType) {
