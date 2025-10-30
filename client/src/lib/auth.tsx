@@ -1,22 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
-
-type User = {
-  id: number;
-  userId: string;
-  name?: string | null;
-  role?: string;
-  profileImage?: string | null;
-};
-
-type AuthState = { user: User | null; token: string | null };
-type AuthContext = AuthState & {
-  login: (payload: { userId: string; password: string }) => Promise<User>;
-  logout: () => void;
-  updateUser: (user: User | null) => void;
-  hydrated: boolean;
-};
-
-const AuthCtx = createContext<AuthContext | null>(null);
+import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
+import { AuthCtx, type AuthContext, type AuthState, type User } from "./auth-context";
 
 const toOptionalString = (value: unknown) => {
   if (typeof value === "string") {
@@ -67,16 +50,16 @@ function loadSavedAuth(): AuthState {
   const saved = localStorage.getItem("auth");
   if (!saved) return { user: null, token: null };
   try {
-  const parsed = JSON.parse(saved) as { user?: unknown; token?: unknown };
-  const normalizedUser = normalizeUser(parsed.user);
-  return { user: normalizedUser, token: typeof parsed.token === "string" ? parsed.token : null };
+    const parsed = JSON.parse(saved) as { user?: unknown; token?: unknown };
+    const normalizedUser = normalizeUser(parsed.user);
+    return { user: normalizedUser, token: typeof parsed.token === "string" ? parsed.token : null };
   } catch {
     localStorage.removeItem("auth");
     return { user: null, token: null };
   }
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [{ initialUser, initialToken }] = useState(() => {
     const { user, token } = loadSavedAuth();
     return { initialUser: user, initialToken: token };
@@ -189,16 +172,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const value = useMemo(
+  const value = useMemo<AuthContext>(
     () => ({ user, token, login, logout, updateUser, hydrated }),
     [user, token, updateUser, hydrated]
   );
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthCtx);
-  if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
-  return ctx;
 }

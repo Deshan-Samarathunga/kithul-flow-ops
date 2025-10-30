@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import { adminGetUser, adminUpdateUser } from "@/lib/api";
 
 const ROLE_OPTIONS = ["Field Collection", "Processing", "Packaging", "Labeling"];

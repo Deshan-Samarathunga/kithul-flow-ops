@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import { DataService } from "@/lib/dataService";
 import { usePersistentTab } from "@/hooks/usePersistentTab";
 import { usePersistentState } from "@/hooks/usePersistentState";

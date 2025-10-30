@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -26,7 +26,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { FileText, Loader2, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import type { EligiblePackagingBatchDto, LabelingBatchDto } from "@/lib/apiClient";
 import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
@@ -184,7 +184,7 @@ export default function Labeling() {
         }
       }
     }
-  }, [isLoading, batches, location.state, autoOpenedFor]);
+  }, [isLoading, batches, location.state, autoOpenedFor, openLabelingDialogForBatch, setSearchQuery]);
 
   useEffect(() => {
     if (createDialog.open) {
@@ -225,7 +225,7 @@ export default function Labeling() {
     return `${Number(value).toFixed(1)} ${unit}`;
   };
 
-  const openLabelingDialogForBatch = (batch: LabelingBatchDto) => {
+  const openLabelingDialogForBatch = useCallback((batch: LabelingBatchDto) => {
     setLabelingDialog({ open: true, batch });
     setLabelingForm({
       stickerQuantity:
@@ -241,7 +241,7 @@ export default function Labeling() {
           ? String(batch.corrugatedCartonQuantity)
           : "",
     });
-  };
+  }, []);
 
   const closeLabelingDialog = () => {
     setLabelingDialog({ open: false, batch: null });

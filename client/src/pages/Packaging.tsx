@@ -26,7 +26,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { FileText, Loader2, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import type { EligibleProcessingBatchDto, PackagingBatchDto } from "@/lib/apiClient";
 import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
