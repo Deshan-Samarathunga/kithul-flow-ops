@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -355,9 +356,8 @@ export default function BatchDetail() {
               {isEditable ? (
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto sm:justify-end">
                   <Button
-                    variant="outline"
                     onClick={() => setProductionDialogOpen(true)}
-                    className="w-full sm:w-auto"
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
                   >
                     {batch.totalSapOutput !== null && batch.totalSapOutput !== undefined
                       ? "Edit production data"
@@ -377,8 +377,7 @@ export default function BatchDetail() {
                     Submitted batches are read-only. Reopen the batch to make changes.
                   </div>
                   <Button
-                    variant="outline"
-                    className="w-full sm:w-auto"
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
                     onClick={() => setProductionDialogOpen(true)}
                   >
                     View production data
@@ -472,7 +471,18 @@ export default function BatchDetail() {
 
                   const info = (
                     <>
-                      <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+                      <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
+                        <Badge variant="secondary" className="font-mono text-xs uppercase tracking-wide">
+                          Bucket ID · {bucket.id}
+                        </Badge>
+                        <span className="text-muted-foreground">
+                          Draft {bucket.draft.id}
+                        </span>
+                        <span className="text-muted-foreground">
+                          Created: {formatDate(bucket.createdAt)}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                         <span className="font-medium">
                           Collection Center: {bucket.collectionCenter.name}
                         </span>
@@ -484,11 +494,7 @@ export default function BatchDetail() {
                         <span>Brix: {formatNumber(bucket.brixValue, 1)}</span>
                         <span className="hidden sm:inline text-muted-foreground">|</span>
                         <span>pH: {formatNumber(bucket.phValue, 2)}</span>
-                        <span className="hidden sm:inline text-muted-foreground">|</span>
-                        <span>Draft Date: {formatDate(bucket.draft.date)}</span>
-                      </div>
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        Draft ID: {bucket.draft.id} | Created: {formatDate(bucket.createdAt)}
+                        
                       </div>
                     </>
                   );

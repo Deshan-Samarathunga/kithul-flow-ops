@@ -231,6 +231,13 @@ export default function Processing() {
     return status !== "completed" && status !== "cancelled";
   });
   const completedBatches = filteredBatches.filter((batch) => normalizeStatus(batch.status) === "completed");
+  const displayBatchNumbers = useMemo(() => {
+    const map = new Map<string, number>();
+    filteredBatches.forEach((batch, index) => {
+      map.set(batch.id, index + 1);
+    });
+    return map;
+  }, [filteredBatches]);
   const selectedMetrics = batchMetrics[productTypeFilter];
 
   const hasSubmittedProcessing = useMemo(
@@ -364,7 +371,7 @@ export default function Processing() {
                           <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
                           <span className="hidden text-muted-foreground sm:inline">|</span>
                           <span>
-                            Batch <span className="font-semibold text-foreground">{batch.batchNumber}</span>
+                            Batch <span className="font-semibold text-foreground">{displayBatchNumbers.get(batch.id) ?? batch.batchNumber}</span>
                           </span>
                           <span className="hidden text-muted-foreground sm:inline">|</span>
                           <span>{`${formatVolumeByProduct(batch.totalQuantity, batch.productType)} total`}</span>
@@ -440,7 +447,7 @@ export default function Processing() {
                               <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
                               <span className="hidden text-muted-foreground sm:inline">|</span>
                               <span>
-                                Batch <span className="font-semibold text-foreground">{batch.batchNumber}</span>
+                                Batch <span className="font-semibold text-foreground">{displayBatchNumbers.get(batch.id) ?? batch.batchNumber}</span>
                               </span>
                               <span className="hidden text-muted-foreground sm:inline">|</span>
                               <span>{`Output quantity: ${formatOutputQuantity(batch)}`}</span>
