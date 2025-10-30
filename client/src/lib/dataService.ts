@@ -266,6 +266,15 @@ export class DataService {
     }
   }
 
+  static async getPackagingBatch(packagingId: string) {
+    try {
+      return await apiClient.getPackagingBatch(packagingId);
+    } catch (error) {
+      console.error('Error fetching packaging batch:', error);
+      throw error;
+    }
+  }
+
   static async getEligibleProcessingBatchesForPackaging(productType?: string) {
     try {
       const response = await apiClient.getEligibleProcessingBatchesForPackaging({ productType });

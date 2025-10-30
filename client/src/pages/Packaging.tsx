@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -33,24 +33,16 @@ import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
 import { ProductTypeSelector } from "@/components/ProductTypeSelector";
 import { usePersistentState } from "@/hooks/usePersistentState";
 
+function normalizePackagingStatus(status: string | null | undefined) {
+  return String(status ?? "").trim().toLowerCase();
+}
+
 export default function Packaging() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [batches, setBatches] = useState<PackagingBatchDto[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSavingPackaging, setIsSavingPackaging] = useState(false);
-  const [packagingDialog, setPackagingDialog] = useState<{ open: boolean; batch: PackagingBatchDto | null }>(
-    { open: false, batch: null }
-  );
-  const [packagingForm, setPackagingForm] = useState({
-    finishedQuantity: "",
-    bottleQuantity: "",
-    lidQuantity: "",
-    alufoilQuantity: "",
-    vacuumBagQuantity: "",
-    parchmentPaperQuantity: "",
-  });
   const [eligibleProcessing, setEligibleProcessing] = useState<EligibleProcessingBatchDto[]>([]);
   const [eligibleSearch, setEligibleSearch] = useState<string>("");
   const [isEligibleLoading, setIsEligibleLoading] = useState<boolean>(false);
@@ -60,6 +52,8 @@ export default function Packaging() {
   const [deleteTarget, setDeleteTarget] = useState<{ packagingId: string; batchNumber: string } | null>(null);
   const [isDeletingPackaging, setIsDeletingPackaging] = useState<boolean>(false);
   const [reportDialogOpen, setReportDialogOpen] = usePersistentState<boolean>("packaging.reportDialogOpen", false);
+  const [submittingPackagingId, setSubmittingPackagingId] = useState<string | null>(null);
+  const [reopeningPackagingId, setReopeningPackagingId] = useState<string | null>(null);
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
   const apiBase = useMemo(() => {
@@ -192,6 +186,117 @@ export default function Packaging() {
     }
   };
 
+  const buildPackagingUpdatePayload = (batch: PackagingBatchDto) => {
+    const packagingId = batch.packagingId ?? batch.id;
+    if (!packagingId) {
+      return null;
+    }
+
+    const productType = (batch.productType || "").toLowerCase();
+    const finishedQuantity =
+      batch.finishedQuantity !== null && batch.finishedQuantity !== undefined
+        ? Number(batch.finishedQuantity)
+        : NaN;
+    if (Number.isNaN(finishedQuantity)) {
+      return null;
+    }
+
+    if (productType === "sap") {
+      if (
+        batch.bottleQuantity === null ||
+        batch.bottleQuantity === undefined ||
+        batch.lidQuantity === null ||
+        batch.lidQuantity === undefined
+      ) {
+        return null;
+      }
+      return {
+        finishedQuantity,
+        bottleQuantity: Number(batch.bottleQuantity),
+        lidQuantity: Number(batch.lidQuantity),
+      };
+    }
+
+    if (productType === "treacle") {
+      if (
+        batch.alufoilQuantity === null ||
+        batch.alufoilQuantity === undefined ||
+        batch.vacuumBagQuantity === null ||
+        batch.vacuumBagQuantity === undefined ||
+        batch.parchmentPaperQuantity === null ||
+        batch.parchmentPaperQuantity === undefined
+      ) {
+        return null;
+      }
+      return {
+        finishedQuantity,
+        alufoilQuantity: Number(batch.alufoilQuantity),
+        vacuumBagQuantity: Number(batch.vacuumBagQuantity),
+        parchmentPaperQuantity: Number(batch.parchmentPaperQuantity),
+      };
+    }
+
+    return null;
+  };
+
+  const handleSubmitPackagingBatch = async (batch: PackagingBatchDto) => {
+    const packagingId = batch.packagingId ?? batch.id;
+    if (!packagingId) {
+      toast.error("Unable to submit packaging batch.");
+      return;
+    }
+
+    const payload = buildPackagingUpdatePayload(batch);
+    if (!payload) {
+      toast.error("Enter packaging quantities before submitting the batch.");
+      return;
+    }
+
+    setSubmittingPackagingId(packagingId);
+    try {
+      await DataService.updatePackagingBatch(packagingId, {
+        ...payload,
+        status: "completed",
+      });
+      toast.success(`Packaging batch ${batch.batchNumber} submitted`);
+      await loadBatches();
+    } catch (err) {
+      console.error("Failed to submit packaging batch", err);
+      toast.error("Unable to submit packaging batch. Please try again.");
+    } finally {
+      setSubmittingPackagingId(null);
+    }
+  };
+
+  const handleReopenPackagingBatch = async (batch: PackagingBatchDto) => {
+    const packagingId = batch.packagingId ?? batch.id;
+    if (!packagingId) {
+      toast.error("Unable to reopen packaging batch.");
+      return;
+    }
+
+    const payload = buildPackagingUpdatePayload(batch);
+    if (!payload) {
+      toast.error("Packaging batch is missing required quantities and cannot be reopened.");
+      return;
+    }
+
+    setReopeningPackagingId(packagingId);
+    try {
+      await DataService.updatePackagingBatch(packagingId, {
+        ...payload,
+        status: "in-progress",
+      });
+      toast.success(`Packaging batch ${batch.batchNumber} reopened`);
+      await loadBatches();
+    } catch (err) {
+      console.error("Failed to reopen packaging batch", err);
+      toast.error("Unable to reopen packaging batch. Please try again.");
+    } finally {
+      setReopeningPackagingId(null);
+    }
+  };
+
   useEffect(() => {
     void loadBatches();
   }, []);
@@ -236,13 +341,6 @@ export default function Packaging() {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
 
-  const formatMaterialQuantity = (value: number | null | undefined) => {
-    if (value === null || value === undefined) {
-      return "—";
-    }
-    return Number(value).toLocaleString();
-  };
-
   const formatVolumeByProduct = (
     value: number | null | undefined,
     productType: PackagingBatchDto["productType"]
@@ -254,129 +352,19 @@ export default function Packaging() {
     return `${Number(value).toFixed(1)} ${unit}`;
   };
 
-  const openPackagingDialogForBatch = (batch: PackagingBatchDto) => {
-    setPackagingDialog({ open: true, batch });
-    setPackagingForm({
-      finishedQuantity:
-        batch.finishedQuantity !== null && batch.finishedQuantity !== undefined
-          ? String(batch.finishedQuantity)
-          : "",
-      bottleQuantity:
-        batch.bottleQuantity !== null && batch.bottleQuantity !== undefined ? String(batch.bottleQuantity) : "",
-      lidQuantity:
-        batch.lidQuantity !== null && batch.lidQuantity !== undefined ? String(batch.lidQuantity) : "",
-      alufoilQuantity:
-        batch.alufoilQuantity !== null && batch.alufoilQuantity !== undefined ? String(batch.alufoilQuantity) : "",
-      vacuumBagQuantity:
-        batch.vacuumBagQuantity !== null && batch.vacuumBagQuantity !== undefined ? String(batch.vacuumBagQuantity) : "",
-      parchmentPaperQuantity:
-        batch.parchmentPaperQuantity !== null && batch.parchmentPaperQuantity !== undefined
-          ? String(batch.parchmentPaperQuantity)
-          : "",
-    });
+  const formatFinishedQuantity = (value: number | null | undefined) => {
+    if (value === null || value === undefined) {
+      return "—";
+    }
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return "—";
+    }
+    if (Number.isInteger(numeric)) {
+      return numeric.toLocaleString();
+    }
+    return numeric.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   };
-
-  const closePackagingDialog = () => {
-    setPackagingDialog({ open: false, batch: null });
-    setPackagingForm({
-      finishedQuantity: "",
-      bottleQuantity: "",
-      lidQuantity: "",
-      alufoilQuantity: "",
-      vacuumBagQuantity: "",
-      parchmentPaperQuantity: "",
-    });
-  };
-
-  const handleSavePackagingData = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const targetBatch = packagingDialog.batch;
-    if (!targetBatch) {
-      return;
-    }
-
-    const productType = (targetBatch.productType || "").toLowerCase();
-    const payload: {
-      finishedQuantity?: number | null;
-      bottleQuantity?: number | null;
-      lidQuantity?: number | null;
-      alufoilQuantity?: number | null;
-      vacuumBagQuantity?: number | null;
-      parchmentPaperQuantity?: number | null;
-    } = {};
-
-    const parseNumber = (value: string) => {
-      const numeric = parseFloat(value);
-      return Number.isNaN(numeric) ? NaN : numeric;
-    };
-
-    const finishedQuantityValue = parseNumber(packagingForm.finishedQuantity);
-    if (Number.isNaN(finishedQuantityValue) || finishedQuantityValue < 0) {
-      toast.error("Enter a valid non-negative finished quantity.");
-      return;
-    }
-    payload.finishedQuantity = finishedQuantityValue;
-
-    const parseQuantity = parseNumber;
-
-    if (productType === "sap") {
-      const bottle = parseQuantity(packagingForm.bottleQuantity);
-      const lid = parseQuantity(packagingForm.lidQuantity);
-      if (Number.isNaN(bottle) || Number.isNaN(lid) || bottle < 0 || lid < 0) {
-        toast.error("Enter valid non-negative quantities for bottles and lids.");
-        return;
-      }
-      payload.bottleQuantity = bottle;
-      payload.lidQuantity = lid;
-    } else if (productType === "treacle") {
-      const alufoil = parseQuantity(packagingForm.alufoilQuantity);
-      const vacuum = parseQuantity(packagingForm.vacuumBagQuantity);
-      const parchment = parseQuantity(packagingForm.parchmentPaperQuantity);
-      if (
-        Number.isNaN(alufoil) ||
-        Number.isNaN(vacuum) ||
-        Number.isNaN(parchment) ||
-        alufoil < 0 ||
-        vacuum < 0 ||
-        parchment < 0
-      ) {
-        toast.error("Enter valid non-negative quantities for treacle packaging materials.");
-        return;
-      }
-      payload.alufoilQuantity = alufoil;
-      payload.vacuumBagQuantity = vacuum;
-      payload.parchmentPaperQuantity = parchment;
-    } else {
-      toast.error("Unsupported product type for packaging data.");
-      return;
-    }
-
-    setIsSavingPackaging(true);
-    try {
-      await DataService.updatePackagingBatch(targetBatch.packagingId, payload);
-      toast.success(`Packaging data saved for batch ${targetBatch.batchNumber}`);
-      closePackagingDialog();
-      navigate("/labeling", {
-        state: { packagingId: targetBatch.packagingId, batchNumber: targetBatch.batchNumber },
-      });
-    } catch (err) {
-      console.error("Failed to save packaging data", err);
-      toast.error("Unable to save packaging data. Please try again.");
-    } finally {
-      setIsSavingPackaging(false);
-    }
-  };
-
-  const activePackagingType = (packagingDialog.batch?.productType || "").toLowerCase();
-  const isSapDialog = activePackagingType === "sap";
-  const isTreacleDialog = activePackagingType === "treacle";
-  const dialogTitle =
-    packagingDialog.batch?.productType === "sap"
-      ? "Sap Packaging"
-      : packagingDialog.batch?.productType === "treacle"
-      ? "Treacle Packaging"
-      : "Packaging Details";
-  const finishedQuantityStep = activePackagingType === "sap" ? "0.1" : "0.01";
 
   const filteredBatches = batches.filter((batch) => {
     const matchesType = (batch.productType || "").toLowerCase() === productTypeFilter;
@@ -403,6 +391,20 @@ export default function Packaging() {
   const filteredByType = filteredBatches;
   const selectedProductLabel = productTypeFilter === "sap" ? "Sap" : "Treacle";
   const selectedMetrics = packagingMetrics[productTypeFilter];
+  const activePackagingBatches = useMemo(
+    () =>
+      filteredByType.filter(
+        (batch) => normalizePackagingStatus(batch.packagingStatus) !== "completed",
+      ),
+    [filteredByType],
+  );
+  const completedPackagingBatches = useMemo(
+    () =>
+      filteredByType.filter(
+        (batch) => normalizePackagingStatus(batch.packagingStatus) === "completed",
+      ),
+    [filteredByType],
+  );
 
   const hasCompletedPackaging = useMemo(
     () =>
@@ -416,6 +418,146 @@ export default function Packaging() {
       return;
     }
     setReportDialogOpen(true);
+  };
+
+  const renderPackagingCard = (batch: PackagingBatchDto, variant: "active" | "completed" = "active") => {
+    const productType = (batch.productType || "").toLowerCase();
+    const isSap = productType === "sap";
+    const isTreacle = productType === "treacle";
+    const hasFinishedQuantity =
+      batch.finishedQuantity !== null && batch.finishedQuantity !== undefined;
+    const packagingId = batch.packagingId ?? batch.id;
+    const hasPackagingData = isSap
+      ? hasFinishedQuantity &&
+        batch.bottleQuantity !== null &&
+        batch.bottleQuantity !== undefined &&
+        batch.lidQuantity !== null &&
+        batch.lidQuantity !== undefined
+      : isTreacle
+      ? hasFinishedQuantity &&
+        batch.alufoilQuantity !== null &&
+        batch.alufoilQuantity !== undefined &&
+        batch.vacuumBagQuantity !== null &&
+        batch.vacuumBagQuantity !== undefined &&
+        batch.parchmentPaperQuantity !== null &&
+        batch.parchmentPaperQuantity !== undefined
+      : false;
+
+    const productLabel = productType ? productType.charAt(0).toUpperCase() + productType.slice(1) : "Sap";
+    const showFinishedQuantity = variant === "completed";
+    return (
+      <div
+        key={batch.id}
+        className={cn(
+          "border rounded-2xl p-4 sm:p-6 shadow-sm",
+          variant === "completed" ? "bg-muted/30" : "bg-card transition-shadow hover:shadow-md",
+        )}
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2 text-sm sm:gap-5">
+            <span className="font-medium">{formatDate(batch.startedAt ?? batch.scheduledDate)}</span>
+            <span className="hidden sm:inline text-muted-foreground">|</span>
+            <span>
+              Batch <span className="font-semibold text-foreground">{batch.batchNumber}</span>
+            </span>
+            <span className="hidden sm:inline text-muted-foreground">|</span>
+            <span className="uppercase tracking-wide text-xs text-muted-foreground">{productLabel}</span>
+            {variant === "active" && (
+              <>
+                <span className="hidden sm:inline text-muted-foreground">|</span>
+                <span className="text-muted-foreground text-xs uppercase tracking-wide">
+                  {hasPackagingData ? "Data recorded" : "Awaiting data"}
+                </span>
+              </>
+            )}
+          </div>
+          <StatusBadge
+            status={resolveBadgeStatus(batch.packagingStatus)}
+            label={formatStatusLabel(batch.packagingStatus)}
+          />
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            {showFinishedQuantity && (
+              <>
+                <span className="font-semibold text-foreground">Finished qty</span>
+                <span>{formatFinishedQuantity(batch.finishedQuantity ?? null)}</span>
+                <span className="hidden sm:inline">·</span>
+              </>
+            )}
+            <span className="font-semibold text-foreground">Packaging qty</span>
+            <span>{formatVolumeByProduct(batch.totalSapOutput ?? null, batch.productType)}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              "flex-1 sm:flex-none",
+              variant === "active" && "border-cta text-cta hover:bg-cta/10",
+            )}
+            onClick={() => {
+              if (!packagingId) {
+                toast.error("Packaging batch is missing an identifier.");
+                return;
+              }
+              navigate(`/packaging/batch/${packagingId}`);
+            }}
+            disabled={!packagingId}
+          >
+            {variant === "completed" ? "View" : "Continue"}
+          </Button>
+          {variant === "active" && (
+            <Button
+              size="sm"
+              className="bg-cta hover:bg-cta-hover text-cta-foreground flex-1 sm:flex-none"
+              onClick={() => void handleSubmitPackagingBatch(batch)}
+              disabled={submittingPackagingId === packagingId || !hasPackagingData || !packagingId}
+            >
+              {submittingPackagingId === packagingId ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Submitting…
+                </span>
+              ) : (
+                "Submit"
+              )}
+            </Button>
+          )}
+          {variant === "active" && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="flex-1 sm:flex-none"
+              onClick={() =>
+                setDeleteTarget({ packagingId, batchNumber: batch.batchNumber })
+              }
+              disabled={isDeletingPackaging && deleteTarget?.packagingId === packagingId}
+            >
+              <Trash2 className="h-4 w-4 mr-1" /> Delete
+            </Button>
+          )}
+          {variant === "completed" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 sm:flex-none"
+              onClick={() => void handleReopenPackagingBatch(batch)}
+              disabled={reopeningPackagingId === packagingId}
+            >
+              {reopeningPackagingId === packagingId ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Reopening…
+                </span>
+              ) : (
+                "Reopen"
+              )}
+            </Button>
+          )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -509,116 +651,31 @@ export default function Packaging() {
               </div>
             )}
 
-            {!isLoading && !error &&
-              filteredByType.map((batch) => {
-                const productType = (batch.productType || "").toLowerCase();
-                const isSap = productType === "sap";
-                const isTreacle = productType === "treacle";
-                const hasFinishedQuantity =
-                  batch.finishedQuantity !== null && batch.finishedQuantity !== undefined;
-                const hasPackagingData = isSap
-                  ? hasFinishedQuantity &&
-                    batch.bottleQuantity !== null &&
-                    batch.bottleQuantity !== undefined &&
-                    batch.lidQuantity !== null &&
-                    batch.lidQuantity !== undefined
-                  : isTreacle
-                  ? hasFinishedQuantity &&
-                    batch.alufoilQuantity !== null &&
-                    batch.alufoilQuantity !== undefined &&
-                    batch.vacuumBagQuantity !== null &&
-                    batch.vacuumBagQuantity !== undefined &&
-                    batch.parchmentPaperQuantity !== null &&
-                    batch.parchmentPaperQuantity !== undefined
-                  : false;
-
-                return (
-                  <div key={batch.id} className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm">
-                        <span className="font-medium">{formatDate(batch.startedAt ?? batch.scheduledDate)}</span>
-                        <span className="hidden sm:inline text-muted-foreground">|</span>
-                        <span>Batch: {batch.batchNumber}</span>
-                        <span className="hidden sm:inline text-muted-foreground">|</span>
-                        <span>Production Qty: {formatVolumeByProduct(batch.totalSapOutput ?? null, batch.productType)}</span>
-                        <span className="hidden sm:inline text-muted-foreground">|</span>
-                        <span>Finished Qty: {formatVolumeByProduct(batch.finishedQuantity ?? null, batch.productType)}</span>
-                      </div>
-                      <StatusBadge
-                        status={resolveBadgeStatus(batch.packagingStatus)}
-                        label={formatStatusLabel(batch.packagingStatus)}
-                      />
+            {!isLoading && !error && filteredByType.length > 0 && (
+              <div className="space-y-10">
+                <section className="space-y-3">
+                  <h2 className="text-lg sm:text-xl font-semibold">Packaging batches</h2>
+                  {activePackagingBatches.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-muted/40 bg-muted/20 p-6 text-sm text-muted-foreground text-center">
+                      No active {selectedProductLabel.toLowerCase()} batches.
                     </div>
+                  ) : (
+                    activePackagingBatches.map((batch) => renderPackagingCard(batch, "active"))
+                  )}
+                </section>
 
-                    {(isSap || isTreacle) && (
-                      <div className="mt-4 grid gap-3 text-xs sm:grid-cols-3">
-                        <div className="rounded-lg bg-muted/30 px-3 py-2">
-                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Finished Quantity</p>
-                          <p className="mt-1 text-sm font-medium text-foreground">
-                            {formatVolumeByProduct(batch.finishedQuantity ?? null, batch.productType)}
-                          </p>
-                        </div>
-                        {isSap ? (
-                          <>
-                            <div className="rounded-lg bg-muted/30 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Bottle Quantity</p>
-                              <p className="mt-1 text-sm font-medium text-foreground">{formatMaterialQuantity(batch.bottleQuantity ?? null)}</p>
-                            </div>
-                            <div className="rounded-lg bg-muted/30 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Lid Quantity</p>
-                              <p className="mt-1 text-sm font-medium text-foreground">{formatMaterialQuantity(batch.lidQuantity ?? null)}</p>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="rounded-lg bg-muted/30 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Alufoil Quantity</p>
-                              <p className="mt-1 text-sm font-medium text-foreground">{formatMaterialQuantity(batch.alufoilQuantity ?? null)}</p>
-                            </div>
-                            <div className="rounded-lg bg-muted/30 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Vacuum Bag Quantity</p>
-                              <p className="mt-1 text-sm font-medium text-foreground">{formatMaterialQuantity(batch.vacuumBagQuantity ?? null)}</p>
-                            </div>
-                            <div className="rounded-lg bg-muted/30 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Parchment Paper Quantity</p>
-                              <p className="mt-1 text-sm font-medium text-foreground">{formatMaterialQuantity(batch.parchmentPaperQuantity ?? null)}</p>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/processing/batch/${batch.processingBatchId}`)}
-                        className="flex-1 sm:flex-none"
-                      >
-                        View Processing Batch
-                      </Button>
-                      {(isSap || isTreacle) && (
-                        <Button
-                          size="sm"
-                          className="bg-cta hover:bg-cta-hover text-cta-foreground flex-1 sm:flex-none"
-                          onClick={() => openPackagingDialogForBatch(batch)}
-                        >
-                          {hasPackagingData ? "Update Packaging Data" : "Enter Packaging Data"}
-                        </Button>
-                      )}
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="flex-1 sm:flex-none"
-                        onClick={() => setDeleteTarget({ packagingId: batch.packagingId, batchNumber: batch.batchNumber })}
-                        disabled={isDeletingPackaging && deleteTarget?.packagingId === batch.packagingId}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" /> Delete
-                      </Button>
+                <section className="space-y-3">
+                  <h2 className="text-lg sm:text-xl font-semibold">Completed batches</h2>
+                  {completedPackagingBatches.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-muted/40 bg-muted/20 p-6 text-sm text-muted-foreground text-center">
+                      No completed {selectedProductLabel.toLowerCase()} batches yet.
                     </div>
-                  </div>
-                );
-              })}
+                  ) : (
+                    completedPackagingBatches.map((batch) => renderPackagingCard(batch, "completed"))
+                  )}
+                </section>
+              </div>
+            )}
           </div>
         </div>
       </main>
@@ -766,158 +823,6 @@ export default function Packaging() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog
-        open={packagingDialog.open}
-        onOpenChange={(open) => {
-          if (!open && !isSavingPackaging) {
-            closePackagingDialog();
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{dialogTitle}</DialogTitle>
-            <DialogDescription>
-              {packagingDialog.batch
-                ? `Capture packaging quantities for batch ${packagingDialog.batch.batchNumber}.`
-                : "Capture packaging quantities for this batch."}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSavePackagingData} className="space-y-5">
-            {packagingDialog.batch && (
-              <div className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Production quantity</span>
-                  <span className="font-medium text-foreground">
-                    {formatVolumeByProduct(packagingDialog.batch.totalSapOutput, packagingDialog.batch.productType)}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center justify-between text-muted-foreground">
-                  <span>Current finished quantity</span>
-                  <span className="font-medium text-foreground">
-                    {formatVolumeByProduct(packagingDialog.batch.finishedQuantity ?? null, packagingDialog.batch.productType)}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="finishedQuantity">Finished quantity</Label>
-              <Input
-                id="finishedQuantity"
-                type="number"
-                min="0"
-                step={finishedQuantityStep}
-                value={packagingForm.finishedQuantity}
-                onChange={(event) =>
-                  setPackagingForm((prev) => ({ ...prev, finishedQuantity: event.target.value }))
-                }
-                required
-              />
-            </div>
-
-            {isSapDialog && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="bottleQuantity">Bottle quantity</Label>
-                  <Input
-                    id="bottleQuantity"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={packagingForm.bottleQuantity}
-                    onChange={(event) =>
-                      setPackagingForm((prev) => ({ ...prev, bottleQuantity: event.target.value }))
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lidQuantity">Lid quantity</Label>
-                  <Input
-                    id="lidQuantity"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={packagingForm.lidQuantity}
-                    onChange={(event) =>
-                      setPackagingForm((prev) => ({ ...prev, lidQuantity: event.target.value }))
-                    }
-                    required
-                  />
-                </div>
-              </div>
-            )}
-
-            {isTreacleDialog && (
-              <div className="grid gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="alufoilQuantity">Alufoil quantity</Label>
-                  <Input
-                    id="alufoilQuantity"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={packagingForm.alufoilQuantity}
-                    onChange={(event) =>
-                      setPackagingForm((prev) => ({ ...prev, alufoilQuantity: event.target.value }))
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vacuumBagQuantity">Vacuum bag quantity</Label>
-                  <Input
-                    id="vacuumBagQuantity"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={packagingForm.vacuumBagQuantity}
-                    onChange={(event) =>
-                      setPackagingForm((prev) => ({ ...prev, vacuumBagQuantity: event.target.value }))
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="parchmentPaperQuantity">Parchment paper quantity</Label>
-                  <Input
-                    id="parchmentPaperQuantity"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={packagingForm.parchmentPaperQuantity}
-                    onChange={(event) =>
-                      setPackagingForm((prev) => ({ ...prev, parchmentPaperQuantity: event.target.value }))
-                    }
-                    required
-                  />
-                </div>
-              </div>
-            )}
-
-            <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closePackagingDialog}
-                disabled={isSavingPackaging}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSavingPackaging} className="bg-cta hover:bg-cta-hover">
-                {isSavingPackaging ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Saving…
-                  </span>
-                ) : (
-                  "Save packaging data"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

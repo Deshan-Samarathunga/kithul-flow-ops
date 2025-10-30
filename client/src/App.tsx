@@ -17,6 +17,7 @@ import Processing from "./pages/Processing";
 import BatchDetail from "./pages/BatchDetail";
 import Packaging from "./pages/Packaging";
 import Labeling from "./pages/Labeling";
+import PackagingBatchDetail from "./pages/PackagingBatchDetail";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
 import AddEmployee from "./pages/AddEmployee";
@@ -97,6 +98,13 @@ const App = () => (
               <RequireAuth>
                 <RequireRole allow={["Packaging", "Administrator"]}>
                   <Packaging />
+                </RequireRole>
+              </RequireAuth>
+            } />
+            <Route path="/packaging/batch/:packagingId" element={
+              <RequireAuth>
+                <RequireRole allow={["Packaging", "Administrator"]}>
+                  <PackagingBatchDetail />
                 </RequireRole>
               </RequireAuth>
             } />
