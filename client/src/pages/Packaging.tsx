@@ -352,6 +352,20 @@ export default function Packaging() {
     return `${Number(value).toFixed(1)} ${unit}`;
   };
 
+  const formatFinishedQuantity = (value: number | null | undefined) => {
+    if (value === null || value === undefined) {
+      return "—";
+    }
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return "—";
+    }
+    if (Number.isInteger(numeric)) {
+      return numeric.toLocaleString();
+    }
+    return numeric.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  };
+
   const filteredBatches = batches.filter((batch) => {
     const matchesType = (batch.productType || "").toLowerCase() === productTypeFilter;
     if (!matchesType) {
@@ -430,6 +444,7 @@ export default function Packaging() {
       : false;
 
     const productLabel = productType ? productType.charAt(0).toUpperCase() + productType.slice(1) : "Sap";
+    const showFinishedQuantity = variant === "completed";
     return (
       <div
         key={batch.id}
@@ -464,10 +479,14 @@ export default function Packaging() {
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">Finished qty</span>
-            <span>{formatVolumeByProduct(batch.finishedQuantity ?? null, batch.productType)}</span>
-            <span className="hidden sm:inline">·</span>
-            <span className="font-semibold text-foreground">Processed qty</span>
+            {showFinishedQuantity && (
+              <>
+                <span className="font-semibold text-foreground">Finished qty</span>
+                <span>{formatFinishedQuantity(batch.finishedQuantity ?? null)}</span>
+                <span className="hidden sm:inline">·</span>
+              </>
+            )}
+            <span className="font-semibold text-foreground">Packaging qty</span>
             <span>{formatVolumeByProduct(batch.totalSapOutput ?? null, batch.productType)}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
