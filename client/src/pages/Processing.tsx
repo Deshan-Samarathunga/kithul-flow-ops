@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { FileText, Loader2, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import type { ProcessingBatchDto } from "@/lib/apiClient";
 import { toast } from "sonner";

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import type { ProcessingBatchDto, ProcessingBucketDto } from "@/lib/apiClient";
 import { ChevronRight } from "lucide-react";

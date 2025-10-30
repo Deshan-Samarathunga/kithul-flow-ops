@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom"
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { DataService } from "@/lib/dataService";
 

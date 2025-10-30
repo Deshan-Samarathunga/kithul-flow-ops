@@ -36,16 +36,22 @@ function mapLabelingRow(row: any) {
     totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
     bucketCount: Number(row.bucket_count ?? 0),
     totalQuantity: Number(row.total_quantity ?? 0),
-    stickerCost: row.labeling_sticker_cost !== null ? Number(row.labeling_sticker_cost) : null,
-    shrinkSleeveCost: row.labeling_shrink_sleeve_cost !== null ? Number(row.labeling_shrink_sleeve_cost) : null,
-    neckTagCost: row.labeling_neck_tag_cost !== null ? Number(row.labeling_neck_tag_cost) : null,
-    corrugatedCartonCost:
-      row.labeling_corrugated_carton_cost !== null ? Number(row.labeling_corrugated_carton_cost) : null,
+    stickerQuantity:
+      row.labeling_sticker_quantity !== null ? Number(row.labeling_sticker_quantity) : null,
+    shrinkSleeveQuantity:
+      row.labeling_shrink_sleeve_quantity !== null ? Number(row.labeling_shrink_sleeve_quantity) : null,
+    neckTagQuantity: row.labeling_neck_tag_quantity !== null ? Number(row.labeling_neck_tag_quantity) : null,
+    corrugatedCartonQuantity:
+      row.labeling_corrugated_carton_quantity !== null ? Number(row.labeling_corrugated_carton_quantity) : null,
   };
 }
 
 const LABELING_STATUSES = ["pending", "in-progress", "completed", "on-hold"] as const;
-const numericCost = z.number().min(0, "Cost must be greater than or equal to 0").nullable().optional();
+const numericQuantity = z
+  .number()
+  .min(0, "Quantity must be greater than or equal to 0")
+  .nullable()
+  .optional();
 
 const updateLabelingSchema = z.object({
   status: z.enum(LABELING_STATUSES).optional(),
@@ -54,10 +60,10 @@ const updateLabelingSchema = z.object({
     .trim()
     .max(2000, "Notes must be 2000 characters or fewer")
     .optional(),
-  stickerCost: numericCost,
-  shrinkSleeveCost: numericCost,
-  neckTagCost: numericCost,
-  corrugatedCartonCost: numericCost,
+  stickerQuantity: numericQuantity,
+  shrinkSleeveQuantity: numericQuantity,
+  neckTagQuantity: numericQuantity,
+  corrugatedCartonQuantity: numericQuantity,
 });
 
 const createLabelingSchema = z.object({
@@ -204,10 +210,10 @@ async function fetchLabelingRow(packagingId: string) {
       lb.labeling_id,
       lb.status AS labeling_status,
       lb.notes AS labeling_notes,
-      lb.sticker_cost AS labeling_sticker_cost,
-      lb.shrink_sleeve_cost AS labeling_shrink_sleeve_cost,
-      lb.neck_tag_cost AS labeling_neck_tag_cost,
-      lb.corrugated_carton_cost AS labeling_corrugated_carton_cost,
+      lb.sticker_quantity AS labeling_sticker_quantity,
+      lb.shrink_sleeve_quantity AS labeling_shrink_sleeve_quantity,
+      lb.neck_tag_quantity AS labeling_neck_tag_quantity,
+      lb.corrugated_carton_quantity AS labeling_corrugated_carton_quantity,
       COALESCE(SUM(b.quantity), 0) AS total_quantity,
       COUNT(pbb.bucket_id) AS bucket_count
     FROM ${context.packagingTable} pkg
@@ -234,10 +240,10 @@ async function fetchLabelingRow(packagingId: string) {
       lb.labeling_id,
       lb.status,
       lb.notes,
-      lb.sticker_cost,
-      lb.shrink_sleeve_cost,
-      lb.neck_tag_cost,
-      lb.corrugated_carton_cost
+      lb.sticker_quantity,
+      lb.shrink_sleeve_quantity,
+      lb.neck_tag_quantity,
+      lb.corrugated_carton_quantity
   `;
 
   const { rows } = await pool.query(query, [packagingId]);
@@ -284,10 +290,10 @@ async function fetchLabelingSummaries(productType: ProductSlug) {
       lb.labeling_id,
       lb.status AS labeling_status,
       lb.notes AS labeling_notes,
-      lb.sticker_cost AS labeling_sticker_cost,
-      lb.shrink_sleeve_cost AS labeling_shrink_sleeve_cost,
-      lb.neck_tag_cost AS labeling_neck_tag_cost,
-      lb.corrugated_carton_cost AS labeling_corrugated_carton_cost,
+      lb.sticker_quantity AS labeling_sticker_quantity,
+      lb.shrink_sleeve_quantity AS labeling_shrink_sleeve_quantity,
+      lb.neck_tag_quantity AS labeling_neck_tag_quantity,
+      lb.corrugated_carton_quantity AS labeling_corrugated_carton_quantity,
       COALESCE(SUM(b.quantity), 0) AS total_quantity,
       COUNT(pbb.bucket_id) AS bucket_count
     FROM ${packagingTable} pkg
@@ -313,10 +319,10 @@ async function fetchLabelingSummaries(productType: ProductSlug) {
       lb.labeling_id,
       lb.status,
       lb.notes,
-      lb.sticker_cost,
-      lb.shrink_sleeve_cost,
-      lb.neck_tag_cost,
-      lb.corrugated_carton_cost
+      lb.sticker_quantity,
+      lb.shrink_sleeve_quantity,
+      lb.neck_tag_quantity,
+      lb.corrugated_carton_quantity
     ORDER BY pkg.started_at DESC, pkg.packaging_id ASC
   `;
 
@@ -409,38 +415,43 @@ router.patch(
       const productType = (existing.productType || "").toLowerCase();
       const sanitized: typeof validated = { ...validated };
 
-      if (sanitized.stickerCost === undefined || sanitized.corrugatedCartonCost === undefined) {
-        return res.status(400).json({ error: "Sticker cost and corrugated carton cost are required." });
+      if (sanitized.stickerQuantity === undefined || sanitized.corrugatedCartonQuantity === undefined) {
+        return res
+          .status(400)
+          .json({ error: "Sticker and corrugated carton quantities are required." });
       }
 
       if (productType === "sap") {
-        if (sanitized.shrinkSleeveCost === undefined || sanitized.neckTagCost === undefined) {
+        if (sanitized.shrinkSleeveQuantity === undefined || sanitized.neckTagQuantity === undefined) {
           return res.status(400).json({
-            error: "Shrink sleeve and neck tag costs are required for sap labeling.",
+            error: "Shrink sleeve and neck tag quantities are required for sap labeling.",
           });
         }
       } else if (productType === "treacle") {
-        sanitized.shrinkSleeveCost = null;
-        sanitized.neckTagCost = null;
+        sanitized.shrinkSleeveQuantity = null;
+        sanitized.neckTagQuantity = null;
       } else {
         return res.status(400).json({ error: "Unsupported product type for labeling." });
       }
 
-      const stickerCostValue = sanitized.stickerCost ?? null;
-      const shrinkCostValue = sanitized.shrinkSleeveCost ?? null;
-      const neckTagValue = sanitized.neckTagCost ?? null;
-      const cartonCostValue = sanitized.corrugatedCartonCost ?? null;
-      const allCostsCaptured =
+      const stickerQuantityValue = sanitized.stickerQuantity ?? null;
+      const shrinkQuantityValue = sanitized.shrinkSleeveQuantity ?? null;
+      const neckTagQuantityValue = sanitized.neckTagQuantity ?? null;
+      const cartonQuantityValue = sanitized.corrugatedCartonQuantity ?? null;
+      const allQuantitiesCaptured =
         productType === "sap"
-          ? stickerCostValue !== null && shrinkCostValue !== null && neckTagValue !== null && cartonCostValue !== null
-          : stickerCostValue !== null && cartonCostValue !== null;
+          ? stickerQuantityValue !== null &&
+            shrinkQuantityValue !== null &&
+            neckTagQuantityValue !== null &&
+            cartonQuantityValue !== null
+          : stickerQuantityValue !== null && cartonQuantityValue !== null;
       const statusValue =
         sanitized.status ??
         (existing.labelingId
-          ? allCostsCaptured
+          ? allQuantitiesCaptured
             ? "completed"
             : existing.labelingStatus
-          : allCostsCaptured
+          : allQuantitiesCaptured
           ? "completed"
           : "pending");
       const notesValue = sanitized.notes ?? existing.labelingNotes ?? null;
@@ -457,20 +468,20 @@ router.patch(
             packaging_batch_id,
             status,
             notes,
-            sticker_cost,
-            shrink_sleeve_cost,
-            neck_tag_cost,
-            corrugated_carton_cost
+            sticker_quantity,
+            shrink_sleeve_quantity,
+            neck_tag_quantity,
+            corrugated_carton_quantity
           )
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           ON CONFLICT (packaging_batch_id) DO UPDATE
           SET
             status = EXCLUDED.status,
             notes = EXCLUDED.notes,
-            sticker_cost = EXCLUDED.sticker_cost,
-            shrink_sleeve_cost = EXCLUDED.shrink_sleeve_cost,
-            neck_tag_cost = EXCLUDED.neck_tag_cost,
-            corrugated_carton_cost = EXCLUDED.corrugated_carton_cost,
+            sticker_quantity = EXCLUDED.sticker_quantity,
+            shrink_sleeve_quantity = EXCLUDED.shrink_sleeve_quantity,
+            neck_tag_quantity = EXCLUDED.neck_tag_quantity,
+            corrugated_carton_quantity = EXCLUDED.corrugated_carton_quantity,
             updated_at = NOW()
         `;
 
@@ -479,10 +490,10 @@ router.patch(
           context.packagingPk,
           statusValue,
           notesValue,
-          stickerCostValue,
-          shrinkCostValue,
-          neckTagValue,
-          cartonCostValue,
+          stickerQuantityValue,
+          shrinkQuantityValue,
+          neckTagQuantityValue,
+          cartonQuantityValue,
         ]);
       } else {
         const updateClauses: string[] = [];
@@ -497,10 +508,10 @@ router.patch(
 
         applyUpdate("status", statusValue);
         applyUpdate("notes", notesValue);
-        applyUpdate("sticker_cost", stickerCostValue);
-        applyUpdate("shrink_sleeve_cost", shrinkCostValue);
-        applyUpdate("neck_tag_cost", neckTagValue);
-        applyUpdate("corrugated_carton_cost", cartonCostValue);
+        applyUpdate("sticker_quantity", stickerQuantityValue);
+        applyUpdate("shrink_sleeve_quantity", shrinkQuantityValue);
+        applyUpdate("neck_tag_quantity", neckTagQuantityValue);
+        applyUpdate("corrugated_carton_quantity", cartonQuantityValue);
         updateClauses.push(`updated_at = NOW()`);
 
         const updateQuery = `
