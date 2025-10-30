@@ -171,20 +171,43 @@ export default function Labeling() {
   }, [productTypeFilter]);
 
   useEffect(() => {
-    if (!isLoading && batches.length > 0) {
-      const state = (location.state ?? {}) as { packagingId?: string; batchNumber?: string };
-      if (state.packagingId && autoOpenedFor !== state.packagingId) {
-        const match = batches.find((batch) => batch.packagingId === state.packagingId);
-        if (match) {
-          openLabelingDialogForBatch(match);
-          setAutoOpenedFor(state.packagingId);
-          if (state.batchNumber) {
-            setSearchQuery(state.batchNumber);
-          }
-        }
-      }
+    if (isLoading || batches.length === 0) {
+      return;
     }
-  }, [isLoading, batches, location.state, autoOpenedFor, openLabelingDialogForBatch, setSearchQuery]);
+
+    const state = (location.state ?? {}) as { packagingId?: string; batchNumber?: string };
+    const packagingId = state.packagingId;
+
+    if (!packagingId || autoOpenedFor === packagingId) {
+      return;
+    }
+
+    const match = batches.find((batch) => batch.packagingId === packagingId);
+    if (!match) {
+      return;
+    }
+
+    setLabelingDialog({ open: true, batch: match });
+    setLabelingForm({
+      stickerQuantity:
+        match.stickerQuantity !== null && match.stickerQuantity !== undefined ? String(match.stickerQuantity) : "",
+      shrinkSleeveQuantity:
+        match.shrinkSleeveQuantity !== null && match.shrinkSleeveQuantity !== undefined
+          ? String(match.shrinkSleeveQuantity)
+          : "",
+      neckTagQuantity:
+        match.neckTagQuantity !== null && match.neckTagQuantity !== undefined ? String(match.neckTagQuantity) : "",
+      corrugatedCartonQuantity:
+        match.corrugatedCartonQuantity !== null && match.corrugatedCartonQuantity !== undefined
+          ? String(match.corrugatedCartonQuantity)
+          : "",
+    });
+    setAutoOpenedFor(packagingId);
+
+    if (state.batchNumber) {
+      setSearchQuery(state.batchNumber ?? "");
+    }
+  }, [isLoading, batches, location.state, autoOpenedFor, setSearchQuery]);
 
   useEffect(() => {
     if (createDialog.open) {
