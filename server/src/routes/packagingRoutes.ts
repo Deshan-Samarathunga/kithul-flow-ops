@@ -3,6 +3,14 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import { auth, requireRole } from "../middleware/authMiddleware.js";
 import {
+  listBatches,
+  availableProcessing,
+  createBatch as createPackagingBatch,
+  getBatch as getPackagingBatch,
+  updateBatch as updatePackagingBatch,
+  deleteBatch as deletePackagingBatch,
+} from "../controllers/packagingController.js";
+import {
 	SUPPORTED_PRODUCTS,
 	getTableName,
 	normalizeProduct,
@@ -299,228 +307,38 @@ async function fetchPackagingSummaries(productType: ProductSlug) {
 			pkg.finished_quantity
 		ORDER BY pkg.started_at DESC, pkg.packaging_id ASC
 	`;
-
 	const { rows } = await pool.query(query);
-	return rows;
+	return rows.map(mapPackagingRow);
 }
 
-router.get("/batches", auth, requireRole("Packaging", "Processing", "Administrator"), async (_req, res) => {
-	try {
-		const summaries = await Promise.all(
-			SUPPORTED_PRODUCTS.map((product) => fetchPackagingSummaries(product))
-		);
-		const batches = summaries.flat().map(mapPackagingRow);
-		res.json({ batches });
-	} catch (error) {
-		console.error("Error fetching packaging batches:", error);
-		res.status(500).json({ error: "Failed to fetch packaging batches" });
-	}
-});
-
 router.get(
-	"/batches/available-processing",
-	auth,
-	requireRole("Packaging", "Processing", "Administrator"),
-	async (req, res) => {
-		try {
-			const productParam = typeof req.query.productType === "string" ? normalizeProduct(req.query.productType) : null;
-			const eligible = await fetchEligibleProcessingBatches(productParam ?? undefined);
-			res.json({ batches: eligible });
-		} catch (error) {
-			console.error("Error fetching eligible processing batches for packaging:", error);
-			res.status(500).json({ error: "Failed to fetch eligible processing batches" });
-		}
-	}
+    "/batches/available-processing",
+    auth,
+    requireRole("Packaging", "Processing", "Administrator"),
+    availableProcessing as any
 );
 
-router.post("/batches", auth, requireRole("Packaging", "Administrator"), async (req, res) => {
-	try {
-		const { processingBatchId } = createPackagingSchema.parse(req.body ?? {});
-		const context = await resolveProcessingContextByBatchId(processingBatchId);
-		if (!context) {
-			return res.status(404).json({ error: "Processing batch not found" });
-		}
-
-		const processingPk = Number(context.row.id);
-		const { rows: existing } = await pool.query(
-			`SELECT packaging_id FROM ${context.packagingTable} WHERE processing_batch_id = $1`,
-			[processingPk]
-		);
-		if (existing.length > 0) {
-			return res.status(400).json({ error: "Packaging batch already exists for this processing batch" });
-		}
-
-		const packagingId = `pkg${Date.now()}`;
-		await pool.query(
-			`INSERT INTO ${context.packagingTable} (packaging_id, processing_batch_id, status, started_at)
-			 VALUES ($1, $2, 'pending', NOW())`,
-			[packagingId, processingPk]
-		);
-
-		const created = await fetchPackagingBatchByPackagingId(packagingId);
-		if (!created) {
-			return res.status(500).json({ error: "Failed to load created packaging batch" });
-		}
-
-		res.status(201).json(created);
-	} catch (error) {
-		if (error instanceof z.ZodError) {
-			return res.status(400).json({ error: "Validation error", details: error.issues });
-		}
-		console.error("Error creating packaging batch:", error);
-		res.status(500).json({ error: "Failed to create packaging batch" });
-	}
-});
+router.post("/batches", auth, requireRole("Packaging", "Administrator"), createPackagingBatch as any);
 
 router.get(
-	"/batches/:packagingId",
-	auth,
-	requireRole("Packaging", "Processing", "Administrator"),
-	async (req, res) => {
-		try {
-			const { packagingId } = req.params;
-			const batch = await fetchPackagingBatchByPackagingId(packagingId);
-			if (!batch) {
-				return res.status(404).json({ error: "Packaging batch not found" });
-			}
-			res.json(batch);
-		} catch (error) {
-			console.error("Error fetching packaging batch:", error);
-			res.status(500).json({ error: "Failed to fetch packaging batch" });
-		}
-	}
+    "/batches/:packagingId",
+    auth,
+    requireRole("Packaging", "Processing", "Administrator"),
+    getPackagingBatch as any
 );
 
-	router.patch(
-		"/batches/:packagingId",
-		auth,
-		requireRole("Packaging", "Administrator"),
-		async (req, res) => {
-			try {
-				const { packagingId } = req.params;
-				const validated = updatePackagingSchema.parse(req.body ?? {});
-
-				const existing = await fetchPackagingBatchByPackagingId(packagingId);
-				if (!existing) {
-					return res.status(404).json({ error: "Packaging batch not found" });
-				}
-
-				const productType = (existing.productType || "").toLowerCase();
-
-				if (productType === "sap") {
-					if (validated.bottleQuantity === undefined || validated.lidQuantity === undefined) {
-						return res
-							.status(400)
-							.json({ error: "Bottle and lid quantities are required for sap packaging." });
-					}
-				} else if (productType === "treacle") {
-					if (
-						validated.alufoilQuantity === undefined ||
-						validated.vacuumBagQuantity === undefined ||
-						validated.parchmentPaperQuantity === undefined
-					) {
-						return res.status(400).json({
-							error: "Alufoil, vacuum bag, and parchment paper quantities are required for treacle packaging.",
-						});
-					}
-				}
-
-				const finishedQuantityValue = validated.finishedQuantity;
-				if (finishedQuantityValue === undefined) {
-					return res.status(400).json({ error: "Finished quantity is required for packaging." });
-				}
-
-				const updateClauses: string[] = [];
-				const params: any[] = [];
-				let paramIndex = 1;
-
-				const applyQuantityUpdate = (
-					field: keyof typeof validated,
-					dbColumn: string
-				) => {
-					const value = validated[field];
-					if (value !== undefined) {
-						updateClauses.push(`${dbColumn} = $${paramIndex}`);
-						params.push(value);
-						paramIndex++;
-					}
-				};
-
-				applyQuantityUpdate("finishedQuantity", "finished_quantity");
-				applyQuantityUpdate("bottleQuantity", "bottle_quantity");
-				applyQuantityUpdate("lidQuantity", "lid_quantity");
-				applyQuantityUpdate("alufoilQuantity", "alufoil_quantity");
-				applyQuantityUpdate("vacuumBagQuantity", "vacuum_bag_quantity");
-				applyQuantityUpdate("parchmentPaperQuantity", "parchment_paper_quantity");
-
-				if (validated.status) {
-					updateClauses.push(`status = $${paramIndex}`);
-					params.push(validated.status);
-					paramIndex++;
-				}
-
-				if (validated.notes !== undefined) {
-					updateClauses.push(`notes = $${paramIndex}`);
-					params.push(validated.notes);
-					paramIndex++;
-				}
-
-				if (updateClauses.length === 0) {
-					return res.status(400).json({ error: "No fields provided to update." });
-				}
-
-				updateClauses.push(`updated_at = NOW()`);
-
-				const context = await resolvePackagingContext(packagingId);
-				if (!context) {
-					return res.status(404).json({ error: "Packaging batch not found" });
-				}
-
-				const updateQuery = `
-					UPDATE ${context.packagingTable}
-					SET ${updateClauses.join(", ")}
-					WHERE packaging_id = $${paramIndex}
-				`;
-
-				params.push(packagingId);
-
-				await pool.query(updateQuery, params);
-
-				const refreshed = await fetchPackagingBatchByPackagingId(packagingId);
-				if (!refreshed) {
-					return res.status(500).json({ error: "Failed to load updated packaging batch" });
-				}
-
-				res.json(refreshed);
-			} catch (error: any) {
-				if (error instanceof z.ZodError) {
-					return res.status(400).json({ error: "Validation error", details: error.issues });
-				}
-				console.error("Error updating packaging batch:", error);
-				res.status(500).json({ error: "Failed to update packaging batch" });
-			}
-		}
-	);
+router.patch(
+    "/batches/:packagingId",
+    auth,
+    requireRole("Packaging", "Administrator"),
+    updatePackagingBatch as any
+);
 
 router.delete(
-	"/batches/:packagingId",
-	auth,
-	requireRole("Packaging", "Administrator"),
-	async (req, res) => {
-		const { packagingId } = req.params;
-		try {
-			const context = await resolvePackagingContext(packagingId);
-			if (!context) {
-				return res.status(404).json({ error: "Packaging batch not found" });
-			}
-
-			await pool.query(`DELETE FROM ${context.packagingTable} WHERE packaging_id = $1`, [packagingId]);
-			res.status(204).send();
-		} catch (error) {
-			console.error("Error deleting packaging batch:", error);
-			res.status(500).json({ error: "Failed to delete packaging batch" });
-		}
-	}
+    "/batches/:packagingId",
+    auth,
+    requireRole("Packaging", "Administrator"),
+    deletePackagingBatch as any
 );
 
 export default router;
