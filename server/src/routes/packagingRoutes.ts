@@ -318,6 +318,13 @@ router.get(
     availableProcessing as any
 );
 
+router.get(
+    "/batches",
+    auth,
+    requireRole("Packaging", "Processing", "Administrator"),
+    listBatches as any
+);
+
 router.post("/batches", auth, requireRole("Packaging", "Administrator"), createPackagingBatch as any);
 
 router.get(

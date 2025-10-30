@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ function normalizePackagingStatus(status: string | null | undefined) {
 
 export default function Packaging() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, logout } = useAuth();
   const [batches, setBatches] = useState<PackagingBatchDto[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -63,6 +64,8 @@ export default function Packaging() {
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
   const [searchQuery, setSearchQuery] = usePersistentState<string>("packaging.search", "");
   const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">(() => {
+    const qp = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("productType") : null;
+    if (qp === "treacle" || qp === "sap") return qp;
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("packaging.productType") : null;
     return saved === "treacle" || saved === "sap" ? saved : "sap";
   });
@@ -309,6 +312,17 @@ export default function Packaging() {
     } catch {
       // ignore storage errors
     }
+  }, [productTypeFilter]);
+
+  // keep URL in sync so refresh preserves selection
+  useEffect(() => {
+    const current = searchParams.get("productType");
+    if (current !== productTypeFilter) {
+      const next = new URLSearchParams(searchParams);
+      next.set("productType", productTypeFilter);
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productTypeFilter]);
 
   useEffect(() => {

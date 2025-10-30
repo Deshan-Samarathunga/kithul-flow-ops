@@ -351,6 +351,8 @@ class ApiClient {
     draftId: string;
     collectionCenterId: string;
     productType: 'sap' | 'treacle';
+    bucketId?: string;
+    serialNumber?: string; // 8 digits
     brixValue?: number;
     phValue?: number;
     quantity: number;

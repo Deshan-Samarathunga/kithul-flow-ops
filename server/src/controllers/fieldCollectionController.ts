@@ -35,6 +35,9 @@ const createBucketSchema = z.object({
   draftId: z.string(),
   collectionCenterId: z.string(),
   productType: z.enum(["sap", "treacle"]),
+  // Either provide a full bucketId in the <PRD>-######## format (SAP-######## or TCL-########) or provide a numeric serialNumber (8 digits)
+  bucketId: z.string().trim().min(1).optional(),
+  serialNumber: z.string().regex(/^\d{8}$/).optional(),
   brixValue: z.number().min(0).max(100).optional(),
   phValue: z.number().min(0).max(14).optional(),
   quantity: z.number().positive(),
@@ -496,7 +499,27 @@ export async function createBucket(req: Request, res: Response) {
     const centerRow = centerRows[0];
     if (!centerRow) return res.status(400).json({ error: "Invalid collection center ID" });
 
-    const bucketId = `b${Date.now()}`;
+    // Build/validate bucket id
+    const prefix = productType === "sap" ? "SAP-" : "TCL-";
+    let bucketId = (validated.bucketId ?? "").trim();
+
+    if (!bucketId) {
+      if (!validated.serialNumber) {
+        return res.status(400).json({ error: "Either bucketId or serialNumber (8 digits) is required" });
+      }
+      bucketId = `${prefix}${validated.serialNumber}`;
+    }
+
+    const pattern = productType === "sap" ? /^SAP-\d{8}$/ : /^TCL-\d{8}$/;
+    if (!pattern.test(bucketId)) {
+      return res.status(400).json({ error: `Invalid bucket ID format. Expected ${prefix}########` });
+    }
+
+    // Enforce uniqueness
+    const { rows: existingBuckets } = await client.query(`SELECT 1 FROM ${bucketTable} WHERE bucket_id = $1 LIMIT 1`, [bucketId]);
+    if (existingBuckets.length > 0) {
+      return res.status(409).json({ error: "Bucket ID already exists" });
+    }
 
     await client.query("BEGIN");
     try { await client.query("SET LOCAL session_replication_role = replica"); } catch {}

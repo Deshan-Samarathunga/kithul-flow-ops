@@ -296,6 +296,41 @@ async function fetchProcessingBatch(batchId: string) {
 	};
 }
 
+router.get(
+    "/buckets",
+    auth,
+    requireRole("Processing", "Administrator"),
+    listProcessingBuckets as any
+);
+
+router.get(
+    "/batches",
+    auth,
+    requireRole("Processing", "Administrator"),
+    listProcessingBatches as any
+);
+
+router.post(
+    "/batches",
+    auth,
+    requireRole("Processing", "Administrator"),
+    createProcessingBatch as any
+);
+
+router.get(
+    "/batches/:batchId",
+    auth,
+    requireRole("Processing", "Administrator"),
+    getProcessingBatch as any
+);
+
+router.patch(
+    "/batches/:batchId",
+    auth,
+    requireRole("Processing", "Administrator"),
+    updateProcessingBatch as any
+);
+
 router.put(
     "/batches/:batchId/buckets",
     auth,
