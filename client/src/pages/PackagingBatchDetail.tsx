@@ -197,6 +197,7 @@ export default function PackagingBatchDetail() {
       const updated = await DataService.updatePackagingBatch(resolvedPackagingId, payload);
       setBatch(updated);
       toast.success("Packaging data saved");
+      navigate("/packaging");
     } catch (err) {
       console.error("Failed to save packaging data", err);
       toast.error("Unable to save packaging data. Please try again.");

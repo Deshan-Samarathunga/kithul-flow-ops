@@ -144,6 +144,7 @@ export async function fetchLabelingSummaries(productType: ProductSlug) {
     LEFT JOIN ${batchBucketTable} pbb ON pbb.processing_batch_id = pb.id
     LEFT JOIN ${bucketTable} b ON b.id = pbb.bucket_id
     LEFT JOIN ${labelingTable} lb ON lb.packaging_batch_id = pkg.id
+    WHERE lb.id IS NOT NULL
     GROUP BY
       pkg.id,
       pkg.packaging_id,
@@ -202,7 +203,7 @@ export async function fetchEligiblePackagingBatches(productType?: ProductSlug) {
       LEFT JOIN ${labelingTable} lb ON lb.packaging_batch_id = pkg.id
       LEFT JOIN ${batchBucketTable} pbb ON pbb.processing_batch_id = pb.id
       LEFT JOIN ${bucketTable} b ON b.id = pbb.bucket_id
-      WHERE lb.packaging_batch_id IS NULL
+      WHERE lb.packaging_batch_id IS NULL AND pkg.status = 'completed'
       GROUP BY
         pkg.id,
         pkg.packaging_id,

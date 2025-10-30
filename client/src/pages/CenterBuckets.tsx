@@ -244,12 +244,12 @@ export default function CenterBuckets() {
           
           <TabsContent value="sap" className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 w-full">
                 <Input
-                  placeholder="Search by Can ID or product..."
+                  placeholder="Search Cans"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="max-w-xs"
+                  className="max-w-md w-full md:w-1/2"
                 />
               </div>
               {draftStatus === "draft" && (
@@ -259,33 +259,44 @@ export default function CenterBuckets() {
                     navigate(`/field-collection/bucket/new?productType=sap&draftId=${draftId}&centerId=${centerId}`);
                   }}
                 >
-                  Add Can
+                  Add New
                 </Button>
               )}
             </div>
             <div className="space-y-4">
               {loading ? (
-                <div className="text-muted-foreground text-sm">Loading cans...</div>
+                <div className="text-muted-foreground text-sm text-center py-4">Loading cans...</div>
               ) : error ? (
-                <div className="text-destructive text-sm">Error: {error}</div>
+                <div className="text-destructive text-sm text-center py-4">Error: {error}</div>
               ) : filteredBuckets.length === 0 ? (
-                <div className="text-muted-foreground text-sm">No cans found.</div>
+                <div className="text-muted-foreground text-sm text-center py-4">No cans found.</div>
               ) : (
                 filteredBuckets.map((bucket) => (
-                  <div key={bucket.bucket_id} className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm">
+                  <div key={bucket.bucket_id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="space-y-1">
-                        <h3 className="font-semibold text-sm sm:text-base">Can ID: {bucket.bucket_id}</h3>
-                        <p className="text-xs sm:text-sm text-muted-foreground">Product: {bucket.product_type}</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground">Quantity: {bucket.quantity} L</p>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span>Can ID: <span className="font-semibold text-foreground">{bucket.bucket_id}</span></span>
+                        <span className="px-2 text-muted-foreground/40">|</span>
+                        <span>Product: {bucket.product_type}</span>
+                        <span className="px-2 text-muted-foreground/40">|</span>
+                        <span>Quantity: {bucket.quantity} L</span>
                         {bucket.brix_value !== null && (
-                          <p className="text-xs sm:text-sm text-muted-foreground">Brix: {bucket.brix_value}</p>
+                          <>
+                            <span className="px-2 text-muted-foreground/40">|</span>
+                            <span>Brix: {bucket.brix_value}</span>
+                          </>
                         )}
                         {bucket.ph_value !== null && (
-                          <p className="text-xs sm:text-sm text-muted-foreground">pH: {bucket.ph_value}</p>
+                          <>
+                            <span className="px-2 text-muted-foreground/40">|</span>
+                            <span>pH: {bucket.ph_value}</span>
+                          </>
                         )}
                         {bucket.total_amount !== null && (
-                          <p className="text-xs sm:text-sm text-muted-foreground">Amount: Rs. {bucket.total_amount}</p>
+                          <>
+                            <span className="px-2 text-muted-foreground/40">|</span>
+                            <span>Amount: Rs. {bucket.total_amount}</span>
+                          </>
                         )}
                       </div>
                       {draftStatus === "draft" && (
@@ -329,12 +340,12 @@ export default function CenterBuckets() {
           
           <TabsContent value="treacle" className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 w-full">
                 <Input
-                  placeholder="Search by Can ID or product..."
+                  placeholder="Search Cans"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="max-w-xs"
+                  className="max-w-md w-full md:w-1/2"
                 />
               </div>
               {draftStatus === "draft" && (
@@ -344,33 +355,44 @@ export default function CenterBuckets() {
                     navigate(`/field-collection/bucket/new?productType=treacle&draftId=${draftId}&centerId=${centerId}`);
                   }}
                 >
-                  Add Can
+                  Add New
                 </Button>
               )}
             </div>
             <div className="space-y-4">
               {loading ? (
-                <div className="text-muted-foreground text-sm">Loading cans...</div>
+                <div className="text-muted-foreground text-sm text-center py-4">Loading cans...</div>
               ) : error ? (
-                <div className="text-destructive text-sm">Error: {error}</div>
+                <div className="text-destructive text-sm text-center py-4">Error: {error}</div>
               ) : filteredBuckets.length === 0 ? (
-                <div className="text-muted-foreground text-sm">No cans found.</div>
+                <div className="text-muted-foreground text-sm text-center py-4">No cans found.</div>
               ) : (
                 filteredBuckets.map((bucket) => (
-                  <div key={bucket.bucket_id} className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm">
+                  <div key={bucket.bucket_id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="space-y-1">
-                        <h3 className="font-semibold text-sm sm:text-base">Can ID: {bucket.bucket_id}</h3>
-                        <p className="text-xs sm:text-sm text-muted-foreground">Product: {bucket.product_type}</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground">Quantity: {bucket.quantity} L</p>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span>Can ID: <span className="font-semibold text-foreground">{bucket.bucket_id}</span></span>
+                        <span className="px-2 text-muted-foreground/40">|</span>
+                        <span>Product: {bucket.product_type}</span>
+                        <span className="px-2 text-muted-foreground/40">|</span>
+                        <span>Quantity: {bucket.quantity} L</span>
                         {bucket.brix_value && (
-                          <p className="text-xs sm:text-sm text-muted-foreground">Brix: {bucket.brix_value}</p>
+                          <>
+                            <span className="px-2 text-muted-foreground/40">|</span>
+                            <span>Brix: {bucket.brix_value}</span>
+                          </>
                         )}
                         {bucket.ph_value && (
-                          <p className="text-xs sm:text-sm text-muted-foreground">pH: {bucket.ph_value}</p>
+                          <>
+                            <span className="px-2 text-muted-foreground/40">|</span>
+                            <span>pH: {bucket.ph_value}</span>
+                          </>
                         )}
                         {bucket.total_amount && (
-                          <p className="text-xs sm:text-sm text-muted-foreground">Amount: Rs. {bucket.total_amount}</p>
+                          <>
+                            <span className="px-2 text-muted-foreground/40">|</span>
+                            <span>Amount: Rs. {bucket.total_amount}</span>
+                          </>
                         )}
                       </div>
                       {draftStatus === "draft" && (

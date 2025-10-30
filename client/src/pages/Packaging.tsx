@@ -30,7 +30,6 @@ import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import type { EligibleProcessingBatchDto, PackagingBatchDto } from "@/lib/apiClient";
 import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
-import { ProductTypeSelector } from "@/components/ProductTypeSelector";
 import { usePersistentState } from "@/hooks/usePersistentState";
 
 function normalizePackagingStatus(status: string | null | undefined) {
@@ -463,8 +462,7 @@ export default function Packaging() {
       <div
         key={batch.id}
         className={cn(
-          "border rounded-2xl p-4 sm:p-6 shadow-sm",
-          variant === "completed" ? "bg-muted/30" : "bg-card transition-shadow hover:shadow-md",
+          "rounded-2xl border bg-card p-4 sm:p-6 shadow-sm transition-shadow hover:shadow-md",
         )}
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -592,7 +590,7 @@ export default function Packaging() {
                 className="bg-cta hover:bg-cta-hover text-cta-foreground"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Packaging Batch
+                Add New
               </Button>
               <Button
                 variant="secondary"
@@ -600,24 +598,37 @@ export default function Packaging() {
                 className="w-full sm:w-auto"
               >
                 <FileText className="h-4 w-4 mr-2" />
-                Generate report
+                Generate Report
               </Button>
             </div>
           </div>
 
           <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <ProductTypeSelector
-                value={productTypeFilter}
-                onChange={setProductTypeFilter}
-                metrics={packagingMetrics}
-              />
+              <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
+                <button
+                  type="button"
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "sap" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  aria-pressed={productTypeFilter === "sap"}
+                  onClick={() => setProductTypeFilter("sap")}
+                >
+                  Sap
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "treacle" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  aria-pressed={productTypeFilter === "treacle"}
+                  onClick={() => setProductTypeFilter("treacle")}
+                >
+                  Treacle
+                </button>
+              </div>
 
               <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-                <div className="relative w-full sm:w-64">
+                <div className="relative max-w-md w-full md:w-1/2">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search batches"
+                    placeholder="Search Batches"
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     className="pl-10"
@@ -626,7 +637,7 @@ export default function Packaging() {
                 <Button
                   variant="outline"
                   onClick={handleRefresh}
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto md:mr-4"
                   disabled={isLoading}
                 >
                   <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
@@ -637,30 +648,30 @@ export default function Packaging() {
           </div>
 
           <div className="space-y-4">
-            <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{selectedProductLabel} overview</span>
-              <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-status-progress" /> Active: {selectedMetrics.active}
+            <div className="mt-2 flex items-center gap-4 rounded-xl bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{selectedProductLabel} Overview</span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-red-600" /> Active: {selectedMetrics.active}
               </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-status-completed" /> Completed: {selectedMetrics.completed}
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-green-600" /> Completed: {selectedMetrics.completed}
               </span>
             </div>
 
             {isLoading && (
-              <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+              <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
                 Loading packaging batches…
               </div>
             )}
 
             {error && !isLoading && (
-              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive shadow-sm">
                 {error}
               </div>
             )}
 
             {!isLoading && !error && filteredByType.length === 0 && (
-              <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
+              <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
                 No {selectedProductLabel.toLowerCase()} batches available for packaging.
               </div>
             )}
@@ -670,7 +681,7 @@ export default function Packaging() {
                 <section className="space-y-3">
                   <h2 className="text-lg sm:text-xl font-semibold">Packaging batches</h2>
                   {activePackagingBatches.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-muted/40 bg-muted/20 p-6 text-sm text-muted-foreground text-center">
+                    <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
                       No active {selectedProductLabel.toLowerCase()} batches.
                     </div>
                   ) : (
@@ -681,7 +692,7 @@ export default function Packaging() {
                 <section className="space-y-3">
                   <h2 className="text-lg sm:text-xl font-semibold">Completed batches</h2>
                   {completedPackagingBatches.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-muted/40 bg-muted/20 p-6 text-sm text-muted-foreground text-center">
+                    <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
                       No completed {selectedProductLabel.toLowerCase()} batches yet.
                     </div>
                   ) : (
@@ -709,7 +720,7 @@ export default function Packaging() {
       >
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Add packaging batch</DialogTitle>
+            <DialogTitle>Add Packaging Batch</DialogTitle>
             <DialogDescription>
               Choose a submitted processing batch to start capturing packaging data.
             </DialogDescription>
@@ -770,9 +781,11 @@ export default function Packaging() {
                           </p>
                         </div>
                         <div className="text-sm text-muted-foreground sm:text-right">
-                          <div>{batch.productType.toUpperCase()}</div>
-                          <div>Collected: {batch.totalQuantity.toFixed(1)} kg</div>
-                          {batch.totalSapOutput !== null && (
+                          <div>{(batch.productType ?? "").toUpperCase() || "—"}</div>
+                          <div>
+                            Collected: {typeof batch.totalQuantity === "number" ? batch.totalQuantity.toFixed(1) : "—"} kg
+                          </div>
+                          {typeof batch.totalSapOutput === "number" && (
                             <div>Sap out: {batch.totalSapOutput.toFixed(1)} L</div>
                           )}
                         </div>
@@ -803,7 +816,7 @@ export default function Packaging() {
               disabled={isCreatingPackagingBatch || !selectedProcessingId}
               className="bg-cta hover:bg-cta-hover"
             >
-              {isCreatingPackagingBatch ? "Creating…" : "Add packaging batch"}
+              {isCreatingPackagingBatch ? "Creating…" : "Add New"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -830,6 +843,7 @@ export default function Packaging() {
             <AlertDialogAction
               onClick={() => void handleDeletePackagingBatch()}
               disabled={isDeletingPackaging}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeletingPackaging ? "Deleting…" : "Delete"}
             </AlertDialogAction>

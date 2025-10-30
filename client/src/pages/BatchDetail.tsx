@@ -411,6 +411,15 @@ export default function BatchDetail() {
               </div>
             </div>
 
+            {selectedBuckets.length > 0 && (
+              <div className="mb-6 rounded-lg bg-muted/50 p-4 sm:p-6">
+                <h3 className="font-semibold mb-2">Selected Buckets: {selectedBucketsSummary.count}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Total Quantity: {selectedBucketsSummary.totalQuantity.toFixed(1)} kg
+                </p>
+              </div>
+            )}
+
             <div className="mb-6">
               <p className="text-sm text-muted-foreground">
                 Select buckets from field collection to add to this batch
@@ -542,14 +551,6 @@ export default function BatchDetail() {
                 </div>
               )}
 
-              {selectedBuckets.length > 0 && (
-                <div className="rounded-lg bg-muted/50 p-4 sm:p-6">
-                  <h3 className="font-semibold mb-2">Selected Buckets: {selectedBucketsSummary.count}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Total Quantity: {selectedBucketsSummary.totalQuantity.toFixed(1)} kg
-                  </p>
-                </div>
-              )}
             </div>
 
             <Dialog
@@ -560,9 +561,9 @@ export default function BatchDetail() {
                 }
               }}
             >
-              <DialogContent className="sm:max-w-lg">
+              <DialogContent className="sm:max-w-lg rounded-xl border bg-white shadow-sm p-6">
                 <DialogHeader>
-                  <DialogTitle>Production data</DialogTitle>
+                  <DialogTitle>Production Data</DialogTitle>
                   <DialogDescription>
                     {isEditable
                       ? `Record melting output and gas usage for batch ${batch.batchNumber}.`
@@ -623,10 +624,10 @@ export default function BatchDetail() {
                       </Button>
                       <Button
                         type="submit"
-                        className="bg-cta hover:bg-cta-hover text-cta-foreground"
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
                         disabled={isSavingProduction}
                       >
-                        {isSavingProduction ? "Saving…" : "Save production data"}
+                        {isSavingProduction ? "Saving…" : "Save Batch"}
                       </Button>
                     </DialogFooter>
                   </form>

@@ -37,7 +37,7 @@ const createBucketSchema = z.object({
   productType: z.enum(["sap", "treacle"]),
   // Either provide a full bucketId in the <PRD>-######## format (SAP-######## or TCL-########) or provide a numeric serialNumber (8 digits)
   bucketId: z.string().trim().min(1).optional(),
-  serialNumber: z.string().regex(/^\d{8}$/).optional(),
+  serialNumber: z.string().regex(/^\d{1,8}$/).optional(),
   brixValue: z.number().min(0).max(100).optional(),
   phValue: z.number().min(0).max(14).optional(),
   quantity: z.number().positive(),
@@ -353,6 +353,18 @@ export async function updateDraft(req: Request, res: Response) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
+    // Hardening: prevent saving a draft when no centers have been submitted
+    if (validated.status === "draft") {
+      const { rows: completionRows } = await pool.query(
+        `SELECT COUNT(*)::int AS cnt FROM ${CENTER_COMPLETIONS_TABLE} WHERE draft_id = $1`,
+        [draftId],
+      );
+      const completedCount = (completionRows?.[0]?.cnt ?? 0) as number;
+      if (completedCount < 1) {
+        return res.status(400).json({ error: "At least one center must be submitted before saving the draft" });
+      }
+    }
+
     const updateQuery = `
       UPDATE ${DRAFTS_TABLE}
       SET status = $1, updated_at = CURRENT_TIMESTAMP
@@ -507,7 +519,8 @@ export async function createBucket(req: Request, res: Response) {
       if (!validated.serialNumber) {
         return res.status(400).json({ error: "Either bucketId or serialNumber (8 digits) is required" });
       }
-      bucketId = `${prefix}${validated.serialNumber}`;
+      const padded = String(validated.serialNumber).padStart(8, '0');
+      bucketId = `${prefix}${padded}`;
     }
 
     const pattern = productType === "sap" ? /^SAP-\d{8}$/ : /^TCL-\d{8}$/;

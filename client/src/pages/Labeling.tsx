@@ -461,7 +461,7 @@ export default function Labeling() {
                 className="bg-cta hover:bg-cta-hover text-cta-foreground"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Labeling Batch
+                Add New
               </Button>
               <Button
                 variant="secondary"
@@ -476,17 +476,30 @@ export default function Labeling() {
 
           <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <ProductTypeSelector
-                value={productTypeFilter}
-                onChange={setProductTypeFilter}
-                metrics={labelingMetrics}
-              />
+              <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
+                <button
+                  type="button"
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "sap" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  aria-pressed={productTypeFilter === "sap"}
+                  onClick={() => setProductTypeFilter("sap")}
+                >
+                  Sap
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "treacle" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  aria-pressed={productTypeFilter === "treacle"}
+                  onClick={() => setProductTypeFilter("treacle")}
+                >
+                  Treacle
+                </button>
+              </div>
 
               <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-                <div className="relative w-full sm:w-64">
+                <div className="relative max-w-md w-full md:w-1/2">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search batches"
+                    placeholder="Search Batches"
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     className="pl-10"
@@ -495,7 +508,7 @@ export default function Labeling() {
                 <Button
                   variant="outline"
                   onClick={handleRefresh}
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto md:mr-4"
                   disabled={isLoading}
                 >
                   <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
@@ -506,30 +519,30 @@ export default function Labeling() {
           </div>
 
           <div className="space-y-4">
-            <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{selectedProductLabel} overview</span>
-              <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-status-progress" /> Active: {selectedMetrics.active}
+            <div className="mt-2 flex items-center gap-4 rounded-xl bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{selectedProductLabel} Overview</span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-red-600" /> Active: {selectedMetrics.active}
               </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-status-completed" /> Completed: {selectedMetrics.completed}
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-green-600" /> Completed: {selectedMetrics.completed}
               </span>
             </div>
 
             {isLoading && (
-              <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+              <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
                 Loading labeling batches…
               </div>
             )}
 
             {error && !isLoading && (
-              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive shadow-sm">
                 {error}
               </div>
             )}
 
             {!isLoading && !error && filteredBatches.length === 0 && (
-              <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
+              <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
                 No {selectedProductLabel.toLowerCase()} batches available for labeling.
               </div>
             )}
@@ -554,13 +567,13 @@ export default function Labeling() {
                 const statusLabel = isCompleted ? "Completed" : formatStatusLabel(rawStatus);
 
                 return (
-                  <div key={batch.packagingId} className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm">
+                  <div key={batch.packagingId} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm transition-shadow hover:shadow-md">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
                         <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
-                        <span className="hidden sm:inline text-muted-foreground">|</span>
+                        <span className="px-2 text-muted-foreground/40">|</span>
                         <span>Batch: {batch.batchNumber}</span>
-                        <span className="hidden sm:inline text-muted-foreground">|</span>
+                        <span className="px-2 text-muted-foreground/40">|</span>
                         <span>
                           Finished Qty: {formatVolumeByProduct(batch.finishedQuantity ?? null, batch.productType)}
                         </span>
@@ -649,7 +662,7 @@ export default function Labeling() {
       >
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Add labeling batch</DialogTitle>
+            <DialogTitle>Add Labeling Batch</DialogTitle>
             <DialogDescription>
               Pick a packaging batch without labeling data to start tracking accessory usage.
             </DialogDescription>
@@ -710,9 +723,9 @@ export default function Labeling() {
                           </p>
                         </div>
                         <div className="text-sm text-muted-foreground sm:text-right">
-                          <div>{batch.productType.toUpperCase()}</div>
+                          <div>{(batch.productType ?? "").toUpperCase() || "—"}</div>
                           <div>
-                            Finished qty: {formatVolumeByProduct(batch.finishedQuantity, batch.productType as LabelingBatchDto["productType"])}
+                            Finished qty: {formatVolumeByProduct(batch.finishedQuantity ?? null, batch.productType as LabelingBatchDto["productType"])}
                           </div>
                         </div>
                       </div>
@@ -742,7 +755,7 @@ export default function Labeling() {
               disabled={isCreatingLabelingBatch || !selectedPackagingId}
               className="bg-cta hover:bg-cta-hover"
             >
-              {isCreatingLabelingBatch ? "Creating…" : "Add labeling batch"}
+              {isCreatingLabelingBatch ? "Creating…" : "Add New"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -768,6 +781,7 @@ export default function Labeling() {
             <AlertDialogAction
               onClick={() => void handleDeleteLabelingBatch()}
               disabled={isDeletingLabeling}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeletingLabeling ? "Deleting…" : "Delete"}
             </AlertDialogAction>
