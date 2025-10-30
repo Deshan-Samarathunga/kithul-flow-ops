@@ -1,0 +1,151 @@
+import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
+
+type User = {
+  id: number;
+  userId: string;
+  email?: string | null;
+  name?: string | null;
+  role?: string | null;
+};
+
+function routeForRole(role?: string | null) {
+  switch ((role || "").toLowerCase()) {
+    case "administrator":
+    case "admin":
+      return "/admin";
+    case "field collection":
+    case "field":
+      return "/field-collection";
+    case "processing":
+      return "/processing";
+    case "packaging":
+      return "/packaging";
+    case "labeling":
+      return "/labeling";
+    default:
+      return "/field-collection"; // sensible default
+  }
+}
+
+export default function Login() {
+  const navigate = useNavigate();
+  const location = useLocation() as any;
+  const redirectFrom = location.state?.from as string | undefined;
+  const { login } = useAuth();
+
+  const [userId, setUserId] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!userId || !password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const loggedInUser = await login({ userId, password });
+
+      toast.success(`Welcome, ${loggedInUser.name || loggedInUser.userId}!`);
+
+      // redirect priority: explicit redirectFrom -> role route -> default
+      const target = redirectFrom || routeForRole(loggedInUser.role);
+      navigate(target, { replace: true });
+    } catch (err: any) {
+      toast.error(err.message || "Invalid credentials");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-cta/10 p-4 sm:p-6">
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="space-y-2 pb-6">
+          <div className="flex items-center justify-center mb-2">
+            <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary to-cta flex items-center justify-center shadow-md">
+              <span className="text-white font-bold text-2xl">KF</span>
+            </div>
+          </div>
+          <CardTitle className="text-2xl sm:text-3xl text-center">Kithul Flow</CardTitle>
+          <CardDescription className="text-center text-sm sm:text-base">
+            Sign in to access your dashboard
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="userId">User ID</Label>
+              <Input
+                id="userId"
+                type="text"
+                placeholder="admin01"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                className="focus:ring-cta h-11"
+                autoComplete="username"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="password"
+                  type={showPw ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="focus:ring-cta h-11"
+                  autoComplete="current-password"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 shrink-0"
+                  onClick={() => setShowPw((s) => !s)}
+                >
+                  {showPw ? "Hide" : "Show"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="accent-primary"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
+                Remember me
+              </label>
+              {/* place for "Forgot password?" later */}
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full bg-cta hover:bg-cta-hover text-cta-foreground h-11 text-base font-medium shadow-sm hover:shadow-md transition-shadow"
+              disabled={loading}
+            >
+              {loading ? "Signing in..." : "Sign In"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
