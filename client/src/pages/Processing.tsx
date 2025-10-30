@@ -271,33 +271,47 @@ export default function Processing() {
 
           <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <ProductTypeSelector
-                value={productTypeFilter}
-                onChange={setProductTypeFilter}
-                metrics={batchMetrics}
-              />
+              <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
+                <button
+                  type="button"
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "sap" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  aria-pressed={productTypeFilter === "sap"}
+                  onClick={() => setProductTypeFilter("sap")}
+                >
+                  Sap
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "treacle" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  aria-pressed={productTypeFilter === "treacle"}
+                  onClick={() => setProductTypeFilter("treacle")}
+                >
+                  Treacle
+                </button>
+              </div>
 
               <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-                <div className="relative w-full sm:w-64">
+                <div className="relative max-w-md w-full md:w-1/2">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search batches"
+                    placeholder="Search Batches"
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     className="pl-10"
                   />
                 </div>
+
                 <Button
                   variant="secondary"
                   onClick={handleOpenReportDialog}
                   className="w-full sm:w-auto"
                 >
-                  <FileText className="mr-2 h-4 w-4" /> Generate report
+                  <FileText className="mr-2 h-4 w-4" /> Generate Report
                 </Button>
                 <Button
                   variant="outline"
                   onClick={handleRefresh}
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto md:mr-4"
                   disabled={isLoading}
                 >
                   <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
@@ -314,22 +328,19 @@ export default function Processing() {
                       Creating…
                     </>
                   ) : (
-                    <>
-                      <Plus className="mr-2 h-4 w-4" />
-                      {`Add ${selectedProductLabel} Batch`}
-                    </>
+                    <span className="font-medium">Add New</span>
                   )}
                 </Button>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{selectedProductLabel} overview</span>
-              <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-status-progress" /> Active: {selectedMetrics.active}
+            <div className="mt-4 flex items-center gap-4 rounded-xl bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{selectedProductLabel} Overview</span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-red-600" /> Active: {selectedMetrics.active}
               </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-status-completed" /> Completed: {selectedMetrics.completed}
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-green-600" /> Completed: {selectedMetrics.completed}
               </span>
             </div>
           </div>
@@ -357,7 +368,7 @@ export default function Processing() {
               <section className="space-y-3">
                 <h2 className="text-lg sm:text-xl font-semibold">Processing batches</h2>
                 {activeBatches.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-muted/40 bg-muted/20 p-6 text-sm text-muted-foreground text-center">
+                  <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
                     No active {selectedProductLabel.toLowerCase()} batches.
                   </div>
                 ) : (
@@ -367,16 +378,18 @@ export default function Processing() {
                       className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm transition-shadow hover:shadow-md"
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:gap-6">
-                          <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
-                          <span className="hidden text-muted-foreground sm:inline">|</span>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
                           <span>
-                            Batch <span className="font-semibold text-foreground">{displayBatchNumbers.get(batch.id) ?? batch.batchNumber}</span>
+                            Batch ID: <span className="font-semibold text-foreground">{displayBatchNumbers.get(batch.id) ?? batch.batchNumber}</span>
                           </span>
-                          <span className="hidden text-muted-foreground sm:inline">|</span>
-                          <span>{`${formatVolumeByProduct(batch.totalQuantity, batch.productType)} total`}</span>
-                          <span className="hidden text-muted-foreground sm:inline">|</span>
-                          <span>{batch.bucketCount} bucket{batch.bucketCount === 1 ? "" : "s"}</span>
+                          <span className="px-2 text-muted-foreground/40">|</span>
+                          <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
+                          <span className="px-2 text-muted-foreground/40">|</span>
+                          <span>
+                            Total quantity: {formatVolumeByProduct(batch.totalQuantity, batch.productType)}
+                          </span>
+                          <span className="px-2 text-muted-foreground/40">|</span>
+                          <span>Buckets: {batch.bucketCount}</span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <Button
@@ -419,7 +432,7 @@ export default function Processing() {
                             aria-label={`Delete batch ${batch.batchNumber}`}
                             title={`Delete batch ${batch.batchNumber}`}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <span className="inline-flex items-center gap-1"><Trash2 className="h-4 w-4" /> Delete</span>
                           </Button>
                         </div>
                       </div>
@@ -431,7 +444,7 @@ export default function Processing() {
               <section className="space-y-3">
                 <h2 className="text-lg sm:text-xl font-semibold">Completed batches</h2>
                 {completedBatches.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-muted/40 bg-muted/20 p-6 text-sm text-muted-foreground text-center">
+                  <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
                     No completed {selectedProductLabel.toLowerCase()} batches yet.
                   </div>
                 ) : (
@@ -439,21 +452,21 @@ export default function Processing() {
                     return (
                       <div
                         key={batch.id}
-                        className="rounded-2xl border bg-muted/30 p-4 sm:p-6"
+                        className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm transition-shadow hover:shadow-md"
                       >
                         <div className="space-y-4">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:gap-6">
-                              <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
-                              <span className="hidden text-muted-foreground sm:inline">|</span>
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
                               <span>
-                                Batch <span className="font-semibold text-foreground">{displayBatchNumbers.get(batch.id) ?? batch.batchNumber}</span>
+                                Batch ID: <span className="font-semibold text-foreground">{displayBatchNumbers.get(batch.id) ?? batch.batchNumber}</span>
                               </span>
-                              <span className="hidden text-muted-foreground sm:inline">|</span>
+                              <span className="px-2 text-muted-foreground/40">|</span>
+                              <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
+                              <span className="px-2 text-muted-foreground/40">|</span>
                               <span>{`Output quantity: ${formatOutputQuantity(batch)}`}</span>
-                              <span className="hidden text-muted-foreground sm:inline">|</span>
-                              <span className="text-xs uppercase tracking-wide text-muted-foreground/80">
-                                {formatStatusLabel(batch.status)}
+                              <span className="px-2 text-muted-foreground/40">|</span>
+                              <span className="text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">
+                                {normalizeStatus(batch.status) === "completed" ? "Submitted" : formatStatusLabel(batch.status)}
                               </span>
                             </div>
 
@@ -550,6 +563,7 @@ export default function Processing() {
             <AlertDialogAction
               onClick={() => void handleConfirmDelete()}
               disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>

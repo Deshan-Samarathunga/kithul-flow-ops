@@ -266,32 +266,18 @@ router.post("/drafts/:draftId/submit", auth, requireRole("Field Collection", "Ad
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const { rows: centerRows } = await pool.query(
-      "SELECT center_id, center_name FROM collection_centers WHERE is_active = true",
-    );
-
-    const { rows: completionRows } = await pool.query(
+      const { rows: completionRows } = await pool.query(
       `SELECT center_id FROM ${CENTER_COMPLETIONS_TABLE} WHERE draft_id = $1`,
       [draftId],
     );
 
-    const completedSet = new Set(
-      completionRows
-        .map((row) => row.center_id)
-        .filter((value): value is string => typeof value === "string" && value.trim().length > 0),
-    );
+    const completedCount = (completionRows ?? []).filter(
+      (row) => typeof row?.center_id === "string" && row.center_id.trim().length > 0,
+    ).length;
 
-    const pendingCenters = centerRows.filter(
-      (center) => typeof center.center_id === "string" && !completedSet.has(center.center_id),
-    );
-
-    if (pendingCenters.length > 0) {
+    if (completedCount < 1) {
       return res.status(400).json({
-        error: "Submit all centers before completing the draft",
-        pendingCenters: pendingCenters.map((center) => ({
-          centerId: center.center_id,
-          centerName: center.center_name,
-        })),
+        error: "At least one center must be submitted before submitting the draft",
       });
     }
 

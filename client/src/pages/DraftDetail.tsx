@@ -129,6 +129,11 @@ export default function DraftDetail() {
 
   const handleSaveDraft = async () => {
     if (!draftId) return;
+    // Require at least one submitted center before allowing save
+    if (!completedCenters || completedCenters.size === 0) {
+      toast.error('Submit at least one center before saving the draft');
+      return;
+    }
     
     try {
       setLoading(true);
@@ -290,7 +295,7 @@ export default function DraftDetail() {
               <Button
                 className="bg-cta hover:bg-cta-hover text-cta-foreground"
                 onClick={handleSaveDraft}
-                disabled={loading}
+                disabled={loading || completedCenters.size === 0}
               >
                 Save draft
               </Button>
@@ -313,7 +318,7 @@ export default function DraftDetail() {
                       const bucketCount = centerBucketCounts[center.id] ?? 0;
                       
                       return (
-                        <div key={center.id} className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                        <div key={center.id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div className="space-y-1">
                               <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
@@ -359,7 +364,7 @@ export default function DraftDetail() {
                       const bucketCount = centerBucketCounts[center.id] ?? 0;
                       
                       return (
-                        <div key={`completed-${center.id}`} className="bg-muted/50 border rounded-lg p-4 sm:p-6">
+                        <div key={`completed-${center.id}`} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div className="space-y-1">
                               <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
@@ -414,7 +419,7 @@ export default function DraftDetail() {
                     const bucketCount = centerBucketCounts[center.id] ?? 0;
                     
                     return (
-                      <div key={center.id} className="bg-muted/50 border rounded-lg p-4 sm:p-6">
+                      <div key={center.id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                           <div className="space-y-1">
                             <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>

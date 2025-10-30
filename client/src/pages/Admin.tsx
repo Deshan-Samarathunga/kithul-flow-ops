@@ -292,8 +292,11 @@ export default function Admin() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div>
                         <h3 className="font-semibold text-sm sm:text-base">{employee.name || employee.userId}</h3>
-                        <p className="text-xs sm:text-sm text-muted-foreground">{employee.role}</p>
-                        <p className="text-xs text-muted-foreground mt-1">ID: {employee.userId}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+                          <span>{employee.role}</span>
+                          <span className="px-2 text-muted-foreground/40">|</span>
+                          <span>ID: {employee.userId}</span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                         <span
@@ -354,14 +357,13 @@ export default function Admin() {
                      className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
                    >
                      <Plus className="h-4 w-4 mr-2" />
-                     Add Center
+                     Add New
                    </Button>
                  </div>
                </div>
 
                <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
-                 <span className="font-medium text-foreground">Overview</span>
-                 <span>All: {centers.length}</span>
+                 <span className="font-medium text-foreground">Overview</span> All: {centers.length} | Active: {centers.filter(c => c.isActive).length} | Inactive: {centers.filter(c => !c.isActive).length}
                  <span>Active: {centers.filter(c => c.isActive).length}</span>
                  <span>Inactive: {centers.filter(c => !c.isActive).length}</span>
                </div>
@@ -405,12 +407,17 @@ export default function Admin() {
                                 {center.isActive ? "Active" : "Inactive"}
                               </span>
                             </div>
-                            <div className="space-y-1 text-xs sm:text-sm text-muted-foreground">
-                              <p><strong>ID:</strong> {center.centerId}</p>
-                              <p><strong>Location:</strong> {center.location}</p>
-                              <p><strong>Agent:</strong> {center.centerAgent}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+                              <span>ID: {center.centerId}</span>
+                              <span className="px-2 text-muted-foreground/40">|</span>
+                              <span>Location: {center.location}</span>
+                              <span className="px-2 text-muted-foreground/40">|</span>
+                              <span>Agent: {center.centerAgent}</span>
                               {center.contactPhone && (
-                                <p><strong>Phone:</strong> {center.contactPhone}</p>
+                                <>
+                                  <span className="px-2 text-muted-foreground/40">|</span>
+                                  <span>Phone: {center.contactPhone}</span>
+                                </>
                               )}
                             </div>
                           </div>
@@ -512,7 +519,7 @@ export default function Admin() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -530,7 +537,7 @@ export default function Admin() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCenter} className="bg-destructive hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDeleteCenter} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

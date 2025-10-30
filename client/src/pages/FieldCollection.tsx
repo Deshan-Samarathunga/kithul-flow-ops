@@ -190,6 +190,8 @@ export default function FieldCollection() {
   const [reopeningDraftId, setReopeningDraftId] = useState<string | null>(null);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [completedCounts, setCompletedCounts] = useState<Record<string, number>>({});
+  const [listTab, setListTab] = useState<"all" | "active" | "submitted">("all");
 
   const handleLogout = () => {
     logout();
@@ -208,6 +210,21 @@ export default function FieldCollection() {
         .map((item) => normalizeDraftRecord(item))
         .filter((draft): draft is DraftSummary => draft !== null);
       setDrafts(normalized);
+
+      // Load completed center counts for active drafts to control Submit button disabled state
+      const active = normalized.filter((d) => normalizeStatus(d.status) === "draft");
+      const entries = await Promise.all(
+        active.map(async (d) => {
+          try {
+            const completed = await DataService.getCompletedCenters(d.draftId);
+            const count = Array.isArray(completed) ? completed.length : 0;
+            return [d.draftId, count] as const;
+          } catch {
+            return [d.draftId, 0] as const;
+          }
+        })
+      );
+      setCompletedCounts(Object.fromEntries(entries));
     } catch (err: unknown) {
       console.error("Failed to load drafts", err);
       const message = err instanceof Error ? err.message : "Failed to load drafts";
@@ -257,74 +274,10 @@ export default function FieldCollection() {
   const handleSubmitDraft = async (draftId: string) => {
     setSubmittingDraftId(draftId);
     try {
-      const [centersData, completedData] = await Promise.all([
-        DataService.getCollectionCenters(),
-        DataService.getCompletedCenters(draftId),
-      ]);
-
-      const centers = (Array.isArray(centersData) ? centersData : []).map((item) => {
-        if (!item || typeof item !== "object") {
-          return { id: null as string | null, name: undefined as string | undefined };
-        }
-
-        const record = item as Record<string, unknown>;
-        const rawId =
-          typeof record.center_id === "string"
-            ? record.center_id
-            : typeof record.centerId === "string"
-              ? record.centerId
-              : typeof record.id === "string"
-                ? record.id
-                : typeof record.id === "number"
-                  ? String(record.id)
-                  : null;
-
-        const nameCandidate =
-          typeof record.center_name === "string"
-            ? record.center_name
-            : typeof record.centerName === "string"
-              ? record.centerName
-              : undefined;
-
-        return {
-          id: rawId && rawId.trim().length > 0 ? rawId.trim() : null,
-          name: nameCandidate,
-        };
-      }).filter((center): center is { id: string; name: string | undefined } =>
-        typeof center.id === "string" && center.id.length > 0
-      );
-
-      const completedIds = new Set(
-        (Array.isArray(completedData) ? completedData : [])
-          .map((entry) => {
-            if (!entry || typeof entry !== "object") {
-              return null;
-            }
-
-            const record = entry as Record<string, unknown>;
-            const rawId =
-              typeof record.center_id === "string"
-                ? record.center_id
-                : typeof record.centerId === "string"
-                  ? record.centerId
-                  : null;
-
-            return rawId && rawId.trim().length > 0 ? rawId.trim() : null;
-          })
-          .filter((id): id is string => id !== null),
-      );
-
-      const pendingCenters = centers.filter((center) => !completedIds.has(center.id));
-
-      if (pendingCenters.length > 0) {
-        const pendingLabel = pendingCenters
-          .map((center) => center.name ?? center.id)
-          .join(", ");
-        toast.error(
-          pendingLabel
-            ? `Submit the following centers before submitting the draft: ${pendingLabel}`
-            : "Submit all centers before submitting the draft",
-        );
+      const completedData = await DataService.getCompletedCenters(draftId);
+      const completedCount = Array.isArray(completedData) ? completedData.length : 0;
+      if (completedCount < 1) {
+        toast.error("Submit at least one center before submitting the draft");
         return;
       }
 
@@ -446,19 +399,32 @@ export default function FieldCollection() {
 
           <div className="rounded-2xl border bg-card/95 p-4 sm:p-6 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 w-full">
-              <Button
-                onClick={handleCreateDraft}
-                disabled={isCreating}
-                className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
-              >
-                {isCreating ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4 mr-2" />
-                )}
-                {isCreating ? "Creating" : "Add new"}
-              </Button>
-
+              <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
+                <button
+                  type="button"
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "all" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  aria-pressed={listTab === "all"}
+                  onClick={() => setListTab("all")}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "active" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  aria-pressed={listTab === "active"}
+                  onClick={() => setListTab("active")}
+                >
+                  Active
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "submitted" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  aria-pressed={listTab === "submitted"}
+                  onClick={() => setListTab("submitted")}
+                >
+                  Submitted
+                </button>
+              </div>
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -490,34 +456,34 @@ export default function FieldCollection() {
                       : "h-4 w-4"
                   }
                 />
+                <span className="ml-2">Refresh</span>
               </Button>
 
-              <Badge variant="secondary" className="sm:ml-auto">
-                {formatNumeric(stats.total)} total
-              </Badge>
+              <Button
+                onClick={handleCreateDraft}
+                disabled={isCreating}
+                className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto sm:ml-auto"
+              >
+                {isCreating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
+                {isCreating ? "Creating…" : "Add New"}
+              </Button>
+
+              
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Overview</span>
+              <span className="inline-flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-red-600" /> Active: {activeDrafts.length}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-green-600" /> Completed: {submittedDrafts.length}
+              </span>
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-lg border bg-card p-4 text-sm">
-              <p className="text-muted-foreground">All drafts</p>
-              <p className="text-lg font-semibold text-foreground">
-                {formatNumeric(stats.total)}
-              </p>
-            </div>
-            <div className="rounded-lg border bg-card p-4 text-sm">
-              <p className="text-muted-foreground">Active drafts</p>
-              <p className="text-lg font-semibold text-foreground">
-                {formatNumeric(stats.active)}
-              </p>
-            </div>
-            <div className="rounded-lg border bg-card p-4 text-sm">
-              <p className="text-muted-foreground">Submitted drafts</p>
-              <p className="text-lg font-semibold text-foreground">
-                {formatNumeric(stats.submitted)}
-              </p>
-            </div>
-          </div>
+          
 
           {isLoading && (
             <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
@@ -545,45 +511,47 @@ export default function FieldCollection() {
                 </div>
               ) : (
                 <>
+                  {(listTab === "all" || listTab === "active") && (
                   <section className="space-y-3">
                     <h2 className="text-lg sm:text-xl font-semibold">Active drafts</h2>
                     {activeDrafts.length === 0 ? (
-                      <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-                        No active drafts right now.
+                      <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
+                        No active batches right now.
                       </div>
                     ) : (
                       <div className="space-y-4">
                         {activeDrafts.map((draft) => (
                           <div
                             key={draft.draftId}
-                            className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+                            className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                              <div className="space-y-2">
-                                <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-muted-foreground">
-                                  <span>Draft ID: {draft.id}</span>
-                                  <span>Collected on {formatDateLabel(draft.date)}</span>
-                                </div>
-                                <div className="flex flex-wrap gap-3 text-xs sm:text-sm text-muted-foreground">
-                                  <span>Buckets: {formatNumeric(draft.bucketCount)}</span>
-                                  <span>Total quantity: {formatNumeric(draft.totalQuantity)}</span>
-                                  {draft.createdByName && (
-                                    <span>Created by {draft.createdByName}</span>
-                                  )}
-                                </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
+                                <span>
+                                  Draft ID: <span className="text-foreground font-medium">{draft.id}</span>
+                                </span>
+                                <span className="px-2 text-muted-foreground/40">|</span>
+                                <span className="font-medium">Collected on {formatDateLabel(draft.date)}</span>
+                                <span className="px-2 text-muted-foreground/40">|</span>
+                                <span>Buckets: {formatNumeric(draft.bucketCount)}</span>
+                                <span className="px-2 text-muted-foreground/40">|</span>
+                                <span>Total quantity: {formatNumeric(draft.totalQuantity)}</span>
                               </div>
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                              <div className="flex flex-wrap sm:items-center gap-2 sm:justify-end">
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => navigate(`/field-collection/draft/${draft.draftId}`)}
-                                >
+                                  >
                                   Continue
                                 </Button>
                                 <Button
                                   size="sm"
                                   onClick={() => handleSubmitDraft(draft.draftId)}
-                                  disabled={submittingDraftId === draft.draftId}
+                                  disabled={
+                                    submittingDraftId === draft.draftId ||
+                                    (completedCounts[draft.draftId] ?? 0) < 1
+                                  }
                                   className="bg-cta hover:bg-cta-hover text-cta-foreground"
                                 >
                                   {submittingDraftId === draft.draftId ? (
@@ -594,14 +562,15 @@ export default function FieldCollection() {
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <Button
-                                      variant="ghost"
-                                      size="icon"
+                                      variant="destructive"
+                                      size="sm"
+                                      className="flex-1 sm:flex-none"
                                       disabled={deletingDraftId === draft.draftId}
                                     >
                                       {deletingDraftId === draft.draftId ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                       ) : (
-                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                        <span className="inline-flex items-center gap-1"><Trash2 className="h-4 w-4" /> Delete</span>
                                       )}
                                     </Button>
                                   </AlertDialogTrigger>
@@ -630,11 +599,13 @@ export default function FieldCollection() {
                       </div>
                     )}
                   </section>
+                  )}
 
+                  {(listTab === "all" || listTab === "submitted") && (
                   <section className="space-y-3">
-                    <h2 className="text-lg sm:text-xl font-semibold">Submitted history</h2>
+                    <h2 className="text-lg sm:text-xl font-semibold">Submitted drafts</h2>
                     {submittedDrafts.length === 0 ? (
-                      <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+                      <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
                         No submitted drafts yet.
                         </div>
                     ) : (
@@ -642,31 +613,30 @@ export default function FieldCollection() {
                         {submittedDrafts.map((draft) => (
                           <div
                             key={draft.draftId}
-                            className="rounded-xl border bg-muted/50 p-4 sm:p-6 shadow-sm"
+                            className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                              <div className="space-y-2">
-                                <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-muted-foreground">
-                                  <span>Draft ID: {draft.id}</span>
-                                  <span>Collected on {formatDateLabel(draft.date)}</span>
-                                  <Badge variant="outline" className="border-muted-foreground/40 text-muted-foreground">
-                                    {normalizeStatus(draft.status) === "completed" ? "Completed" : "Submitted"}
-                                  </Badge>
-                                </div>
-                                <div className="flex flex-wrap gap-3 text-xs sm:text-sm text-muted-foreground">
-                                  <span>Buckets: {formatNumeric(draft.bucketCount)}</span>
-                                  <span>Total quantity: {formatNumeric(draft.totalQuantity)}</span>
-                                  {draft.createdByName && (
-                                    <span>Created by {draft.createdByName}</span>
-                                  )}
-                                </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                              <div className="flex items-center gap-4 text-sm">
+                                <span>
+                                  Draft ID: <span className="text-foreground font-medium">{draft.id}</span>
+                                </span>
+                                <span className="px-2 text-muted-foreground/40">|</span>
+                                <span className="font-medium">Collected on {formatDateLabel(draft.date)}</span>
+                                <span className="px-2 text-muted-foreground/40">|</span>
+                                <span>Buckets: {formatNumeric(draft.bucketCount)}</span>
+                                <span className="px-2 text-muted-foreground/40">|</span>
+                                <span>Total quantity: {formatNumeric(draft.totalQuantity)}</span>
+                                <span className="px-2 text-muted-foreground/40">|</span>
+                                <span className="text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">
+                                  {normalizeStatus(draft.status) === "completed" ? "Completed" : "Submitted"}
+                                </span>
                               </div>
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                              <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:justify-end">
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => navigate(`/field-collection/draft/${draft.draftId}`)}
-                                >
+                                  >
                                   View
                                 </Button>
                                 <Button
@@ -681,12 +651,35 @@ export default function FieldCollection() {
                                   Reopen
                                 </Button>
                               </div>
+                              <div className="flex sm:hidden flex-wrap items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => navigate(`/field-collection/draft/${draft.draftId}`)}
+                                  className="flex-1"
+                                >
+                                  View
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleReopenDraft(draft.draftId)}
+                                  disabled={reopeningDraftId === draft.draftId}
+                                  className="flex-1"
+                                >
+                                  {reopeningDraftId === draft.draftId ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : null}
+                                  Reopen
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         ))}
                       </div>
                     )}
                   </section>
+                  )}
                 </>
               )}
             </div>

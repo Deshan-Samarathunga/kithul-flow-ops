@@ -114,8 +114,22 @@ async function fetchLabelingSummaries(productType: ProductSlug) {
 export async function availablePackaging(req: Request, res: Response) {
   try {
     const productParam = typeof req.query.productType === "string" ? normalizeProduct(req.query.productType) : null;
-    const eligible = await fetchEligiblePackagingBatches(productParam ?? undefined);
-    res.json({ batches: eligible });
+    const rows = await fetchEligiblePackagingBatches(productParam ?? undefined);
+    const batches = (Array.isArray(rows) ? rows : []).map((row: any) => ({
+      packagingId: String(row.packaging_id ?? row.packagingId ?? ""),
+      processingBatchId: String(row.batch_id ?? row.processing_batch_id ?? ""),
+      batchNumber: String(row.batch_number ?? ""),
+      productType: String(row.product_type ?? ""),
+      scheduledDate:
+        row.scheduled_date instanceof Date
+          ? row.scheduled_date.toISOString()
+          : (row.scheduled_date ?? null),
+      finishedQuantity: row.finished_quantity !== null && row.finished_quantity !== undefined ? Number(row.finished_quantity) : null,
+      totalSapOutput: row.total_sap_output !== null && row.total_sap_output !== undefined ? Number(row.total_sap_output) : null,
+      totalQuantity: Number(row.total_quantity ?? 0),
+      bucketCount: Number(row.bucket_count ?? 0),
+    }));
+    res.json({ batches });
   } catch (error) {
     console.error("Error fetching eligible packaging batches for labeling:", error);
     res.status(500).json({ error: "Failed to fetch eligible packaging batches" });

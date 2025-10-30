@@ -130,8 +130,20 @@ export async function listBatches(_req: Request, res: Response) {
 export async function availableProcessing(req: Request, res: Response) {
 	try {
 		const productParam = typeof req.query.productType === "string" ? normalizeProduct(req.query.productType) : null;
-		const eligible = await fetchEligibleProcessingBatches(productParam ?? undefined);
-		res.json({ batches: eligible });
+		const rows = await fetchEligibleProcessingBatches(productParam ?? undefined);
+		const batches = (Array.isArray(rows) ? rows : []).map((row: any) => ({
+			processingBatchId: String(row.batch_id ?? row.processing_batch_id ?? row.id ?? ""),
+			batchNumber: String(row.batch_number ?? ""),
+			productType: String(row.product_type ?? ""),
+			scheduledDate:
+				row.scheduled_date instanceof Date
+					? row.scheduled_date.toISOString()
+					: (row.scheduled_date ?? null),
+			totalSapOutput: row.total_sap_output !== null && row.total_sap_output !== undefined ? Number(row.total_sap_output) : null,
+			totalQuantity: Number(row.total_quantity ?? 0),
+			bucketCount: Number(row.bucket_count ?? 0),
+		}));
+		res.json({ batches });
 	} catch (error) {
 		console.error("Error fetching eligible processing batches for packaging:", error);
 		res.status(500).json({ error: "Failed to fetch eligible processing batches" });
