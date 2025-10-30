@@ -1,3 +1,74 @@
+# Kithul Flow Ops
+
+Production management system for kithul sap and treacle, covering field collection to final labeling.
+
+## Stack
+
+- Client: React (Vite) + TypeScript + Tailwind + shadcn/ui
+- Server: Node.js (Express) + TypeScript
+- Database: PostgreSQL
+- Auth/Validation: JWT + Zod
+
+## Prerequisites
+
+- Node.js 18+
+- npm 8+
+- PostgreSQL 13+
+
+## Setup
+
+1. Install dependencies
+   ```bash
+   # client
+   cd client && npm install
+
+   # server
+   cd ../server && npm install
+   ```
+
+2. Database and schema
+   ```bash
+   createdb kithul_flow_ops
+   psql -d kithul_flow_ops -f db/full_schema.sql
+   ```
+
+3. Environment (server/.env)
+   ```env
+   DATABASE_URL=postgresql://username:password@localhost:5432/kithul_flow_ops
+   JWT_SECRET=change-me
+   CLIENT_ORIGIN=http://localhost:5173
+   PORT=5000
+   ```
+
+## Run
+
+- Backend
+  ```bash
+  cd server && npm run dev
+  ```
+
+- Frontend
+  ```bash
+  cd client && npm run dev
+  ```
+
+- URLs
+  - App: http://localhost:5173
+  - API: http://localhost:5000
+
+## Structure
+
+```
+kithul-flow-ops/
+├── client/   # React app
+├── server/   # Express API
+├── db/       # SQL schema
+└── README.md
+```
+
+## License
+
+MIT
 # 🌿 Kithul Flow Ops
 
 > **Enterprise Production Management System for Kithul (Coconut Palm) Products**
