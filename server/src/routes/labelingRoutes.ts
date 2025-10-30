@@ -3,6 +3,13 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import { auth, requireRole } from "../middleware/authMiddleware.js";
 import {
+  listBatches as listLabelingBatches,
+  availablePackaging as availableLabelingPackaging,
+  createBatch as createLabelingBatch,
+  updateBatch as updateLabelingBatch,
+  deleteBatch as deleteLabelingBatch,
+} from "../controllers/labelingController.js";
+import {
   SUPPORTED_PRODUCTS,
   getTableName,
   normalizeProduct,
@@ -334,236 +341,30 @@ router.get(
   "/batches",
   auth,
   requireRole("Labeling", "Packaging", "Administrator"),
-  async (_req, res) => {
-    try {
-      const summaries = await Promise.all(
-        SUPPORTED_PRODUCTS.map((product) => fetchLabelingSummaries(product))
-      );
-      const batches = summaries.flat();
-      res.json({ batches });
-    } catch (error) {
-      console.error("Error fetching labeling batches:", error);
-      res.status(500).json({ error: "Failed to fetch labeling batches" });
-    }
-  }
+  listLabelingBatches as any
 );
 
 router.get(
   "/available-packaging",
   auth,
   requireRole("Labeling", "Packaging", "Administrator"),
-  async (req, res) => {
-    try {
-      const productParam = typeof req.query.productType === "string" ? normalizeProduct(req.query.productType) : null;
-      const eligible = await fetchEligiblePackagingBatches(productParam ?? undefined);
-      res.json({ batches: eligible });
-    } catch (error) {
-      console.error("Error fetching eligible packaging batches for labeling:", error);
-      res.status(500).json({ error: "Failed to fetch eligible packaging batches" });
-    }
-  }
+  availableLabelingPackaging as any
 );
 
-router.post("/batches", auth, requireRole("Labeling", "Administrator"), async (req, res) => {
-  try {
-    const { packagingId } = createLabelingSchema.parse(req.body ?? {});
-    const context = await resolveLabelingContext(packagingId);
-    if (!context) {
-      return res.status(404).json({ error: "Packaging batch not found" });
-    }
-
-    if (context.labelingPk !== null) {
-      return res.status(400).json({ error: "Labeling batch already exists for this packaging" });
-    }
-
-    const labelingId = `lab${Date.now()}`;
-    await pool.query(
-      `INSERT INTO ${context.labelingTable} (labeling_id, packaging_batch_id, status)
-       VALUES ($1, $2, 'pending')`,
-      [labelingId, context.packagingPk]
-    );
-
-    const created = await fetchLabelingBatchByPackagingId(packagingId);
-    if (!created) {
-      return res.status(500).json({ error: "Failed to load created labeling batch" });
-    }
-
-    res.status(201).json(created);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation error", details: error.issues });
-    }
-    console.error("Error creating labeling batch:", error);
-    res.status(500).json({ error: "Failed to create labeling batch" });
-  }
-});
+router.post("/batches", auth, requireRole("Labeling", "Administrator"), createLabelingBatch as any);
 
 router.patch(
   "/batches/:packagingId",
   auth,
   requireRole("Labeling", "Packaging", "Administrator"),
-  async (req, res) => {
-    try {
-      const { packagingId } = req.params;
-      const validated = updateLabelingSchema.parse(req.body ?? {});
-
-      const existing = await fetchLabelingBatchByPackagingId(packagingId);
-      if (!existing) {
-        return res.status(404).json({ error: "Packaging batch not found" });
-      }
-
-      const productType = (existing.productType || "").toLowerCase();
-      const sanitized: typeof validated = { ...validated };
-
-      if (sanitized.stickerQuantity === undefined || sanitized.corrugatedCartonQuantity === undefined) {
-        return res
-          .status(400)
-          .json({ error: "Sticker and corrugated carton quantities are required." });
-      }
-
-      if (productType === "sap") {
-        if (sanitized.shrinkSleeveQuantity === undefined || sanitized.neckTagQuantity === undefined) {
-          return res.status(400).json({
-            error: "Shrink sleeve and neck tag quantities are required for sap labeling.",
-          });
-        }
-      } else if (productType === "treacle") {
-        sanitized.shrinkSleeveQuantity = null;
-        sanitized.neckTagQuantity = null;
-      } else {
-        return res.status(400).json({ error: "Unsupported product type for labeling." });
-      }
-
-      const stickerQuantityValue = sanitized.stickerQuantity ?? null;
-      const shrinkQuantityValue = sanitized.shrinkSleeveQuantity ?? null;
-      const neckTagQuantityValue = sanitized.neckTagQuantity ?? null;
-      const cartonQuantityValue = sanitized.corrugatedCartonQuantity ?? null;
-      const allQuantitiesCaptured =
-        productType === "sap"
-          ? stickerQuantityValue !== null &&
-            shrinkQuantityValue !== null &&
-            neckTagQuantityValue !== null &&
-            cartonQuantityValue !== null
-          : stickerQuantityValue !== null && cartonQuantityValue !== null;
-      const statusValue =
-        sanitized.status ??
-        (existing.labelingId
-          ? allQuantitiesCaptured
-            ? "completed"
-            : existing.labelingStatus
-          : allQuantitiesCaptured
-          ? "completed"
-          : "pending");
-      const notesValue = sanitized.notes ?? existing.labelingNotes ?? null;
-
-      const context = await resolveLabelingContext(packagingId);
-      if (!context) {
-        return res.status(404).json({ error: "Packaging batch not found" });
-      }
-
-      if (context.labelingPk === null) {
-        const insertQuery = `
-          INSERT INTO ${context.labelingTable} (
-            labeling_id,
-            packaging_batch_id,
-            status,
-            notes,
-            sticker_quantity,
-            shrink_sleeve_quantity,
-            neck_tag_quantity,
-            corrugated_carton_quantity
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          ON CONFLICT (packaging_batch_id) DO UPDATE
-          SET
-            status = EXCLUDED.status,
-            notes = EXCLUDED.notes,
-            sticker_quantity = EXCLUDED.sticker_quantity,
-            shrink_sleeve_quantity = EXCLUDED.shrink_sleeve_quantity,
-            neck_tag_quantity = EXCLUDED.neck_tag_quantity,
-            corrugated_carton_quantity = EXCLUDED.corrugated_carton_quantity,
-            updated_at = NOW()
-        `;
-
-        await pool.query(insertQuery, [
-          packagingId,
-          context.packagingPk,
-          statusValue,
-          notesValue,
-          stickerQuantityValue,
-          shrinkQuantityValue,
-          neckTagQuantityValue,
-          cartonQuantityValue,
-        ]);
-      } else {
-        const updateClauses: string[] = [];
-        const params: any[] = [];
-        let paramIndex = 1;
-
-        const applyUpdate = (column: string, value: unknown) => {
-          updateClauses.push(`${column} = $${paramIndex}`);
-          params.push(value);
-          paramIndex++;
-        };
-
-        applyUpdate("status", statusValue);
-        applyUpdate("notes", notesValue);
-        applyUpdate("sticker_quantity", stickerQuantityValue);
-        applyUpdate("shrink_sleeve_quantity", shrinkQuantityValue);
-        applyUpdate("neck_tag_quantity", neckTagQuantityValue);
-        applyUpdate("corrugated_carton_quantity", cartonQuantityValue);
-        updateClauses.push(`updated_at = NOW()`);
-
-        const updateQuery = `
-          UPDATE ${context.labelingTable}
-          SET ${updateClauses.join(", ")}
-          WHERE packaging_batch_id = $${paramIndex}
-        `;
-
-        params.push(context.packagingPk);
-
-        await pool.query(updateQuery, params);
-      }
-
-      const refreshed = await fetchLabelingBatchByPackagingId(packagingId);
-      if (!refreshed) {
-        return res.status(500).json({ error: "Failed to load updated labeling batch" });
-      }
-
-      res.json(refreshed);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Validation error", details: error.issues });
-      }
-      console.error("Error updating labeling batch:", error);
-      res.status(500).json({ error: "Failed to update labeling batch" });
-    }
-  }
+  updateLabelingBatch as any
 );
 
 router.delete(
   "/batches/:packagingId",
   auth,
   requireRole("Labeling", "Administrator"),
-  async (req, res) => {
-    const { packagingId } = req.params;
-    try {
-      const context = await resolveLabelingContext(packagingId);
-      if (!context) {
-        return res.status(404).json({ error: "Labeling batch not found" });
-      }
-
-      if (context.labelingPk === null) {
-        return res.status(204).send();
-      }
-
-      await pool.query(`DELETE FROM ${context.labelingTable} WHERE id = $1`, [context.labelingPk]);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting labeling batch:", error);
-      res.status(500).json({ error: "Failed to delete labeling batch" });
-    }
-  }
+  deleteLabelingBatch as any
 );
 
 export default router;
