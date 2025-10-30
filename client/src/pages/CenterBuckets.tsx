@@ -1,15 +1,16 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
+
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash2 } from "lucide-react";
-import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { DataService } from "@/lib/dataService";
-import { usePersistentTab } from "@/hooks/usePersistentTab";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { usePersistentTab } from "@/hooks/usePersistentTab";
+import { DataService } from "@/lib/dataService";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -35,7 +36,8 @@ type BucketListItem = {
 export default function CenterBuckets() {
   const navigate = useNavigate();
   const { draftId, centerId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const { user, logout } = useAuth();
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
@@ -67,6 +69,17 @@ export default function CenterBuckets() {
       setActiveTab(productTypeParam);
     }
   }, [productTypeParam, setActiveTab]);
+
+  // Keep URL in sync when tab changes (so refresh preserves selection)
+  useEffect(() => {
+    const current = searchParams.get("productType");
+    if (activeTab && (activeTab === "sap" || activeTab === "treacle") && current !== activeTab) {
+      const next = new URLSearchParams(searchParams);
+      next.set("productType", activeTab);
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // Define the 4 collection centers mapping
   const collectionCenters = {
@@ -186,7 +199,6 @@ export default function CenterBuckets() {
     }
   };
 
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar 
@@ -224,7 +236,7 @@ export default function CenterBuckets() {
           </div>
         </div>
         
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val)} className="w-full">
           <TabsList className="mb-6 w-full sm:w-auto">
             <TabsTrigger value="sap" className="flex-1 sm:flex-none">Sap Collection</TabsTrigger>
             <TabsTrigger value="treacle" className="flex-1 sm:flex-none">Treacle Collection</TabsTrigger>

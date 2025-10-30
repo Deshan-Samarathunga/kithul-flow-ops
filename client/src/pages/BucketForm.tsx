@@ -39,6 +39,7 @@ export default function BucketForm() {
   const productType = productTypeParam === "treacle" ? "Treacle" : "Sap";
   const productTypeLower = productTypeParam === "treacle" ? "treacle" : "sap";
   const [formData, setFormData] = useState({
+    serialNumber: "",
     brixValue: "",
     phValue: "",
     quantity: "",
@@ -52,7 +53,7 @@ export default function BucketForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.quantity) {
+    if (!formData.quantity || !formData.serialNumber) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -70,12 +71,20 @@ export default function BucketForm() {
       return;
     }
 
+    // Validate serial number: 8 digits
+    const serial = formData.serialNumber.trim();
+    if (!/^\d{8}$/.test(serial)) {
+      toast.error("Can ID number must be exactly 8 digits");
+      return;
+    }
+
     try {
       // Create bucket data
       const bucketData = {
         draftId: draftId,
         collectionCenterId: centerId || 'center001',
         productType: productTypeLower as 'sap' | 'treacle',
+        serialNumber: serial,
         brixValue: brix,
         phValue: ph,
         quantity: parseFloat(formData.quantity),
@@ -83,11 +92,11 @@ export default function BucketForm() {
 
       await DataService.createBucket(bucketData);
       
-      toast.success("Bucket added successfully");
+      toast.success("Can added successfully");
       navigate(`/field-collection/draft/${draftId}/center/${centerId || 'center001'}?productType=${productTypeLower}`);
     } catch (error) {
-      console.error('Error creating bucket:', error);
-      toast.error('Failed to add bucket');
+      console.error('Error creating can:', error);
+      toast.error('Failed to add can');
     }
   };
 
@@ -130,13 +139,30 @@ export default function BucketForm() {
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
         <Card>
           <CardContent className="p-4 sm:p-6">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-6">New bucket</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold mb-6">New can</h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="productType">Product type</Label>
                   <Input id="productType" value={productType} disabled />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="serialNumber">Can ID number (8 digits) *</Label>
+                  <Input
+                    id="serialNumber"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\n?\d{8}"
+                    maxLength={8}
+                    placeholder="Enter 8 digit number"
+                    value={formData.serialNumber}
+                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value.replace(/[^0-9]/g, '') })}
+                  />
+                  <div className="text-xs text-muted-foreground">
+                    Full Can ID: {(productTypeLower === 'sap' ? 'SAP-' : 'TCL-') + (formData.serialNumber || '________')}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
