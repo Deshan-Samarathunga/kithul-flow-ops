@@ -154,6 +154,7 @@ export default function BatchDetail() {
       setSelectedBuckets((updated.bucketIds ?? []).slice(0, MAX_BUCKET_SELECTION));
       await loadBuckets(batchId);
       toast.success("Batch updated successfully");
+      navigate("/processing");
     } catch (err: unknown) {
       console.error("Failed to save batch buckets", err);
       const message = err instanceof Error ? err.message : "Unable to save batch";
@@ -310,6 +311,50 @@ export default function BatchDetail() {
         .slice(0, MAX_BUCKET_SELECTION);
   const noSelectedBuckets = !isEditable && bucketsToRender.length === 0;
 
+  const selectAllState = useMemo(() => {
+    if (!isEditable || bucketsToRender.length === 0) {
+      return false;
+    }
+    return bucketsToRender.every((bucket) => selectedBuckets.includes(bucket.id));
+  }, [bucketsToRender, selectedBuckets, isEditable]);
+
+  const visibleSelectedQuantity = useMemo(() => {
+    return bucketsToRender
+      .filter((bucket) => selectedBuckets.includes(bucket.id))
+      .reduce((sum, bucket) => sum + (bucket.quantity ?? 0), 0);
+  }, [bucketsToRender, selectedBuckets]);
+
+  const toggleSelectAllVisible = () => {
+    if (!isEditable) {
+      return;
+    }
+
+    const visibleBucketIds = bucketsToRender.map((bucket) => bucket.id);
+    const allSelected = visibleBucketIds.every((id) => selectedBuckets.includes(id));
+
+    if (allSelected) {
+      // Deselect all visible buckets
+      setSelectedBuckets((prev) => prev.filter((id) => !visibleBucketIds.includes(id)));
+    } else {
+      // Select all visible buckets, respecting the limit
+      const toAdd = visibleBucketIds.filter((id) => !selectedBuckets.includes(id));
+      const currentCount = selectedBuckets.length;
+      const canAdd = MAX_BUCKET_SELECTION - currentCount;
+      
+      if (canAdd <= 0) {
+        toast.error(`You can select up to ${MAX_BUCKET_SELECTION} buckets per batch.`);
+        return;
+      }
+
+      const addCount = Math.min(toAdd.length, canAdd);
+      setSelectedBuckets((prev) => [...prev, ...toAdd.slice(0, addCount)]);
+      
+      if (toAdd.length > canAdd) {
+        toast.error(`Only ${addCount} more bucket(s) could be selected due to the ${MAX_BUCKET_SELECTION}-bucket limit.`);
+      }
+    }
+  };
+
   const productionOutputLabel = batch?.productType === "sap" ? "Sap out after melting (L)" : "Output quantity (kg)";
   const productionOutputStep = batch?.productType === "sap" ? "0.1" : "0.01";
 
@@ -349,23 +394,29 @@ export default function BatchDetail() {
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-xl sm:text-2xl font-semibold">Batch {batch.batchNumber}</h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Scheduled for {formatDate(batch.scheduledDate)} · Status {batch.status}
+                <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                  <span>Scheduled for {formatDate(batch.scheduledDate)}</span>
+                  <span className="px-2 text-muted-foreground/40">|</span>
+                  {batch.status === "completed" ? (
+                    <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">Submitted</span>
+                  ) : (
+                    <span className="text-muted-foreground">Status {batch.status}</span>
+                  )}
                 </p>
               </div>
               {isEditable ? (
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto sm:justify-end">
+                <div className="flex w-full sm:w-auto sm:justify-end justify-stretch gap-2">
                   <Button
                     onClick={() => setProductionDialogOpen(true)}
-                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                    className="inline-flex items-center px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium w-full sm:w-auto"
                   >
                     {batch.totalSapOutput !== null && batch.totalSapOutput !== undefined
-                      ? "Edit production data"
-                      : "Add production data"}
+                      ? "Edit Production Data"
+                      : "Add Production Data"}
                   </Button>
                   <Button
                     onClick={handleSaveBatch}
-                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                    className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium w-full sm:w-auto"
                     disabled={isSaving}
                   >
                     {isSaving ? "Saving…" : "Save Batch"}
@@ -387,18 +438,18 @@ export default function BatchDetail() {
             </div>
 
             <div className="mb-6 space-y-3">
-              <h2 className="text-base sm:text-lg font-semibold">Production details</h2>
-              <div className="rounded-lg border bg-card p-4 sm:p-6 space-y-4">
+              <h2 className="text-lg font-medium text-gray-800 mb-2 mt-6">Production Details</h2>
+              <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Output quantity</p>
-                    <p className="text-sm font-medium text-foreground">
+                    <span className="text-xs font-medium text-gray-500 tracking-wide">Output Quantity</span>
+                    <p className="text-sm font-semibold text-gray-800">
                       {formatOutputQuantity(batch.totalSapOutput)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Used gas amount</p>
-                    <p className="text-sm font-medium text-foreground">
+                    <span className="text-xs font-medium text-gray-500 tracking-wide">Used Gas Amount</span>
+                    <p className="text-sm font-semibold text-gray-800">
                       {formatGasAmount(batch.gasUsedKg)}
                     </p>
                   </div>
@@ -411,14 +462,7 @@ export default function BatchDetail() {
               </div>
             </div>
 
-            {selectedBuckets.length > 0 && (
-              <div className="mb-6 rounded-lg bg-muted/50 p-4 sm:p-6">
-                <h3 className="font-semibold mb-2">Selected Buckets: {selectedBucketsSummary.count}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Total Quantity: {selectedBucketsSummary.totalQuantity.toFixed(1)} kg
-                </p>
-              </div>
-            )}
+            <hr className="my-6 border-gray-100" />
 
             <div className="mb-6">
               <p className="text-sm text-muted-foreground">
@@ -427,11 +471,11 @@ export default function BatchDetail() {
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-base sm:text-lg font-semibold">
+              <h2 className="text-lg font-medium text-gray-800 mb-2 mt-6">
                 {isEditable ? "Available Buckets" : "Selected Buckets"}
               </h2>
 
-              <div className="max-w-sm">
+              <div className="max-w-md w-full md:w-1/2">
                 <Input
                   value={bucketSearch}
                   onChange={(event) => setBucketSearch(event.target.value)}
@@ -440,6 +484,7 @@ export default function BatchDetail() {
                       ? "Search buckets by ID, center, product, or draft"
                       : "Search within selected buckets"
                   }
+                  className="w-full rounded-lg border border-gray-200 p-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
                 />
               </div>
 
@@ -473,6 +518,28 @@ export default function BatchDetail() {
                 </div>
               )}
 
+              {isEditable && !isBucketLoading && !bucketError && bucketsToRender.length > 0 && (
+                <div className="flex items-start gap-4 pl-4">
+                  <Checkbox
+                    id="select-all-buckets"
+                    checked={selectAllState}
+                    onCheckedChange={() => toggleSelectAllVisible()}
+                    className="mt-1"
+                  />
+                  <label
+                    htmlFor="select-all-buckets"
+                    className="flex-1 text-sm text-muted-foreground cursor-pointer"
+                  >
+                    Select all visible buckets ({bucketsToRender.length})
+                    {visibleSelectedQuantity > 0 && (
+                      <span className="ml-2 font-medium text-gray-800">
+                        · Total: {visibleSelectedQuantity.toFixed(1)} kg
+                      </span>
+                    )}
+                  </label>
+                </div>
+              )}
+
               {!isBucketLoading && !bucketError &&
                 bucketsToRender.map((bucket) => {
                   const isChecked = selectedBuckets.includes(bucket.id);
@@ -480,28 +547,28 @@ export default function BatchDetail() {
 
                   const info = (
                     <>
-                      <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
+                      <div className="flex items-center flex-wrap gap-3 text-sm text-gray-600">
                         <Badge variant="secondary" className="font-mono text-xs uppercase tracking-wide">
                           Bucket ID · {bucket.id}
                         </Badge>
-                        <span className="text-muted-foreground">
+                        <span>
                           Draft {bucket.draft.id}
                         </span>
-                        <span className="text-muted-foreground">
+                        <span>
                           Created: {formatDate(bucket.createdAt)}
                         </span>
                       </div>
-                      <div className="mt-3 flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-                        <span className="font-medium">
+                      <div className="mt-3 flex items-center flex-wrap gap-3 text-sm text-gray-600">
+                        <span className="font-medium text-gray-800">
                           Collection Center: {bucket.collectionCenter.name}
                         </span>
-                        <span className="hidden sm:inline text-muted-foreground">|</span>
+                        <span className="px-2 text-gray-300">|</span>
                         <span>Quantity: {bucket.quantity} kg</span>
-                        <span className="hidden sm:inline text-muted-foreground">|</span>
+                        <span className="px-2 text-gray-300">|</span>
                         <span>Product: {bucket.productType}</span>
-                        <span className="hidden sm:inline text-muted-foreground">|</span>
+                        <span className="px-2 text-gray-300">|</span>
                         <span>Brix: {formatNumber(bucket.brixValue, 1)}</span>
-                        <span className="hidden sm:inline text-muted-foreground">|</span>
+                        <span className="px-2 text-gray-300">|</span>
                         <span>pH: {formatNumber(bucket.phValue, 2)}</span>
                         
                       </div>
@@ -511,7 +578,7 @@ export default function BatchDetail() {
                   return (
                     <div
                       key={bucket.id}
-                      className="bg-card border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+                      className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 mb-4 hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-start gap-4">
                         {isEditable ? (

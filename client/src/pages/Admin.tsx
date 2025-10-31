@@ -13,6 +13,7 @@ import { CenterForm } from "@/components/CenterForm";
 import { ToggleSelector } from "@/components/ToggleSelector";
 import { usePersistentTab } from "@/hooks/usePersistentTab";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
 
 const ROLES_FOR_EMPLOYEES = [
   "Field Collection",
@@ -54,6 +55,8 @@ export default function Admin() {
   const [showCenterForm, setShowCenterForm] = useState(false);
   const [editingCenter, setEditingCenter] = useState<AdminCenter | null>(null);
   const [deleteCenterTarget, setDeleteCenterTarget] = useState<AdminCenter | null>(null);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportStage, setReportStage] = useState<"field" | "processing" | "packaging" | "labeling">("field");
 
   const toAbsolute = useCallback(
     (path?: string | null) => {
@@ -202,54 +205,84 @@ export default function Admin() {
     return filtered;
   }, [centers, centerSearchQuery, centerStatusFilter]);
 
+  const handleOpenReportDialog = (module: string) => {
+    const stageMap: Record<string, "field" | "processing" | "packaging" | "labeling"> = {
+      "Field Collection": "field",
+      "Processing": "processing",
+      "Packaging": "packaging",
+      "Labeling": "labeling",
+    };
+    const stage = stageMap[module] || "field";
+    setReportStage(stage);
+    setReportDialogOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
 
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        <div className="space-y-2 mb-6">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">Administrator</h1>
-          <p className="text-sm text-muted-foreground">Manage employees, collection centers, monitoring and reports.</p>
-        </div>
+        <div className="space-y-6 sm:space-y-8">
+          <div className="space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">Administrator</h1>
+            <p className="text-sm text-muted-foreground">Manage employees, collection centers, monitoring and reports.</p>
+          </div>
 
-        <Tabs value={adminTab} onValueChange={setAdminTab} className="w-full">
-          <TabsList className="mb-6 w-full sm:w-auto grid grid-cols-4 sm:inline-flex">
-            <TabsTrigger value="employees" className="text-xs sm:text-sm">
-              Employees
-            </TabsTrigger>
-            <TabsTrigger value="centers" className="text-xs sm:text-sm">
-              Centers
-            </TabsTrigger>
-            <TabsTrigger value="monitoring" className="text-xs sm:text-sm">
-              Monitoring
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="text-xs sm:text-sm">
-              Reports
-            </TabsTrigger>
-          </TabsList>
+          <Tabs value={adminTab} onValueChange={setAdminTab} className="w-full">
+            <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6 mb-6">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 w-full">
+                <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "employees" ? "bg-[#1890ff] hover:bg-[#147de0] text-white" : "text-foreground hover:bg-gray-200"}`}
+                    onClick={() => setAdminTab("employees")}
+                  >
+                    Employees
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "centers" ? "bg-[#1890ff] hover:bg-[#147de0] text-white" : "text-foreground hover:bg-gray-200"}`}
+                    onClick={() => setAdminTab("centers")}
+                  >
+                    Centers
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "monitoring" ? "bg-[#1890ff] hover:bg-[#147de0] text-white" : "text-foreground hover:bg-gray-200"}`}
+                    onClick={() => setAdminTab("monitoring")}
+                  >
+                    Monitoring
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "reports" ? "bg-[#1890ff] hover:bg-[#147de0] text-white" : "text-foreground hover:bg-gray-200"}`}
+                    onClick={() => setAdminTab("reports")}
+                  >
+                    Reports
+                  </button>
+                </div>
+              </div>
+            </div>
 
           <TabsContent value="employees" className="space-y-6">
             <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <h2 className="text-lg sm:text-xl font-semibold">Employees</h2>
-                <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-                  <div className="relative w-full sm:w-64 order-2 sm:order-none">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search employees"
-                      value={employeeSearchQuery}
-                      onChange={(e) => setEmployeeSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Button
-                    onClick={() => navigate("/admin/add-employee")}
-                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Employee
-                  </Button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 w-full">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search Employees"
+                    value={employeeSearchQuery}
+                    onChange={(e) => setEmployeeSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
+                <Button
+                  onClick={() => navigate("/admin/add-employee")}
+                  className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto sm:ml-auto"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Employee
+                </Button>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
@@ -277,9 +310,8 @@ export default function Admin() {
             </div>
 
             {loading ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading employees...
+              <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
+                Loading employees…
               </div>
             ) : filteredEmployees.length === 0 ? (
               <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground text-center shadow-sm">
@@ -288,20 +320,22 @@ export default function Admin() {
             ) : (
               <div className="space-y-4">
                 {filteredEmployees.map((employee) => (
-                  <div key={employee.id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm transition-shadow hover:shadow-md">
+                  <div key={employee.id} className="rounded-lg border bg-card p-5 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div>
-                        <h3 className="font-semibold text-sm sm:text-base">{employee.name || employee.userId}</h3>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+                      <div className="flex flex-col space-y-1">
+                        <h3 className="text-sm font-semibold text-foreground">{employee.name || employee.userId}</h3>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span>{employee.role}</span>
-                          <span className="px-2 text-muted-foreground/40">|</span>
+                          <span className="text-muted-foreground/40">|</span>
                           <span>ID: {employee.userId}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <span
-                          className={`text-xs sm:text-sm ${
-                            employee.isActive ? "text-green-600" : "text-gray-400"
+                          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                            employee.isActive 
+                              ? "bg-green-100 text-green-700" 
+                              : "bg-gray-100 text-gray-500"
                           }`}
                         >
                           {employee.isActive ? "Active" : "Inactive"}
@@ -309,7 +343,7 @@ export default function Admin() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1 sm:flex-none"
+                          className="inline-flex items-center px-4 py-2 rounded-md bg-white border text-gray-700 focus:ring-2 focus:ring-offset-2 focus:ring-[#1890ff]"
                           onClick={() => navigate(`/admin/employees/${employee.id}/edit`)}
                         >
                           Edit
@@ -317,7 +351,7 @@ export default function Admin() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          className="flex-1 sm:flex-none"
+                          className="inline-flex items-center px-4 py-2 rounded-md bg-[#e74c3c] text-white focus:ring-2 focus:ring-offset-2 focus:ring-[#e74c3c]"
                           onClick={() => setDeleteTarget(employee)}
                         >
                           Delete
@@ -340,30 +374,28 @@ export default function Admin() {
             ) : (
               <>
              <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
-               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                 <h2 className="text-lg sm:text-xl font-semibold">Collection Centers</h2>
-                 <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-                   <div className="relative w-full sm:w-64 order-2 sm:order-none">
-                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                     <Input
-                       placeholder="Search centers"
-                       value={centerSearchQuery}
-                       onChange={(e) => setCenterSearchQuery(e.target.value)}
-                       className="pl-10"
-                     />
-                   </div>
-                   <Button
-                     onClick={() => setShowCenterForm(true)}
-                     className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
-                   >
-                     <Plus className="h-4 w-4 mr-2" />
-                     Add New
-                   </Button>
+               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 w-full">
+                 <div className="relative flex-1 max-w-md">
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                   <Input
+                     placeholder="Search Centers"
+                     value={centerSearchQuery}
+                     onChange={(e) => setCenterSearchQuery(e.target.value)}
+                     className="pl-10"
+                   />
                  </div>
+                 <Button
+                   onClick={() => setShowCenterForm(true)}
+                   className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                 >
+                   <Plus className="h-4 w-4 mr-2" />
+                   Add Center
+                 </Button>
                </div>
 
                <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
-                 <span className="font-medium text-foreground">Overview</span> All: {centers.length} | Active: {centers.filter(c => c.isActive).length} | Inactive: {centers.filter(c => !c.isActive).length}
+                 <span className="font-medium text-foreground">Overview</span>
+                 <span>All: {centers.length}</span>
                  <span>Active: {centers.filter(c => c.isActive).length}</span>
                  <span>Inactive: {centers.filter(c => !c.isActive).length}</span>
                </div>
@@ -382,9 +414,8 @@ export default function Admin() {
              </div>
 
                 {centersLoading ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading centers...
+                  <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
+                    Loading centers…
                   </div>
                 ) : filteredCenters.length === 0 ? (
                   <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground text-center shadow-sm">
@@ -392,41 +423,41 @@ export default function Admin() {
                     {centerSearchQuery ? "No centers match your search." : "No centers found."}
                   </div>
                 ) : (
-                  <div className="grid gap-4">
+                  <div className="space-y-4">
                     {filteredCenters.map((center) => (
-                      <div key={center.id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm transition-shadow hover:shadow-md">
+                      <div key={center.id} className="rounded-lg border bg-card p-5 shadow-sm">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-sm sm:text-base">{center.centerName}</h3>
-                              <span className={`text-xs px-2 py-1 rounded-full ${
+                          <div className="flex flex-col space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-semibold text-foreground">{center.centerName}</h3>
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                                 center.isActive 
-                                  ? "bg-green-100 text-green-800" 
-                                  : "bg-gray-100 text-gray-800"
+                                  ? "bg-green-100 text-green-700" 
+                                  : "bg-gray-100 text-gray-500"
                               }`}>
                                 {center.isActive ? "Active" : "Inactive"}
                               </span>
                             </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <span>ID: {center.centerId}</span>
-                              <span className="px-2 text-muted-foreground/40">|</span>
+                              <span className="text-muted-foreground/40">|</span>
                               <span>Location: {center.location}</span>
-                              <span className="px-2 text-muted-foreground/40">|</span>
+                              <span className="text-muted-foreground/40">|</span>
                               <span>Agent: {center.centerAgent}</span>
                               {center.contactPhone && (
                                 <>
-                                  <span className="px-2 text-muted-foreground/40">|</span>
+                                  <span className="text-muted-foreground/40">|</span>
                                   <span>Phone: {center.contactPhone}</span>
                                 </>
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3 flex-wrap">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleEditCenter(center)}
-                              className="flex-1 sm:flex-none"
+                              className="inline-flex items-center px-4 py-2 rounded-md bg-white border text-gray-700 focus:ring-2 focus:ring-offset-2 focus:ring-[#1890ff]"
                             >
                               <Edit className="h-4 w-4 mr-1" />
                               Edit
@@ -435,7 +466,7 @@ export default function Admin() {
                               variant="destructive"
                               size="sm"
                               onClick={() => setDeleteCenterTarget(center)}
-                              className="flex-1 sm:flex-none"
+                              className="inline-flex items-center px-4 py-2 rounded-md bg-[#e74c3c] text-white focus:ring-2 focus:ring-offset-2 focus:ring-[#e74c3c]"
                             >
                               <Trash2 className="h-4 w-4 mr-1" />
                               Delete
@@ -450,62 +481,83 @@ export default function Admin() {
             )}
           </TabsContent>
 
-          <TabsContent value="monitoring">
-            <div className="space-y-4">
-              <h2 className="text-lg sm:text-xl font-semibold">Module Monitoring</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <Button
-                  variant="outline"
-                  className="h-20 sm:h-24 text-base sm:text-lg"
-                  onClick={() => navigate("/field-collection")}
-                >
-                  Field Collection
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-20 sm:h-24 text-base sm:text-lg"
-                  onClick={() => navigate("/processing")}
-                >
-                  Processing
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-20 sm:h-24 text-base sm:text-lg"
-                  onClick={() => navigate("/packaging")}
-                >
-                  Packaging
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-20 sm:h-24 text-base sm:text-lg"
-                  onClick={() => navigate("/labeling")}
-                >
-                  Labeling
-                </Button>
+          <TabsContent value="monitoring" className="space-y-6">
+            <h2 className="text-lg font-semibold text-foreground">Module Monitoring</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div
+                className="rounded-lg border bg-card shadow-sm text-center p-8 hover:shadow-md transition cursor-pointer focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[#1890ff]"
+                onClick={() => navigate("/field-collection")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    navigate("/field-collection");
+                  }
+                }}
+                tabIndex={0}
+                role="button"
+              >
+                <h3 className="text-base font-semibold text-foreground">Field Collection</h3>
+              </div>
+              <div
+                className="rounded-lg border bg-card shadow-sm text-center p-8 hover:shadow-md transition cursor-pointer focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[#1890ff]"
+                onClick={() => navigate("/processing")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    navigate("/processing");
+                  }
+                }}
+                tabIndex={0}
+                role="button"
+              >
+                <h3 className="text-base font-semibold text-foreground">Processing</h3>
+              </div>
+              <div
+                className="rounded-lg border bg-card shadow-sm text-center p-8 hover:shadow-md transition cursor-pointer focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[#1890ff]"
+                onClick={() => navigate("/packaging")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    navigate("/packaging");
+                  }
+                }}
+                tabIndex={0}
+                role="button"
+              >
+                <h3 className="text-base font-semibold text-foreground">Packaging</h3>
+              </div>
+              <div
+                className="rounded-lg border bg-card shadow-sm text-center p-8 hover:shadow-md transition cursor-pointer focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[#1890ff]"
+                onClick={() => navigate("/labeling")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    navigate("/labeling");
+                  }
+                }}
+                tabIndex={0}
+                role="button"
+              >
+                <h3 className="text-base font-semibold text-foreground">Labeling</h3>
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="reports">
-            <div className="space-y-6">
-              <h2 className="text-lg sm:text-xl font-semibold">Generate Reports</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {ROLES_FOR_EMPLOYEES.map((module) => (
-                  <div key={module} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm">
-                    <h3 className="font-semibold mb-4 text-sm sm:text-base">{module}</h3>
-                    <Button
-                      onClick={() => toast.success(`${module} report downloaded`)}
-                      className="w-full bg-cta hover:bg-cta-hover text-cta-foreground text-sm"
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Download CSV/PDF
-                    </Button>
-                  </div>
-                ))}
-              </div>
+          <TabsContent value="reports" className="space-y-6">
+            <h2 className="text-lg font-semibold text-foreground">Generate Reports</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {ROLES_FOR_EMPLOYEES.map((module) => (
+                <div key={module} className="rounded-lg border bg-card shadow-sm p-6">
+                  <h3 className="text-base font-semibold text-foreground mb-3">{module}</h3>
+                  <Button
+                    onClick={() => handleOpenReportDialog(module)}
+                    className="w-full inline-flex items-center justify-center px-6 py-3 rounded-md bg-[#1890ff] text-white focus:ring-2 focus:ring-offset-2 focus:ring-[#1890ff]"
+                  >
+                    <FileText className="h-4 w-4 mr-2 text-white opacity-90" />
+                    Download CSV/PDF
+                  </Button>
+                </div>
+              ))}
             </div>
           </TabsContent>
         </Tabs>
+        </div>
       </div>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -519,7 +571,7 @@ export default function Admin() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDelete} className="inline-flex items-center px-4 py-2 rounded-md bg-[#e74c3c] text-white focus:ring-2 focus:ring-offset-2 focus:ring-[#e74c3c]">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -529,7 +581,7 @@ export default function Admin() {
       <AlertDialog open={!!deleteCenterTarget} onOpenChange={(open) => !open && setDeleteCenterTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete center?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Center?</AlertDialogTitle>
             <AlertDialogDescription>
               This action will permanently remove {deleteCenterTarget?.centerName} ({deleteCenterTarget?.centerId}). 
               This cannot be undone. Centers with associated buckets cannot be deleted.
@@ -537,12 +589,18 @@ export default function Admin() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCenter} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDeleteCenter} className="inline-flex items-center px-4 py-2 rounded-md bg-[#e74c3c] text-white focus:ring-2 focus:ring-offset-2 focus:ring-[#e74c3c]">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ReportGenerationDialog
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+        stage={reportStage}
+      />
     </div>
   );
 }

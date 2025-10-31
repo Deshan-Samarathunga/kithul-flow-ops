@@ -5,6 +5,7 @@ import { auth, requireRole } from "../middleware/authMiddleware.js";
 import {
   listBatches as listLabelingBatches,
   availablePackaging as availableLabelingPackaging,
+  getBatch as getLabelingBatch,
   createBatch as createLabelingBatch,
   updateBatch as updateLabelingBatch,
   deleteBatch as deleteLabelingBatch,
@@ -336,6 +337,13 @@ async function fetchLabelingSummaries(productType: ProductSlug) {
   const { rows } = await pool.query(query);
   return rows.map(mapLabelingRow);
 }
+
+router.get(
+  "/batches/:packagingId",
+  auth,
+  requireRole("Labeling", "Packaging", "Administrator"),
+  getLabelingBatch as any
+);
 
 router.get(
   "/batches",

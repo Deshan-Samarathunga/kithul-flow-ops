@@ -515,6 +515,10 @@ class ApiClient {
     return this.request<{ batches: LabelingBatchDto[] }>(`/labeling/batches`);
   }
 
+  async getLabelingBatch(packagingId: string) {
+    return this.request<LabelingBatchDto>(`/labeling/batches/${packagingId}`);
+  }
+
   async getEligiblePackagingBatchesForLabeling(params?: { productType?: string }) {
     const searchParams = new URLSearchParams();
     if (params?.productType) {
