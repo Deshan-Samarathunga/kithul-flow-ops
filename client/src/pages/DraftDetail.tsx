@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { DataService } from "@/lib/dataService";
@@ -33,6 +33,7 @@ export default function DraftDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [completedCenters, setCompletedCenters] = useState<Set<string>>(new Set());
+  const [isReopening, setIsReopening] = useState(false);
 
   const centerCanCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -198,6 +199,25 @@ export default function DraftDetail() {
     }
   };
 
+  const handleReopenDraft = async () => {
+    if (!draftId) {
+      toast.error("Missing draft identifier.");
+      return;
+    }
+
+    setIsReopening(true);
+    try {
+      await DataService.reopenDraft(draftId);
+      toast.success("Draft reopened successfully");
+      navigate("/field-collection");
+    } catch (err) {
+      console.error("Failed to reopen draft", err);
+      toast.error("Unable to reopen draft. Please try again.");
+    } finally {
+      setIsReopening(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -298,6 +318,17 @@ export default function DraftDetail() {
                 disabled={loading || completedCenters.size === 0}
               >
                 Save draft
+              </Button>
+            </div>
+          )}
+          {(draft.status === "submitted" || draft.status === "completed") && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/field-collection")}
+                className="sm:flex-none"
+              >
+                Back to Field Collection
               </Button>
             </div>
           )}
@@ -407,8 +438,8 @@ export default function DraftDetail() {
             </>
           )}
 
-          {/* Show only Completed Centers for submitted drafts */}
-          {draft.status === "submitted" && (
+          {/* Show only Completed Centers for submitted/completed drafts */}
+          {(draft.status === "submitted" || draft.status === "completed") && (
             <div>
               <h2 className="text-lg sm:text-xl font-semibold mb-4">Completed Centers</h2>
               <div className="space-y-4">
@@ -448,6 +479,26 @@ export default function DraftDetail() {
                     No completed centers yet
                   </div>
                 )}
+              </div>
+              
+              {/* Reopen Draft Button */}
+              <div className="mt-6 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <span>Submitted drafts are read-only. Reopen the draft to make adjustments.</span>
+                <div>
+                  <Button
+                    onClick={handleReopenDraft}
+                    disabled={isReopening}
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground"
+                  >
+                    {isReopening ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Reopening…
+                      </>
+                    ) : (
+                      "Reopen Draft"
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           )}

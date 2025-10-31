@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,9 @@ export default function CanForm() {
   const productTypeParam = searchParams.get("productType");
   const centerId = searchParams.get("centerId");
   const { user, logout } = useAuth();
+  
+  const [draftStatus, setDraftStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Define the 4 collection centers mapping
   const collectionCenters = {
@@ -45,6 +48,45 @@ export default function CanForm() {
     quantity: "",
   });
 
+  // Load draft status to check if editing is allowed
+  useEffect(() => {
+    const loadDraftStatus = async () => {
+      if (!draftId || draftId === "new") {
+        setDraftStatus("draft");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const draftData = await DataService.getDraft(draftId);
+        const draftRecord = draftData && typeof draftData === "object"
+          ? (draftData as Record<string, unknown>)
+          : null;
+        const status = draftRecord && typeof draftRecord.status === "string" 
+          ? draftRecord.status 
+          : "draft";
+        setDraftStatus(status);
+        
+        // Redirect if draft is not in draft status
+        if (status !== "draft") {
+          toast.error("Cannot edit cans in a submitted or completed draft");
+          const productType = productTypeParam === "treacle" ? "treacle" : "sap";
+          navigate(`/field-collection/draft/${draftId}/center/${centerId || 'center001'}?productType=${productType}`);
+        }
+      } catch (error) {
+        console.error("Error loading draft status:", error);
+        toast.error("Failed to load draft status");
+        // Allow editing if we can't determine status (fail open for draft mode)
+        setDraftStatus("draft");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDraftStatus();
+  }, [draftId, centerId, navigate, productTypeParam]);
+
   const handleLogout = () => {
     logout();
     navigate("/");
@@ -52,6 +94,12 @@ export default function CanForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent submission if draft is not in draft status
+    if (draftStatus !== "draft") {
+      toast.error("Cannot add cans to a submitted or completed draft");
+      return;
+    }
 
     if (!formData.quantity || !formData.serialNumber) {
       toast.error("Please fill in all required fields");
@@ -147,8 +195,14 @@ export default function CanForm() {
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
         <Card className="rounded-2xl border shadow-sm">
           <CardContent className="p-4 sm:p-6">
-            <h2 className="text-xl sm:text-2xl font-semibold">New Can</h2>
-            <p className="text-sm text-muted-foreground mt-1">Enter details for the new can below.</p>
+            <h2 className="text-xl sm:text-2xl font-semibold">
+              {draftStatus !== "draft" ? "View Can" : "New Can"}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {draftStatus !== "draft" 
+                ? "This draft has been submitted or completed. Editing is not allowed." 
+                : "Enter details for the new can below."}
+            </p>
             <div className="mt-5" />
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -169,6 +223,7 @@ export default function CanForm() {
                     placeholder="Enter 8-digit number"
                     value={formData.serialNumber}
                     onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value.replace(/[^0-9]/g, '') })}
+                    disabled={loading || draftStatus !== "draft"}
                   />
                   <div className="text-xs text-muted-foreground">
                     Full Can ID: {(productTypeLower === 'sap' ? 'SAP-' : 'TCL-') + ((formData.serialNumber || '').padStart(8,'0') || '________')}
@@ -186,6 +241,7 @@ export default function CanForm() {
                     placeholder="Enter Brix (0–100)"
                     value={formData.brixValue}
                     onChange={(e) => setFormData({ ...formData, brixValue: e.target.value })}
+                    disabled={loading || draftStatus !== "draft"}
                   />
                 </div>
 
@@ -200,6 +256,7 @@ export default function CanForm() {
                     placeholder="Enter pH (0–14)"
                     value={formData.phValue}
                     onChange={(e) => setFormData({ ...formData, phValue: e.target.value })}
+                    disabled={loading || draftStatus !== "draft"}
                   />
                 </div>
 
@@ -213,13 +270,18 @@ export default function CanForm() {
                     placeholder="Enter quantity"
                     value={formData.quantity}
                     onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                    disabled={loading || draftStatus !== "draft"}
                   />
                 </div>
               </div>
 
 
               <div className="flex justify-end col-span-1 sm:col-span-2">
-                <Button type="submit" className="bg-cta hover:bg-cta-hover text-cta-foreground">
+                <Button 
+                  type="submit" 
+                  className="bg-cta hover:bg-cta-hover text-cta-foreground"
+                  disabled={loading || draftStatus !== "draft"}
+                >
                   Submit
                 </Button>
               </div>

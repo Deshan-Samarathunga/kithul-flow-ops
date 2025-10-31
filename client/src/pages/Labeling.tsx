@@ -647,11 +647,11 @@ useEffect(() => {
 
             <div className="max-h-80 overflow-y-auto space-y-2">
               {isEligibleLoading ? (
-                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+                <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
                   Loading packaging batches…
                 </div>
               ) : filteredEligiblePackaging.length === 0 ? (
-                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+                <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
                   No completed packaging batches are available for labeling right now.
                 </div>
               ) : (

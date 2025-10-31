@@ -208,6 +208,7 @@ export default function LabelingBatchDetail() {
       });
       setBatch(updated);
       toast.success("Labeling batch reopened");
+      navigate("/labeling");
     } catch (err) {
       console.error("Failed to reopen labeling batch", err);
       toast.error("Unable to reopen labeling batch. Please try again.");
@@ -265,16 +266,16 @@ export default function LabelingBatchDetail() {
           <>
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Batch {batch.batchNumber}</h1>
-                <p className="text-sm text-gray-700 mt-1 flex items-center gap-4">
+                <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Batch {batch.batchNumber}</h1>
+                <p className="text-sm text-muted-foreground mt-1 flex items-center gap-4">
                   <span>Batch ID: {batch.batchNumber}</span>
-                  <span className="text-gray-300">|</span>
+                  <span className="text-muted-foreground/40">|</span>
                   <span>{scheduledDate}</span>
-                  <span className="text-gray-300">|</span>
+                  <span className="text-muted-foreground/40">|</span>
                   <span>Finished Qty: {finishedQuantityDisplay}</span>
-                  <span className="text-gray-300">|</span>
+                  <span className="text-muted-foreground/40">|</span>
                   <span>Cans: {canCountDisplay}</span>
-                  <span className="text-gray-300">|</span>
+                  <span className="text-muted-foreground/40">|</span>
                   {isCompleted ? (
                     <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">Submitted</span>
                   ) : (
@@ -286,30 +287,25 @@ export default function LabelingBatchDetail() {
                 <div className="flex w-full sm:w-auto sm:justify-end justify-stretch gap-2">
                   <Button
                     onClick={() => navigate("/labeling")}
-                    className="inline-flex items-center px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium w-full sm:w-auto"
+                    variant="outline"
+                    className="w-full sm:w-auto"
                   >
                     Back to Labeling
                   </Button>
                   <Button
                     type="submit"
                     form="labeling-form"
-                    className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium w-full sm:w-auto"
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
                     disabled={isSaving}
                   >
                     {isSaving ? "Saving…" : "Save Labeling Data"}
                   </Button>
                 </div>
-              ) : (
-                <div className="flex flex-col gap-2 w-full sm:w-auto text-sm text-muted-foreground sm:items-end">
-                  <div className="text-center sm:text-right">
-                    Submitted batches are read-only. Reopen the batch to make changes.
-                  </div>
-                </div>
-              )}
+              ) : null}
             </div>
 
             <form id="labeling-form" onSubmit={handleSaveLabeling} className="mt-6 space-y-6">
-              <section className="rounded-lg bg-white shadow-sm border border-gray-100 p-6">
+              <section className="rounded-xl border bg-white shadow-sm p-6">
                 <div className="mb-4">
                   <h2 className="text-base font-medium text-foreground">Batch Snapshot</h2>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -318,17 +314,17 @@ export default function LabelingBatchDetail() {
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase">Finished Quantity</p>
-                    <p className="text-sm font-semibold text-gray-800 mt-1">{finishedQuantityDisplay}</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase">Finished Quantity</p>
+                    <p className="text-sm font-semibold text-foreground mt-1">{finishedQuantityDisplay}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase">Can Count</p>
-                    <p className="text-sm font-semibold text-gray-800 mt-1">{canCountDisplay}</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase">Can Count</p>
+                    <p className="text-sm font-semibold text-foreground mt-1">{canCountDisplay}</p>
                   </div>
                 </div>
               </section>
 
-              <section className="rounded-lg bg-white shadow-sm border border-gray-100 p-6">
+              <section className="rounded-xl border bg-white shadow-sm p-6">
                 <div className="mb-4">
                   <h2 className="text-base font-medium text-foreground">Labeling Accessories</h2>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -350,7 +346,7 @@ export default function LabelingBatchDetail() {
                       }
                       required
                       disabled={isCompleted && !isReopening}
-                      className="rounded-md border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-sm"
+                      className="rounded-md border bg-muted/50 focus:ring-2 focus:ring-ring focus:border-ring px-3 py-2 text-sm"
                     />
                   </div>
                   <div className="space-y-2">
@@ -366,7 +362,7 @@ export default function LabelingBatchDetail() {
                       }
                       required
                       disabled={isCompleted && !isReopening}
-                      className="rounded-md border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-sm"
+                      className="rounded-md border bg-muted/50 focus:ring-2 focus:ring-ring focus:border-ring px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
@@ -386,7 +382,7 @@ export default function LabelingBatchDetail() {
                         }
                         required
                         disabled={isCompleted && !isReopening}
-                        className="rounded-md border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-sm"
+                        className="rounded-md border bg-muted/50 focus:ring-2 focus:ring-ring focus:border-ring px-3 py-2 text-sm"
                       />
                     </div>
                     <div className="space-y-2">
@@ -402,7 +398,7 @@ export default function LabelingBatchDetail() {
                         }
                         required
                         disabled={isCompleted && !isReopening}
-                        className="rounded-md border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-sm"
+                        className="rounded-md border bg-muted/50 focus:ring-2 focus:ring-ring focus:border-ring px-3 py-2 text-sm"
                       />
                     </div>
                   </div>
@@ -417,7 +413,7 @@ export default function LabelingBatchDetail() {
                   <Button
                     onClick={handleReopenBatch}
                     disabled={isReopening}
-                    className="inline-flex items-center rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 font-medium text-white"
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground"
                   >
                     {isReopening ? (
                       <>

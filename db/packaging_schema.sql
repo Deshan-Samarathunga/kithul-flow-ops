@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.treacle_packaging_batches (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT treacle_packaging_processing_fk
     FOREIGN KEY (processing_batch_id)
-    REFERENCES public.sap_processing_batches (id)
+    REFERENCES public.treacle_processing_batches (id)
     ON DELETE CASCADE,
   CONSTRAINT treacle_packaging_status_ck
     CHECK (status IN ('pending', 'in-progress', 'completed', 'on-hold'))

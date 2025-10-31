@@ -60,7 +60,7 @@ export default function CenterCans() {
   const [cans, setCans] = useState<CanListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [draftStatus, setDraftStatus] = useState<string>("draft");
+  const [draftStatus, setDraftStatus] = useState<string | null>(null);
   const [draftDate, setDraftDate] = useState<string>("");
 
   // Update active tab when productType parameter changes
@@ -139,11 +139,20 @@ export default function CenterCans() {
         ? (draftData as Record<string, unknown>)
         : null;
 
-      const draftStatusValue = draftRecord && typeof draftRecord.status === "string" ? draftRecord.status : "draft";
+      const draftStatusValue = draftRecord && typeof draftRecord.status === "string" 
+        ? draftRecord.status.toLowerCase() 
+        : null;
       const draftDateValue = draftRecord && typeof draftRecord.date === "string" ? draftRecord.date : null;
 
       setCans(normalizedCans);
-      setDraftStatus(draftStatusValue || "draft");
+      // Only set status if we have a valid value, otherwise keep it null
+      if (draftStatusValue) {
+        console.log("[CenterCans] Setting draftStatus to:", draftStatusValue);
+        setDraftStatus(draftStatusValue);
+      } else {
+        console.log("[CenterCans] No draftStatus found, setting to null");
+        setDraftStatus(null);
+      }
       setDraftDate(draftDateValue ? new Date(draftDateValue).toISOString().split("T")[0] : "");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load data";
@@ -230,7 +239,7 @@ export default function CenterCans() {
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold">{centerName} - {draftStatus === "draft" ? "Cans List" : "View Cans"}</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold">{centerName} - {!loading && draftStatus === "draft" ? "Cans List" : "View Cans"}</h1>
             <p className="text-sm text-muted-foreground">Draft: {draftDate}</p>
             <p className="text-sm text-muted-foreground">Center Agent: {centerInfo.agent}</p>
           </div>
@@ -244,15 +253,15 @@ export default function CenterCans() {
           
           <TabsContent value="sap" className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3 w-full">
+              <div className="flex items-center gap-3 flex-1 w-full">
                 <Input
                   placeholder="Search Cans"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="max-w-md w-full md:w-1/2"
+                  className="flex-1 w-full"
                 />
               </div>
-              {draftStatus === "draft" && (
+              {!loading && draftStatus === "draft" ? (
                 <Button
                   className="bg-cta hover:bg-cta-hover text-cta-foreground"
                   onClick={() => {
@@ -261,7 +270,7 @@ export default function CenterCans() {
                 >
                   Add New
                 </Button>
-              )}
+              ) : null}
             </div>
             <div className="space-y-4">
               {loading ? (
@@ -299,7 +308,7 @@ export default function CenterCans() {
                           </>
                         )}
                       </div>
-                      {draftStatus === "draft" && (
+                      {!loading && draftStatus === "draft" ? (
                         <div className="flex items-center gap-2">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -330,7 +339,7 @@ export default function CenterCans() {
                             </AlertDialogContent>
                           </AlertDialog>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ))
@@ -340,15 +349,15 @@ export default function CenterCans() {
           
           <TabsContent value="treacle" className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3 w-full">
+              <div className="flex items-center gap-3 flex-1 w-full">
                 <Input
                   placeholder="Search Cans"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="max-w-md w-full md:w-1/2"
+                  className="flex-1 w-full"
                 />
               </div>
-              {draftStatus === "draft" && (
+              {!loading && draftStatus === "draft" ? (
                 <Button
                   className="bg-cta hover:bg-cta-hover text-cta-foreground"
                   onClick={() => {
@@ -357,7 +366,7 @@ export default function CenterCans() {
                 >
                   Add New
                 </Button>
-              )}
+              ) : null}
             </div>
             <div className="space-y-4">
               {loading ? (
@@ -395,7 +404,7 @@ export default function CenterCans() {
                           </>
                         )}
                       </div>
-                      {draftStatus === "draft" && (
+                      {!loading && draftStatus === "draft" ? (
                         <div className="flex items-center gap-2">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -426,7 +435,7 @@ export default function CenterCans() {
                             </AlertDialogContent>
                           </AlertDialog>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ))

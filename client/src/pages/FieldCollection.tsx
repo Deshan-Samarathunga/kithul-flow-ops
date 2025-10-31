@@ -402,7 +402,7 @@ export default function FieldCollection() {
               <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
                 <button
                   type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "all" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "all" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
                   aria-pressed={listTab === "all"}
                   onClick={() => setListTab("all")}
                 >
@@ -410,7 +410,7 @@ export default function FieldCollection() {
                 </button>
                 <button
                   type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "active" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "active" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
                   aria-pressed={listTab === "active"}
                   onClick={() => setListTab("active")}
                 >
@@ -418,7 +418,7 @@ export default function FieldCollection() {
                 </button>
                 <button
                   type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "submitted" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "submitted" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
                   aria-pressed={listTab === "submitted"}
                   onClick={() => setListTab("submitted")}
                 >

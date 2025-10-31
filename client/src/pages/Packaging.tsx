@@ -568,7 +568,7 @@ export default function Packaging() {
               <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
                 <button
                   type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "treacle" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "treacle" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
                   aria-pressed={productTypeFilter === "treacle"}
                   onClick={() => setProductTypeFilter("treacle")}
                 >
@@ -576,7 +576,7 @@ export default function Packaging() {
                 </button>
                 <button
                   type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "jaggery" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "jaggery" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
                   aria-pressed={productTypeFilter === "jaggery"}
                   onClick={() => setProductTypeFilter("jaggery")}
                 >
@@ -734,11 +734,11 @@ export default function Packaging() {
 
             <div className="max-h-80 overflow-y-auto space-y-2">
               {isEligibleLoading ? (
-                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+                <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
                   Loading processing batches…
                 </div>
               ) : filteredEligibleProcessing.length === 0 ? (
-                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+                <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
                   No completed processing batches are available for packaging right now.
                 </div>
               ) : (

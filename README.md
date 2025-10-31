@@ -1,6 +1,6 @@
 # Kithul Flow Ops
 
-Production management system for kithul sap and treacle, covering field collection to final labeling.
+Production management system for kithul products (Sap → Treacle → Jaggery), covering field collection to final labeling.
 
 ## Stack
 
@@ -73,7 +73,7 @@ MIT
 
 > **Enterprise Production Management System for Kithul (Coconut Palm) Products**
 
-A comprehensive full-stack web application designed to streamline and manage the complete production workflow of kithul sap and treacle products, from field collection to final packaging and labeling.
+A comprehensive full-stack web application designed to streamline and manage the complete production workflow of kithul products (Sap → Treacle → Jaggery), from field collection to final packaging and labeling.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
@@ -133,7 +133,7 @@ cd client && npm install && npm run dev
 
 ## 🌟 Overview
 
-Kithul Flow Ops is a modern, enterprise-grade production management system specifically designed for the kithul industry. The system manages a complete 4-stage production pipeline, ensuring quality control, traceability, and efficient workflow management from raw material collection to final product packaging.
+Kithul Flow Ops is a modern, enterprise-grade production management system specifically designed for the kithul industry. The system manages a complete 4-stage production pipeline with two distinct product flows: **Sap → Treacle (in-house)** and **Treacle (third-party) → Jaggery**, ensuring quality control, traceability, and efficient workflow management from raw material collection to final product labeling.
 
 ### Key Benefits
 
@@ -337,11 +337,15 @@ kithul-flow-ops/
 - `DELETE /api/field-collection/drafts/:id` - Delete draft
 
 ### Processing API
+- `GET /api/processing/cans` - List available cans for processing
 - `GET /api/processing/batches` - List processing batches
 - `POST /api/processing/batches` - Create processing batch
 - `GET /api/processing/batches/:id` - Get batch details
-- `PUT /api/processing/batches/:id` - Update batch
+- `PATCH /api/processing/batches/:id` - Update batch
+- `PUT /api/processing/batches/:id/cans` - Assign cans to batch
 - `POST /api/processing/batches/:id/submit` - Submit batch
+- `POST /api/processing/batches/:id/reopen` - Reopen batch
+- `DELETE /api/processing/batches/:id` - Delete batch
 
 ### Admin API
 - `GET /api/admin/users` - List all users
@@ -383,24 +387,38 @@ kithul-flow-ops/
 
 ## 🗄️ Database Schema
 
-The database uses a **product-separated approach** with comprehensive normalization:
+The database uses a **product-separated approach** with comprehensive normalization. **Total: 14 tables**
 
-### Core Tables
+### Core Tables (4)
 - `users` - User accounts and authentication
 - `collection_centers` - Physical collection locations
-- `field_collection_drafts` - Daily collection drafts
+- `field_collection_drafts` - Daily collection drafts (shared across products)
+- `field_collection_center_completions` - Completion tracking for centers within drafts
 
-### Product-Specific Tables
-- `sap_cans` / `treacle_cans` - Individual product containers
-- `sap_processing_batches` / `treacle_processing_batches` - Manufacturing batches
-- `sap_packaging_batches` / `treacle_packaging_batches` - Packaging workflows
-- `sap_labeling_batches` / `treacle_labeling_batches` - Final labeling stage
+### Field Collection Tables (2)
+- `sap_cans` - Raw SAP containers collected from field centers (product_type: 'sap')
+- `treacle_cans` - Third-party Treacle containers purchased from field centers (product_type: 'treacle')
+
+### Processing Tables (4)
+- `treacle_processing_batches` - Batches that process SAP → Treacle (in-house, product_type: 'treacle')
+- `jaggery_processing_batches` - Batches that process Treacle → Jaggery (product_type: 'jaggery')
+- `treacle_processing_batch_cans` - Junction table linking SAP cans to processing batches (max 15 cans per batch)
+- `jaggery_processing_batch_cans` - Junction table linking Treacle cans to processing batches (max 15 cans per batch)
+
+### Packaging Tables (2)
+- `treacle_packaging_batches` - Packages in-house Treacle from `treacle_processing_batches` (1:1 relationship)
+- `jaggery_packaging_batches` - Packages Jaggery from `jaggery_processing_batches` (1:1 relationship)
+
+### Labeling Tables (2)
+- `treacle_labeling_batches` - Labels in-house Treacle from `treacle_packaging_batches` (1:1 relationship)
+- `jaggery_labeling_batches` - Labels Jaggery from `jaggery_packaging_batches` (1:1 relationship)
 
 ### Key Features
 - **Referential Integrity**: Foreign key constraints ensure data consistency
-- **Business Rules**: Database triggers enforce production limits
-- **Audit Trails**: Comprehensive timestamp tracking
-- **Data Validation**: Check constraints for quality metrics
+- **Business Rules**: Database triggers enforce 15-can limit per processing batch
+- **Audit Trails**: Comprehensive timestamp tracking (`created_at`, `updated_at`)
+- **Data Validation**: Check constraints for product types and status values
+- **Unique Constraints**: One-to-one relationships between processing→packaging→labeling stages
 
 ## 🛠️ Development
 
@@ -420,6 +438,7 @@ npm run dev          # Start development server with hot reload
 npm run build        # Build TypeScript to JavaScript
 npm run start        # Start production server
 npm run seed:admin   # Seed admin users
+npm run seed:centers # Seed collection centers
 ```
 
 ### Code Quality
@@ -560,24 +579,38 @@ For support and questions:
 
 ## 🗄️ Database Schema
 
-The database uses a **product-separated approach** with comprehensive normalization:
+The database uses a **product-separated approach** with comprehensive normalization. **Total: 14 tables**
 
-### Core Tables
+### Core Tables (4)
 - `users` - User accounts and authentication
 - `collection_centers` - Physical collection locations
-- `field_collection_drafts` - Daily collection drafts
+- `field_collection_drafts` - Daily collection drafts (shared across products)
+- `field_collection_center_completions` - Completion tracking for centers within drafts
 
-### Product-Specific Tables
-- `sap_cans` / `treacle_cans` - Individual product containers
-- `sap_processing_batches` / `treacle_processing_batches` - Manufacturing batches
-- `sap_packaging_batches` / `treacle_packaging_batches` - Packaging workflows
-- `sap_labeling_batches` / `treacle_labeling_batches` - Final labeling stage
+### Field Collection Tables (2)
+- `sap_cans` - Raw SAP containers collected from field centers (product_type: 'sap')
+- `treacle_cans` - Third-party Treacle containers purchased from field centers (product_type: 'treacle')
+
+### Processing Tables (4)
+- `treacle_processing_batches` - Batches that process SAP → Treacle (in-house, product_type: 'treacle')
+- `jaggery_processing_batches` - Batches that process Treacle → Jaggery (product_type: 'jaggery')
+- `treacle_processing_batch_cans` - Junction table linking SAP cans to processing batches (max 15 cans per batch)
+- `jaggery_processing_batch_cans` - Junction table linking Treacle cans to processing batches (max 15 cans per batch)
+
+### Packaging Tables (2)
+- `treacle_packaging_batches` - Packages in-house Treacle from `treacle_processing_batches` (1:1 relationship)
+- `jaggery_packaging_batches` - Packages Jaggery from `jaggery_processing_batches` (1:1 relationship)
+
+### Labeling Tables (2)
+- `treacle_labeling_batches` - Labels in-house Treacle from `treacle_packaging_batches` (1:1 relationship)
+- `jaggery_labeling_batches` - Labels Jaggery from `jaggery_packaging_batches` (1:1 relationship)
 
 ### Key Features
 - **Referential Integrity**: Foreign key constraints ensure data consistency
-- **Business Rules**: Database triggers enforce production limits
-- **Audit Trails**: Comprehensive timestamp tracking
-- **Data Validation**: Check constraints for quality metrics
+- **Business Rules**: Database triggers enforce 15-can limit per processing batch
+- **Audit Trails**: Comprehensive timestamp tracking (`created_at`, `updated_at`)
+- **Data Validation**: Check constraints for product types and status values
+- **Unique Constraints**: One-to-one relationships between processing→packaging→labeling stages
 
 ## 🛠️ Development
 
@@ -597,6 +630,7 @@ npm run dev          # Start development server with hot reload
 npm run build        # Build TypeScript to JavaScript
 npm run start        # Start production server
 npm run seed:admin   # Seed admin users
+npm run seed:centers # Seed collection centers
 ```
 
 ### Code Quality

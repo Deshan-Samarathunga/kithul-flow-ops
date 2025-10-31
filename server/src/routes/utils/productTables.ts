@@ -11,11 +11,11 @@ const TABLES = {
     jaggery: "treacle_cans", // Treacle cans collected in field, processed to jaggery
   },
   processingBatches: {
-    treacle: "sap_processing_batches", // SAP -> Treacle (in-house)
+    treacle: "treacle_processing_batches", // SAP -> Treacle (in-house)
     jaggery: "jaggery_processing_batches", // Treacle -> Jaggery
   },
   processingBatchCans: {
-    treacle: "sap_processing_batch_cans",
+    treacle: "treacle_processing_batch_cans",
     jaggery: "jaggery_processing_batch_cans",
   },
   packagingBatches: {

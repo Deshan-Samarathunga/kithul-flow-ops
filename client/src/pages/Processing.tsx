@@ -274,7 +274,7 @@ export default function Processing() {
               <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
                 <button
                   type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "treacle" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "treacle" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
                   aria-pressed={productTypeFilter === "treacle"}
                   onClick={() => setProductTypeFilter("treacle")}
                 >
@@ -282,7 +282,7 @@ export default function Processing() {
                 </button>
                 <button
                   type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "jaggery" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "jaggery" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
                   aria-pressed={productTypeFilter === "jaggery"}
                   onClick={() => setProductTypeFilter("jaggery")}
                 >
@@ -291,7 +291,7 @@ export default function Processing() {
               </div>
 
               <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-                <div className="relative max-w-md w-full md:w-1/2">
+                <div className="relative flex-1 w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search Batches"

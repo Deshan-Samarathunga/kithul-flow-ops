@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import type { ProcessingBatchDto, ProcessingCanDto } from "@/lib/apiClient";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Loader2 } from "lucide-react";
 
 const MAX_CAN_SELECTION = 15;
 
@@ -41,8 +41,10 @@ export default function BatchDetail() {
     usedGasKg: "",
   });
   const [isSavingProduction, setIsSavingProduction] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
 
   const isEditable = batch?.status !== "completed" && batch?.status !== "cancelled";
+  const isCompleted = batch?.status === "completed";
 
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
@@ -141,6 +143,25 @@ export default function BatchDetail() {
 
       return [...prev, canId];
     });
+  };
+
+  const handleReopenBatch = async () => {
+    if (!batchId) {
+      toast.error("Missing batch identifier.");
+      return;
+    }
+
+    setIsReopening(true);
+    try {
+      await DataService.reopenProcessingBatch(batchId);
+      toast.success("Processing batch reopened");
+      navigate("/processing");
+    } catch (err) {
+      console.error("Failed to reopen processing batch", err);
+      toast.error("Unable to reopen processing batch. Please try again.");
+    } finally {
+      setIsReopening(false);
+    }
   };
 
   const handleSaveBatch = async () => {
@@ -408,7 +429,8 @@ export default function BatchDetail() {
                 <div className="flex w-full sm:w-auto sm:justify-end justify-stretch gap-2">
                   <Button
                     onClick={() => setProductionDialogOpen(true)}
-                    className="inline-flex items-center px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium w-full sm:w-auto"
+                    variant="outline"
+                    className="w-full sm:w-auto"
                   >
                     {batch.totalSapOutput !== null && batch.totalSapOutput !== undefined
                       ? "Edit Production Data"
@@ -416,40 +438,28 @@ export default function BatchDetail() {
                   </Button>
                   <Button
                     onClick={handleSaveBatch}
-                    className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium w-full sm:w-auto"
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
                     disabled={isSaving}
                   >
                     {isSaving ? "Saving…" : "Save Batch"}
                   </Button>
                 </div>
-              ) : (
-                <div className="flex flex-col gap-2 w-full sm:w-auto text-sm text-muted-foreground sm:items-end">
-                  <div className="text-center sm:text-right">
-                    Submitted batches are read-only. Reopen the batch to make changes.
-                  </div>
-                  <Button
-                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
-                    onClick={() => setProductionDialogOpen(true)}
-                  >
-                    View production data
-                  </Button>
-                </div>
-              )}
+              ) : null}
             </div>
 
             <div className="mb-6 space-y-3">
-              <h2 className="text-lg font-medium text-gray-800 mb-2 mt-6">Production Details</h2>
-              <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
+              <h2 className="text-lg font-medium text-foreground mb-2 mt-6">Production Details</h2>
+              <div className="rounded-xl border bg-white shadow-sm p-6 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <span className="text-xs font-medium text-gray-500 tracking-wide">Output Quantity</span>
-                    <p className="text-sm font-semibold text-gray-800">
+                    <span className="text-xs font-medium text-muted-foreground tracking-wide">Output Quantity</span>
+                    <p className="text-sm font-semibold text-foreground">
                       {formatOutputQuantity(batch.totalSapOutput)}
                     </p>
                   </div>
                   <div>
-                    <span className="text-xs font-medium text-gray-500 tracking-wide">Used Gas Amount</span>
-                    <p className="text-sm font-semibold text-gray-800">
+                    <span className="text-xs font-medium text-muted-foreground tracking-wide">Used Gas Amount</span>
+                    <p className="text-sm font-semibold text-foreground">
                       {formatGasAmount(batch.gasUsedKg)}
                     </p>
                   </div>
@@ -471,7 +481,7 @@ export default function BatchDetail() {
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-lg font-medium text-gray-800 mb-2 mt-6">
+              <h2 className="text-lg font-medium text-foreground mb-2 mt-6">
                 {isEditable ? "Available Cans" : "Selected Cans"}
               </h2>
 
@@ -484,7 +494,7 @@ export default function BatchDetail() {
                       ? "Search cans by ID, center, product, or draft"
                       : "Search within selected cans"
                   }
-                  className="w-full rounded-lg border border-gray-200 p-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                  className="w-full rounded-lg border p-3 text-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
 
@@ -532,7 +542,7 @@ export default function BatchDetail() {
                   >
                     Select all visible cans ({cansToRender.length})
                     {visibleSelectedQuantity > 0 && (
-                      <span className="ml-2 font-medium text-gray-800">
+                        <span className="ml-2 font-medium text-foreground">
                         · Total: {visibleSelectedQuantity.toFixed(1)} kg
                       </span>
                     )}
@@ -547,7 +557,7 @@ export default function BatchDetail() {
 
                   const info = (
                     <>
-                      <div className="flex items-center flex-wrap gap-3 text-sm text-gray-600">
+                      <div className="flex items-center flex-wrap gap-3 text-sm text-muted-foreground">
                         <Badge variant="secondary" className="font-mono text-xs uppercase tracking-wide">
                           Can ID · {can.id}
                         </Badge>
@@ -559,16 +569,16 @@ export default function BatchDetail() {
                         </span>
                       </div>
                       <div className="mt-3 flex items-center flex-wrap gap-3 text-sm text-gray-600">
-                        <span className="font-medium text-gray-800">
+                        <span className="font-medium text-foreground">
                           Collection Center: {can.collectionCenter.name}
                         </span>
-                        <span className="px-2 text-gray-300">|</span>
+                        <span className="px-2 text-muted-foreground/40">|</span>
                         <span>Quantity: {can.quantity} kg</span>
-                        <span className="px-2 text-gray-300">|</span>
+                        <span className="px-2 text-muted-foreground/40">|</span>
                         <span>Product: {can.productType}</span>
-                        <span className="px-2 text-gray-300">|</span>
+                        <span className="px-2 text-muted-foreground/40">|</span>
                         <span>Brix: {formatNumber(can.brixValue, 1)}</span>
-                        <span className="px-2 text-gray-300">|</span>
+                        <span className="px-2 text-muted-foreground/40">|</span>
                         <span>pH: {formatNumber(can.phValue, 2)}</span>
                         
                       </div>
@@ -578,7 +588,7 @@ export default function BatchDetail() {
                   return (
                     <div
                       key={can.id}
-                      className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 mb-4 hover:bg-gray-50 transition-colors"
+                      className="rounded-xl border bg-white shadow-sm p-4 mb-4 hover:bg-muted/50 transition-colors"
                     >
                       <div className="flex items-start gap-4">
                         {isEditable ? (
@@ -691,7 +701,7 @@ export default function BatchDetail() {
                       </Button>
                       <Button
                         type="submit"
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        className="bg-cta hover:bg-cta-hover text-cta-foreground"
                         disabled={isSavingProduction}
                       >
                         {isSavingProduction ? "Saving…" : "Save Batch"}
@@ -719,6 +729,27 @@ export default function BatchDetail() {
                 )}
               </DialogContent>
             </Dialog>
+
+            {isCompleted && (
+              <div className="mt-6 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <span>Submitted batches are read-only. Reopen the batch to make adjustments.</span>
+                <div>
+                  <Button
+                    onClick={handleReopenBatch}
+                    disabled={isReopening}
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground"
+                  >
+                    {isReopening ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Reopening…
+                      </>
+                    ) : (
+                      "Reopen Batch"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Batch not found.</div>

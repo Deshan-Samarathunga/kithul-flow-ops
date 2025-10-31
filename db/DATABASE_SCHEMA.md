@@ -32,7 +32,7 @@ Field Collection → Processing → Packaging → Labeling
          │                                     │
          ▼                                     ▼
 ┌─────────────────────┐           ┌─────────────────────┐
-│ collection_centers   │           │ sap_processing_      │
+│ collection_centers   │           │ treacle_processing_ │
 │─────────────────────│           │   batches            │
 │ id (PK)             │           │─────────────────────│
 │ center_id (UNIQUE)  │           │ id (PK)             │
@@ -50,9 +50,9 @@ Field Collection → Processing → Packaging → Labeling
          │                          │─────────────────────│
          │                          │ id (PK)             │
          │                          │ packaging_id        │
-         │                          │ processing_batch_id │
-         │                          │   (FK→sap_processing)│
-         │                          └─────────────────────┘
+│                          │ processing_batch_id │
+│                          │   (FK→treacle_processing)│
+│                          └─────────────────────┘
          │                                    │
          │                                    │ (labeled)
          │                                    │
@@ -103,7 +103,7 @@ Field Collection → Processing → Packaging → Labeling
          │                      │
          ▼                      ▼
 ┌─────────────────────┐  ┌─────────────────────┐
-│ sap_processing_     │  │ jaggery_processing_ │
+│ treacle_processing_ │  │ jaggery_processing_ │
 │   batch_cans        │  │   batch_cans        │
 │─────────────────────│  │─────────────────────│
 │ id (PK)             │  │ id (PK)             │
@@ -117,7 +117,7 @@ Field Collection → Processing → Packaging → Labeling
          │                      │
          ▼                      ▼
 ┌─────────────────────┐  ┌─────────────────────┐
-│ sap_processing_     │  │ jaggery_processing_ │
+│ treacle_processing_ │  │ jaggery_processing_ │
 │   batches           │  │   batches           │
 │─────────────────────│  │─────────────────────│
 │ id (PK)             │  │ id (PK)             │
@@ -138,7 +138,7 @@ Field Collection → Processing → Packaging → Labeling
 │ id (PK)             │  │ id (PK)             │
 │ packaging_id        │  │ packaging_id        │
 │ processing_batch_id │  │ processing_batch_id │
-│   (FK→sap_processing)│  │   (FK→jaggery_processing)│
+│   (FK→treacle_processing)│  │   (FK→jaggery_processing)│
 └─────────────────────┘  └─────────────────────┘
          │                      │
          │                      │
@@ -201,14 +201,14 @@ Field Collection → Processing → Packaging → Labeling
 └─────────────────────────────────────────────────────────────────────┘
                                     │
                     ┌───────────────────────────────┐
-                    │ sap_processing_batch_cans     │
+                    │ treacle_processing_batch_cans │
                     │   (junction table)            │
                     └───────────────────────────────┘
                                     │
                                     │ Belongs to
                                     ▼
                     ┌───────────────────────────────┐
-                    │  sap_processing_batches        │
+                    │  treacle_processing_batches    │
                     │   product_type: "treacle" ⭐   │
                     │   (converts SAP → Treacle)     │
                     └───────────────────────────────┘
@@ -223,7 +223,7 @@ Field Collection → Processing → Packaging → Labeling
                     │ treacle_packaging_batches     │
                     │   (for in-house treacle)      │
                     │   processing_batch_id →       │
-                    │     sap_processing_batches     │
+                    │     treacle_processing_batches │
                     └───────────────────────────────┘
                                     │
                                     │ Labeled
@@ -317,7 +317,7 @@ Field Collection → Processing → Packaging → Labeling
 | Parent Table | Child Table | Foreign Key | Relationship |
 |--------------|-------------|-------------|--------------|
 | `users` | `field_collection_drafts` | `created_by` → `user_id` | One-to-Many |
-| `users` | `sap_processing_batches` | `created_by` → `user_id` | One-to-Many |
+| `users` | `treacle_processing_batches` | `created_by` → `user_id` | One-to-Many |
 | `users` | `jaggery_processing_batches` | `created_by` → `user_id` | One-to-Many |
 | `collection_centers` | `sap_cans` | `collection_center_id` → `id` | One-to-Many |
 | `collection_centers` | `treacle_cans` | `collection_center_id` → `id` | One-to-Many |
@@ -325,9 +325,9 @@ Field Collection → Processing → Packaging → Labeling
 | `field_collection_drafts` | `sap_cans` | `draft_id` → `id` | One-to-Many |
 | `field_collection_drafts` | `treacle_cans` | `draft_id` → `id` | One-to-Many |
 | `field_collection_drafts` | `field_collection_center_completions` | `draft_id` → `draft_id` | One-to-Many |
-| `sap_cans` | `sap_processing_batch_cans` | `can_id` → `id` | One-to-One (UNIQUE) |
-| `sap_processing_batches` | `sap_processing_batch_cans` | `processing_batch_id` → `id` | One-to-Many |
-| `sap_processing_batches` | `treacle_packaging_batches` | `processing_batch_id` → `id` | One-to-One (UNIQUE) |
+| `sap_cans` | `treacle_processing_batch_cans` | `can_id` → `id` | One-to-One (UNIQUE) |
+| `treacle_processing_batches` | `treacle_processing_batch_cans` | `processing_batch_id` → `id` | One-to-Many |
+| `treacle_processing_batches` | `treacle_packaging_batches` | `processing_batch_id` → `id` | One-to-One (UNIQUE) |
 | `treacle_cans` | `jaggery_processing_batch_cans` | `can_id` → `id` | One-to-One (UNIQUE) |
 | `jaggery_processing_batches` | `jaggery_processing_batch_cans` | `processing_batch_id` → `id` | One-to-Many |
 | `jaggery_processing_batches` | `jaggery_packaging_batches` | `processing_batch_id` → `id` | One-to-One (UNIQUE) |
@@ -345,7 +345,7 @@ Field Collection → Processing → Packaging → Labeling
 - Can IDs format: `SAP-########` for sap, `TCL-########` for treacle
 
 ### Processing Stage
-- **sap_processing_batches**: 
+- **treacle_processing_batches**: 
   - Takes cans from `sap_cans`
   - Produces **Treacle (in-house)**
   - `product_type` constraint: `'treacle'`
@@ -357,7 +357,7 @@ Field Collection → Processing → Packaging → Labeling
 
 ### Packaging Stage
 - **treacle_packaging_batches**: 
-  - Links to `sap_processing_batches` (produces in-house treacle)
+  - Links to `treacle_processing_batches` (produces in-house treacle)
   - One packaging batch per processing batch (UNIQUE constraint)
 
 - **jaggery_packaging_batches**: 
@@ -383,7 +383,7 @@ Field Collection → Processing → Packaging → Labeling
    - Processing → Packaging (1:1)
    - Packaging → Labeling (1:1)
 4. **Product Type Constraints**: 
-   - `sap_processing_batches.product_type` must be `'treacle'`
+   - `treacle_processing_batches.product_type` must be `'treacle'`
    - `jaggery_processing_batches.product_type` must be `'jaggery'`
    - `sap_cans.product_type` must be `'sap'`
    - `treacle_cans.product_type` must be `'treacle'`
@@ -399,7 +399,7 @@ Field Collection → Processing → Packaging → Labeling
 | Drafts | `field_collection_drafts` | Field collection drafts (shared) |
 | SAP Cans | `sap_cans` | Raw SAP collected |
 | Treacle Cans | `treacle_cans` | Third-party Treacle purchased |
-| SAP Processing | `sap_processing_batches` | Processes SAP → Treacle (in-house) |
+| Treacle Processing | `treacle_processing_batches` | Processes SAP → Treacle (in-house) |
 | Jaggery Processing | `jaggery_processing_batches` | Processes Treacle → Jaggery |
 | Treacle Packaging | `treacle_packaging_batches` | Packages in-house Treacle |
 | Jaggery Packaging | `jaggery_packaging_batches` | Packages Jaggery |
@@ -440,7 +440,7 @@ Field Collection → Processing → Packaging → Labeling
 
 ## Notes
 
-- ⭐ **Critical**: `sap_processing_batches` has `product_type = 'treacle'` even though it processes SAP. This is because it produces Treacle (in-house).
+- ⭐ **Critical**: `treacle_processing_batches` has `product_type = 'treacle'` even though it processes SAP. This is because it produces Treacle (in-house).
 - All cans are collected in the Field Collection stage and stored with their original product type (`sap` or `treacle`).
 - The product type mapping happens at the processing stage where the output product type is stored.
 - Field collection still uses `"sap"` and `"treacle"` as product types (raw materials).
