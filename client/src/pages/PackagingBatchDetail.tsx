@@ -45,6 +45,7 @@ export default function PackagingBatchDetail() {
   const isTreacle = productType === "treacle";
   const normalizedStatus = normalizeStatus(batch?.packagingStatus);
   const isCompleted = normalizedStatus === "completed";
+  const isEditable = !isCompleted;
   const resolvedPackagingId = batch?.packagingId ?? packagingId ?? "";
   const finishedQuantityStep = isSap ? "0.1" : "0.01";
   const productLabel = isSap ? "Sap" : isTreacle ? "Treacle" : "";
@@ -249,7 +250,7 @@ export default function PackagingBatchDetail() {
       <Link to="/packaging" className="transition-colors hover:text-white">
         Packaging
       </Link>
-      <span className="text-white/60">/</span>
+      <span className="text-white/60">&gt;</span>
       <span className="font-semibold text-black">Batch {batch?.batchNumber ?? packagingId}</span>
     </div>
   );
@@ -264,7 +265,7 @@ export default function PackagingBatchDetail() {
         breadcrumb={breadcrumb}
       />
 
-      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {isLoading ? (
           <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Loading packaging batch…</div>
         ) : error ? (
@@ -272,28 +273,57 @@ export default function PackagingBatchDetail() {
             {error}
           </div>
         ) : batch ? (
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Packaging batch</span>
-              <h1 className="text-xl font-semibold text-foreground">
-                Batch {batch.batchNumber ?? resolvedPackagingId}
-              </h1>
-              {batchDetailLine ? (
-                <p className="text-sm text-muted-foreground">{batchDetailLine}</p>
-              ) : null}
+          <>
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-semibold">Batch {batch.batchNumber}</h1>
+                <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                  <span>Scheduled for {formatDate(batch.scheduledDate ?? batch.startedAt)}</span>
+                  <span className="px-2 text-muted-foreground/40">|</span>
+                  {isCompleted ? (
+                    <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">Submitted</span>
+                  ) : (
+                    <span className="text-muted-foreground">Status {batch.packagingStatus}</span>
+                  )}
+                </p>
+              </div>
+              {isEditable ? (
+                <div className="flex w-full sm:w-auto sm:justify-end justify-stretch gap-2">
+                  <Button
+                    onClick={() => navigate("/packaging")}
+                    className="inline-flex items-center px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium w-full sm:w-auto"
+                  >
+                    Back to Packaging
+                  </Button>
+                  <Button
+                    type="submit"
+                    form="packaging-form"
+                    className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium w-full sm:w-auto"
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving…" : "Save Batch"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 w-full sm:w-auto text-sm text-muted-foreground sm:items-end">
+                  <div className="text-center sm:text-right">
+                    Submitted batches are read-only. Reopen the batch to make changes.
+                  </div>
+                </div>
+              )}
             </div>
 
-            <form onSubmit={handleSavePackaging} className="mt-6 space-y-6">
-              <section className="rounded-xl border border-border/60 bg-background/80 p-4 space-y-4">
+            <form id="packaging-form" onSubmit={handleSavePackaging} className="space-y-6">
+              <section className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
                 <div>
-                  <h2 className="text-base font-medium text-foreground">Finished output</h2>
+                  <h2 className="text-base font-medium text-foreground">Finished Output</h2>
                   <p className="text-sm text-muted-foreground">
                     Enter the final packaged quantity so downstream teams know exactly what is ready.
                   </p>
                 </div>
                 <div className="grid gap-4 sm:max-w-xs">
                   <div className="space-y-2">
-                    <Label htmlFor="finishedQuantity">Finished quantity</Label>
+                    <Label htmlFor="finishedQuantity">Finished Quantity</Label>
                     <Input
                       id="finishedQuantity"
                       type="number"
@@ -310,9 +340,9 @@ export default function PackagingBatchDetail() {
                 </div>
               </section>
 
-              <section className="rounded-xl border border-border/60 bg-background/80 p-4 space-y-4">
+              <section className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
                 <div>
-                  <h2 className="text-base font-medium text-foreground">Packaging materials</h2>
+                  <h2 className="text-base font-medium text-foreground">Packaging Materials</h2>
                   <p className="text-sm text-muted-foreground">
                     Track the materials used so replenishment and costing stay accurate.
                   </p>
@@ -321,7 +351,7 @@ export default function PackagingBatchDetail() {
                 {isSap ? (
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="bottleQuantity">Bottle quantity</Label>
+                      <Label htmlFor="bottleQuantity">Bottle Quantity</Label>
                       <Input
                         id="bottleQuantity"
                         type="number"
@@ -336,7 +366,7 @@ export default function PackagingBatchDetail() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="lidQuantity">Lid quantity</Label>
+                      <Label htmlFor="lidQuantity">Lid Quantity</Label>
                       <Input
                         id="lidQuantity"
                         type="number"
@@ -354,7 +384,7 @@ export default function PackagingBatchDetail() {
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-3">
                     <div className="space-y-2">
-                      <Label htmlFor="alufoilQuantity">Alufoil quantity</Label>
+                      <Label htmlFor="alufoilQuantity">Alufoil Quantity</Label>
                       <Input
                         id="alufoilQuantity"
                         type="number"
@@ -369,7 +399,7 @@ export default function PackagingBatchDetail() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="vacuumBagQuantity">Vacuum bag quantity</Label>
+                      <Label htmlFor="vacuumBagQuantity">Vacuum Bag Quantity</Label>
                       <Input
                         id="vacuumBagQuantity"
                         type="number"
@@ -384,7 +414,7 @@ export default function PackagingBatchDetail() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="parchmentPaperQuantity">Parchment paper quantity</Label>
+                      <Label htmlFor="parchmentPaperQuantity">Parchment Paper Quantity</Label>
                       <Input
                         id="parchmentPaperQuantity"
                         type="number"
@@ -401,53 +431,12 @@ export default function PackagingBatchDetail() {
                   </div>
                 )}
               </section>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate("/packaging")}
-                >
-                  Back to packaging
-                </Button>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  {isCompleted && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void handleReopenBatch()}
-                      disabled={isReopening}
-                    >
-                      {isReopening ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" /> Reopening…
-                        </span>
-                      ) : (
-                        "Reopen batch"
-                      )}
-                    </Button>
-                  )}
-                  <Button
-                    type="submit"
-                    className="bg-cta hover:bg-cta-hover text-cta-foreground"
-                    disabled={isSaving || (isCompleted && !isReopening)}
-                  >
-                    {isSaving ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Saving…
-                      </span>
-                    ) : (
-                      "Save packaging data"
-                    )}
-                  </Button>
-                </div>
-              </div>
             </form>
-          </div>
+          </>
         ) : (
           <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Packaging batch not found.</div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

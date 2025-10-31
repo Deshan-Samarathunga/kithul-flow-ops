@@ -136,6 +136,20 @@ export async function availablePackaging(req: Request, res: Response) {
   }
 }
 
+export async function getBatch(req: Request, res: Response) {
+  try {
+    const { packagingId } = req.params as { packagingId: string };
+    const batch = await fetchLabelingBatchByPackagingId(packagingId);
+    if (!batch) {
+      return res.status(404).json({ error: "Labeling batch not found" });
+    }
+    res.json(batch);
+  } catch (error) {
+    console.error("Error fetching labeling batch:", error);
+    res.status(500).json({ error: "Failed to fetch labeling batch" });
+  }
+}
+
 export async function createBatch(req: Request, res: Response) {
   try {
     const { packagingId } = createLabelingSchema.parse(req.body ?? {});

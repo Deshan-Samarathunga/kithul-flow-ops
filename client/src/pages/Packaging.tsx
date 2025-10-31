@@ -465,107 +465,86 @@ export default function Packaging() {
           "rounded-2xl border bg-card p-4 sm:p-6 shadow-sm transition-shadow hover:shadow-md",
         )}
       >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2 text-sm sm:gap-5">
-            <span className="font-medium">{formatDate(batch.startedAt ?? batch.scheduledDate)}</span>
-            <span className="hidden sm:inline text-muted-foreground">|</span>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
             <span>
-              Batch <span className="font-semibold text-foreground">{batch.batchNumber}</span>
+              Batch ID: <span className="font-semibold text-foreground">{batch.batchNumber}</span>
             </span>
-            <span className="hidden sm:inline text-muted-foreground">|</span>
-            <span className="uppercase tracking-wide text-xs text-muted-foreground">{productLabel}</span>
-            {variant === "active" && (
-              <>
-                <span className="hidden sm:inline text-muted-foreground">|</span>
-                <span className="text-muted-foreground text-xs uppercase tracking-wide">
-                  {hasPackagingData ? "Data recorded" : "Awaiting data"}
-                </span>
-              </>
-            )}
+            <span className="px-2 text-muted-foreground/40">|</span>
+            <span className="font-medium">{formatDate(batch.startedAt ?? batch.scheduledDate)}</span>
+            <span className="px-2 text-muted-foreground/40">|</span>
+            <span>
+              Total quantity: {formatVolumeByProduct(batch.totalSapOutput ?? null, batch.productType)}
+            </span>
+            <span className="px-2 text-muted-foreground/40">|</span>
+            <span>Buckets: {batch.bucketCount}</span>
           </div>
-          <StatusBadge
-            status={resolveBadgeStatus(batch.packagingStatus)}
-            label={formatStatusLabel(batch.packagingStatus)}
-          />
-        </div>
-
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {showFinishedQuantity && (
-              <>
-                <span className="font-semibold text-foreground">Finished qty</span>
-                <span>{formatFinishedQuantity(batch.finishedQuantity ?? null)}</span>
-                <span className="hidden sm:inline">·</span>
-              </>
-            )}
-            <span className="font-semibold text-foreground">Packaging qty</span>
-            <span>{formatVolumeByProduct(batch.totalSapOutput ?? null, batch.productType)}</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(
-              "flex-1 sm:flex-none",
-              variant === "active" && "border-cta text-cta hover:bg-cta/10",
-            )}
-            onClick={() => {
-              if (!packagingId) {
-                toast.error("Packaging batch is missing an identifier.");
-                return;
-              }
-              navigate(`/packaging/batch/${packagingId}`);
-            }}
-            disabled={!packagingId}
-          >
-            {variant === "completed" ? "View" : "Continue"}
-          </Button>
-          {variant === "active" && (
-            <Button
-              size="sm"
-              className="bg-cta hover:bg-cta-hover text-cta-foreground flex-1 sm:flex-none"
-              onClick={() => void handleSubmitPackagingBatch(batch)}
-              disabled={submittingPackagingId === packagingId || !hasPackagingData || !packagingId}
-            >
-              {submittingPackagingId === packagingId ? (
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Submitting…
-                </span>
-              ) : (
-                "Submit"
-              )}
-            </Button>
-          )}
-          {variant === "active" && (
-            <Button
-              variant="destructive"
-              size="sm"
-              className="flex-1 sm:flex-none"
-              onClick={() =>
-                setDeleteTarget({ packagingId, batchNumber: batch.batchNumber })
-              }
-              disabled={isDeletingPackaging && deleteTarget?.packagingId === packagingId}
-            >
-              <Trash2 className="h-4 w-4 mr-1" /> Delete
-            </Button>
-          )}
-          {variant === "completed" && (
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
+              onClick={() => {
+                if (!packagingId) {
+                  toast.error("Packaging batch is missing an identifier.");
+                  return;
+                }
+                navigate(`/packaging/batch/${packagingId}`);
+              }}
+              disabled={!packagingId}
               className="flex-1 sm:flex-none"
-              onClick={() => void handleReopenPackagingBatch(batch)}
-              disabled={reopeningPackagingId === packagingId}
             >
-              {reopeningPackagingId === packagingId ? (
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Reopening…
-                </span>
-              ) : (
-                "Reopen"
-              )}
+              {variant === "completed" ? "View" : "Continue"}
             </Button>
-          )}
+            {variant === "active" && (
+              <Button
+                size="sm"
+                className="bg-cta hover:bg-cta-hover text-cta-foreground flex-1 sm:flex-none"
+                onClick={() => void handleSubmitPackagingBatch(batch)}
+                disabled={submittingPackagingId === packagingId || !hasPackagingData || !packagingId}
+              >
+                {submittingPackagingId === packagingId ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting…
+                  </>
+                ) : (
+                  "Submit"
+                )}
+              </Button>
+            )}
+            {variant === "active" && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="sm:flex-none"
+                onClick={() =>
+                  setDeleteTarget({ packagingId, batchNumber: batch.batchNumber })
+                }
+                disabled={isDeletingPackaging && deleteTarget?.packagingId === packagingId}
+                aria-label={`Delete batch ${batch.batchNumber}`}
+                title={`Delete batch ${batch.batchNumber}`}
+              >
+                <span className="inline-flex items-center gap-1"><Trash2 className="h-4 w-4" /> Delete</span>
+              </Button>
+            )}
+            {variant === "completed" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 sm:flex-none"
+                onClick={() => void handleReopenPackagingBatch(batch)}
+                disabled={reopeningPackagingId === packagingId}
+              >
+                {reopeningPackagingId === packagingId ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Reopening…
+                  </>
+                ) : (
+                  "Reopen"
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -575,32 +554,13 @@ export default function Packaging() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
-      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="space-y-6 sm:space-y-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Packaging</h1>
-              <p className="text-sm text-muted-foreground">
-                Review completed processing batches and record packaging material usage.
-              </p>
-            </div>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <Button
-                onClick={openCreatePackagingDialog}
-                className="bg-cta hover:bg-cta-hover text-cta-foreground"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add New
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={handleOpenReportDialog}
-                className="w-full sm:w-auto"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Generate Report
-              </Button>
-            </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">Packaging</h1>
+            <p className="text-sm text-muted-foreground">
+              Review completed processing batches and record packaging material usage.
+            </p>
           </div>
 
           <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
@@ -625,7 +585,7 @@ export default function Packaging() {
               </div>
 
               <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-                <div className="relative max-w-md w-full md:w-1/2">
+                <div className="relative flex-1 w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search Batches"
@@ -634,6 +594,14 @@ export default function Packaging() {
                     className="pl-10"
                   />
                 </div>
+
+                <Button
+                  variant="secondary"
+                  onClick={handleOpenReportDialog}
+                  className="w-full sm:w-auto"
+                >
+                  <FileText className="mr-2 h-4 w-4" /> Generate Report
+                </Button>
                 <Button
                   variant="outline"
                   onClick={handleRefresh}
@@ -643,20 +611,36 @@ export default function Packaging() {
                   <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
                   <span className="ml-2">Refresh</span>
                 </Button>
+                <Button
+                  onClick={openCreatePackagingDialog}
+                  className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                >
+                  {isCreatingPackagingBatch ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating…
+                    </>
+                  ) : (
+                    <span className="font-medium">Add New</span>
+                  )}
+                </Button>
               </div>
+            </div>
+
+            <div className="mt-4 flex items-center gap-4 rounded-xl bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{selectedProductLabel} Overview</span>
+              <span className="px-2 text-muted-foreground/40">·</span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#e74c3c" }} /> Active: {selectedMetrics.active}
+              </span>
+              <span className="px-2 text-muted-foreground/40">·</span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#2ecc71" }} /> Completed: {selectedMetrics.completed}
+              </span>
             </div>
           </div>
 
           <div className="space-y-4">
-            <div className="mt-2 flex items-center gap-4 rounded-xl bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{selectedProductLabel} Overview</span>
-              <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-red-600" /> Active: {selectedMetrics.active}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-green-600" /> Completed: {selectedMetrics.completed}
-              </span>
-            </div>
 
             {isLoading && (
               <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
@@ -672,7 +656,7 @@ export default function Packaging() {
 
             {!isLoading && !error && filteredByType.length === 0 && (
               <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
-                No {selectedProductLabel.toLowerCase()} batches available for packaging.
+                No batches yet. Create a new batch to get started.
               </div>
             )}
 
@@ -682,7 +666,7 @@ export default function Packaging() {
                   <h2 className="text-lg sm:text-xl font-semibold">Packaging batches</h2>
                   {activePackagingBatches.length === 0 ? (
                     <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
-                      No active {selectedProductLabel.toLowerCase()} batches.
+                      No active batches right now.
                     </div>
                   ) : (
                     activePackagingBatches.map((batch) => renderPackagingCard(batch, "active"))
@@ -693,7 +677,7 @@ export default function Packaging() {
                   <h2 className="text-lg sm:text-xl font-semibold">Completed batches</h2>
                   {completedPackagingBatches.length === 0 ? (
                     <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
-                      No completed {selectedProductLabel.toLowerCase()} batches yet.
+                      No completed batches yet.
                     </div>
                   ) : (
                     completedPackagingBatches.map((batch) => renderPackagingCard(batch, "completed"))
@@ -720,7 +704,7 @@ export default function Packaging() {
       >
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Add Packaging Batch</DialogTitle>
+            <DialogTitle>Add New</DialogTitle>
             <DialogDescription>
               Choose a submitted processing batch to start capturing packaging data.
             </DialogDescription>
@@ -774,7 +758,7 @@ export default function Packaging() {
                     >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                          <p className="font-semibold">Batch {batch.batchNumber}</p>
+                          <p className="font-semibold">Batch ID: {batch.batchNumber}</p>
                           <p className="text-xs text-muted-foreground">
                             Scheduled {formatDate(batch.scheduledDate)} · {batch.bucketCount} bucket
                             {batch.bucketCount === 1 ? "" : "s"}
@@ -832,7 +816,7 @@ export default function Packaging() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete packaging batch?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Packaging Batch?</AlertDialogTitle>
             <AlertDialogDescription>
               This will remove packaging and any downstream labeling data linked to batch {deleteTarget?.batchNumber}.
               You can recreate it later from the list of completed processing batches.

@@ -334,6 +334,15 @@ export class DataService {
     }
   }
 
+  static async getLabelingBatch(packagingId: string) {
+    try {
+      return await apiClient.getLabelingBatch(packagingId);
+    } catch (error) {
+      console.error('Error fetching labeling batch:', error);
+      throw error;
+    }
+  }
+
   static async getEligiblePackagingBatchesForLabeling(productType?: string) {
     try {
       const response = await apiClient.getEligiblePackagingBatchesForLabeling({ productType });
