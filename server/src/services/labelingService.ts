@@ -6,8 +6,8 @@ export type LabelingContext = {
   packagingTable: string;
   labelingTable: string;
   processingBatchTable: string;
-  batchBucketTable: string;
-  bucketTable: string;
+  batchCanTable: string;
+  canTable: string;
   packagingPk: number;
   labelingPk: number | null;
 };
@@ -28,8 +28,8 @@ export async function resolveLabelingContext(packagingId: string): Promise<Label
         packagingTable,
         labelingTable,
         processingBatchTable: getTableName("processingBatches", productType),
-        batchBucketTable: getTableName("processingBatchBuckets", productType),
-        bucketTable: getTableName("buckets", productType),
+        batchCanTable: getTableName("processingBatchCans", productType),
+        canTable: getTableName("cans", productType),
         packagingPk,
         labelingPk: labelRows.length > 0 ? Number(labelRows[0].id) : null,
       };
@@ -66,11 +66,11 @@ export async function fetchLabelingRow(packagingId: string) {
       lb.neck_tag_quantity AS labeling_neck_tag_quantity,
       lb.corrugated_carton_quantity AS labeling_corrugated_carton_quantity,
       COALESCE(SUM(b.quantity), 0) AS total_quantity,
-      COUNT(pbb.bucket_id) AS bucket_count
+      COUNT(pbb.can_id) AS can_count
     FROM ${context.packagingTable} pkg
     JOIN ${context.processingBatchTable} pb ON pb.id = pkg.processing_batch_id
-    LEFT JOIN ${context.batchBucketTable} pbb ON pbb.processing_batch_id = pb.id
-    LEFT JOIN ${context.bucketTable} b ON b.id = pbb.bucket_id
+    LEFT JOIN ${context.batchCanTable} pbb ON pbb.processing_batch_id = pb.id
+    LEFT JOIN ${context.canTable} b ON b.id = pbb.can_id
     LEFT JOIN ${context.labelingTable} lb ON lb.packaging_batch_id = pkg.id
     WHERE pkg.packaging_id = $1
     GROUP BY
@@ -110,8 +110,8 @@ export async function fetchLabelingBatchByPackagingId(packagingId: string) {
 export async function fetchLabelingSummaries(productType: ProductSlug) {
   const packagingTable = getTableName("packagingBatches", productType);
   const processingBatchTable = getTableName("processingBatches", productType);
-  const batchBucketTable = getTableName("processingBatchBuckets", productType);
-  const bucketTable = getTableName("buckets", productType);
+  const batchCanTable = getTableName("processingBatchCans", productType);
+  const canTable = getTableName("cans", productType);
   const labelingTable = getTableName("labelingBatches", productType);
 
   const query = `
@@ -138,11 +138,11 @@ export async function fetchLabelingSummaries(productType: ProductSlug) {
       lb.neck_tag_quantity AS labeling_neck_tag_quantity,
       lb.corrugated_carton_quantity AS labeling_corrugated_carton_quantity,
       COALESCE(SUM(b.quantity), 0) AS total_quantity,
-      COUNT(pbb.bucket_id) AS bucket_count
+      COUNT(pbb.can_id) AS can_count
     FROM ${packagingTable} pkg
     JOIN ${processingBatchTable} pb ON pb.id = pkg.processing_batch_id
-    LEFT JOIN ${batchBucketTable} pbb ON pbb.processing_batch_id = pb.id
-    LEFT JOIN ${bucketTable} b ON b.id = pbb.bucket_id
+    LEFT JOIN ${batchCanTable} pbb ON pbb.processing_batch_id = pb.id
+    LEFT JOIN ${canTable} b ON b.id = pbb.can_id
     LEFT JOIN ${labelingTable} lb ON lb.packaging_batch_id = pkg.id
     WHERE lb.id IS NOT NULL
     GROUP BY
@@ -182,8 +182,8 @@ export async function fetchEligiblePackagingBatches(productType?: ProductSlug) {
     const packagingTable = getTableName("packagingBatches", product);
     const processingBatchTable = getTableName("processingBatches", product);
     const labelingTable = getTableName("labelingBatches", product);
-    const batchBucketTable = getTableName("processingBatchBuckets", product);
-    const bucketTable = getTableName("buckets", product);
+    const batchCanTable = getTableName("processingBatchCans", product);
+    const canTable = getTableName("cans", product);
 
     const query = `
       SELECT
@@ -197,12 +197,12 @@ export async function fetchEligiblePackagingBatches(productType?: ProductSlug) {
         pb.scheduled_date,
         pb.total_sap_output,
         COALESCE(SUM(b.quantity), 0) AS total_quantity,
-        COUNT(pbb.bucket_id) AS bucket_count
+        COUNT(pbb.can_id) AS can_count
       FROM ${packagingTable} pkg
       JOIN ${processingBatchTable} pb ON pb.id = pkg.processing_batch_id
       LEFT JOIN ${labelingTable} lb ON lb.packaging_batch_id = pkg.id
-      LEFT JOIN ${batchBucketTable} pbb ON pbb.processing_batch_id = pb.id
-      LEFT JOIN ${bucketTable} b ON b.id = pbb.bucket_id
+      LEFT JOIN ${batchCanTable} pbb ON pbb.processing_batch_id = pb.id
+      LEFT JOIN ${canTable} b ON b.id = pbb.can_id
       WHERE lb.packaging_batch_id IS NULL AND pkg.status = 'completed'
       GROUP BY
         pkg.id,

@@ -82,13 +82,19 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-cta/10 p-4 sm:p-6">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-2 pb-6">
-          <div className="flex items-center justify-center mb-2">
-            <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary to-cta flex items-center justify-center shadow-md">
-              <span className="text-white font-bold text-2xl">KF</span>
-            </div>
+          <div className="login-logo-wrapper mx-auto w-full max-w-xs text-center pt-6">
+            <img
+              src="/logo/kitul-flow-logo-black.png"
+              srcSet="/logo/kitul-flow-logo-black.png 1x, /logo/kitul-flow-logo-black.png 2x"
+              alt="Kithul Flow logo"
+              width="224"
+              height="224"
+              className="mx-auto block w-56 h-56 object-contain"
+              loading="eager"
+              aria-hidden="false"
+            />
           </div>
-          <CardTitle className="text-2xl sm:text-3xl text-center">Kithul Flow</CardTitle>
-          <CardDescription className="text-center text-sm sm:text-base">
+          <CardDescription className="mt-4 text-center text-sm text-gray-500">
             Sign in to access your dashboard
           </CardDescription>
         </CardHeader>

@@ -136,3 +136,14 @@ All colors MUST be HSL.
     @apply font-semibold;
   }
 }
+
+@layer utilities {
+  /* Login logo wrapper - prevent unwanted shadows/spacing */
+  .login-logo-wrapper {
+    padding-top: 1.25rem;
+  }
+  
+  .login-logo-wrapper img {
+    box-shadow: none;
+  }
+}

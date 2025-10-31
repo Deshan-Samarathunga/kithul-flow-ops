@@ -1,5 +1,5 @@
 -- Field Collection module schema
--- Shared draft table with product-specific bucket/center tables.
+-- Shared draft table with product-specific can/center tables.
 
 DROP TABLE IF EXISTS public.sap_drafts CASCADE;
 DROP TABLE IF EXISTS public.treacle_drafts CASCADE;
@@ -21,9 +21,9 @@ CREATE TABLE IF NOT EXISTS public.field_collection_drafts (
     ON DELETE RESTRICT
 );
 
-CREATE TABLE IF NOT EXISTS public.sap_buckets (
+CREATE TABLE IF NOT EXISTS public.sap_cans (
   id BIGSERIAL PRIMARY KEY,
-  bucket_id TEXT UNIQUE NOT NULL,
+  can_id TEXT UNIQUE NOT NULL,
   draft_id BIGINT NOT NULL,
   collection_center_id BIGINT NOT NULL,
   product_type TEXT NOT NULL,
@@ -32,21 +32,21 @@ CREATE TABLE IF NOT EXISTS public.sap_buckets (
   quantity NUMERIC(10,2) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT sap_buckets_draft_fk
+  CONSTRAINT sap_cans_draft_fk
     FOREIGN KEY (draft_id)
     REFERENCES public.field_collection_drafts (id)
     ON DELETE CASCADE,
-  CONSTRAINT sap_buckets_center_fk
+  CONSTRAINT sap_cans_center_fk
     FOREIGN KEY (collection_center_id)
     REFERENCES public.collection_centers (id)
     ON DELETE RESTRICT,
-  CONSTRAINT sap_buckets_product_ck
+  CONSTRAINT sap_cans_product_ck
     CHECK (LOWER(product_type) = 'sap')
 );
 
-CREATE TABLE IF NOT EXISTS public.treacle_buckets (
+CREATE TABLE IF NOT EXISTS public.treacle_cans (
   id BIGSERIAL PRIMARY KEY,
-  bucket_id TEXT UNIQUE NOT NULL,
+  can_id TEXT UNIQUE NOT NULL,
   draft_id BIGINT NOT NULL,
   collection_center_id BIGINT NOT NULL,
   product_type TEXT NOT NULL,
@@ -55,22 +55,22 @@ CREATE TABLE IF NOT EXISTS public.treacle_buckets (
   quantity NUMERIC(10,2) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT treacle_buckets_draft_fk
+  CONSTRAINT treacle_cans_draft_fk
     FOREIGN KEY (draft_id)
     REFERENCES public.field_collection_drafts (id)
     ON DELETE CASCADE,
-  CONSTRAINT treacle_buckets_center_fk
+  CONSTRAINT treacle_cans_center_fk
     FOREIGN KEY (collection_center_id)
     REFERENCES public.collection_centers (id)
     ON DELETE RESTRICT,
-  CONSTRAINT treacle_buckets_product_ck
+  CONSTRAINT treacle_cans_product_ck
     CHECK (LOWER(product_type) = 'treacle')
 );
 
-CREATE INDEX IF NOT EXISTS idx_sap_buckets_draft_id ON public.sap_buckets (draft_id);
-CREATE INDEX IF NOT EXISTS idx_sap_buckets_center_id ON public.sap_buckets (collection_center_id);
-CREATE INDEX IF NOT EXISTS idx_treacle_buckets_draft_id ON public.treacle_buckets (draft_id);
-CREATE INDEX IF NOT EXISTS idx_treacle_buckets_center_id ON public.treacle_buckets (collection_center_id);
+CREATE INDEX IF NOT EXISTS idx_sap_cans_draft_id ON public.sap_cans (draft_id);
+CREATE INDEX IF NOT EXISTS idx_sap_cans_center_id ON public.sap_cans (collection_center_id);
+CREATE INDEX IF NOT EXISTS idx_treacle_cans_draft_id ON public.treacle_cans (draft_id);
+CREATE INDEX IF NOT EXISTS idx_treacle_cans_center_id ON public.treacle_cans (collection_center_id);
 
 CREATE TABLE IF NOT EXISTS public.field_collection_center_completions (
   id BIGSERIAL PRIMARY KEY,

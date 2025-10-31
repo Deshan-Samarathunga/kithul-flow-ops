@@ -23,7 +23,7 @@ const toNumber = (value: unknown) => {
 
 type FieldCollectionMetrics = {
   drafts: number;
-  buckets: number;
+  cans: number;
   quantity: number;
   draftIds: string[];
 };
@@ -71,7 +71,7 @@ type ReportTotals = {
   labeling: LabelingMetrics;
 };
 
-const emptyFieldCollection = (): FieldCollectionMetrics => ({ drafts: 0, buckets: 0, quantity: 0, draftIds: [] });
+const emptyFieldCollection = (): FieldCollectionMetrics => ({ drafts: 0, cans: 0, quantity: 0, draftIds: [] });
 
 const emptyProcessing = (): ProcessingMetrics => ({
   totalBatches: 0,
@@ -128,7 +128,7 @@ async function fetchFieldCollectionMetrics(product: ProductSlug, targetDate: str
   const row = await svcFetchFieldCollectionMetrics(product, targetDate);
   return {
     drafts: toNumber(row.draft_count),
-    buckets: toNumber(row.bucket_count),
+    cans: toNumber(row.can_count),
     quantity: toNumber(row.total_quantity),
     draftIds: toStringArray(row.draft_ids),
   };
@@ -177,15 +177,15 @@ export async function dailyReport(req: Request, res: Response) {
     const targetDate = rawDate ? dateSchema.parse(rawDate) : new Date().toISOString().slice(0, 10);
 
     const perProduct: Record<ProductSlug, ProductReport> = {
-      sap: {
-        product: "sap",
+      treacle: {
+        product: "treacle",
         fieldCollection: emptyFieldCollection(),
         processing: emptyProcessing(),
         packaging: emptyPackaging(),
         labeling: emptyLabeling(),
       },
-      treacle: {
-        product: "treacle",
+      jaggery: {
+        product: "jaggery",
         fieldCollection: emptyFieldCollection(),
         processing: emptyProcessing(),
         packaging: emptyPackaging(),
@@ -218,7 +218,7 @@ export async function dailyReport(req: Request, res: Response) {
     for (const product of SUPPORTED_PRODUCTS) {
       const report = perProduct[product];
       totals.fieldCollection.drafts += report.fieldCollection.drafts;
-      totals.fieldCollection.buckets += report.fieldCollection.buckets;
+      totals.fieldCollection.cans += report.fieldCollection.cans;
       totals.fieldCollection.quantity += report.fieldCollection.quantity;
       totals.fieldCollection.draftIds = Array.from(
         new Set([...totals.fieldCollection.draftIds, ...report.fieldCollection.draftIds])

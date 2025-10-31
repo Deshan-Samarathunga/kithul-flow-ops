@@ -41,14 +41,14 @@ export default function PackagingBatchDetail() {
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
 
   const productType = normalizeStatus(batch?.productType);
-  const isSap = productType === "sap";
   const isTreacle = productType === "treacle";
+  const isJaggery = productType === "jaggery";
   const normalizedStatus = normalizeStatus(batch?.packagingStatus);
   const isCompleted = normalizedStatus === "completed";
   const isEditable = !isCompleted;
   const resolvedPackagingId = batch?.packagingId ?? packagingId ?? "";
-  const finishedQuantityStep = isSap ? "0.1" : "0.01";
-  const productLabel = isSap ? "Sap" : isTreacle ? "Treacle" : "";
+  const finishedQuantityStep = isTreacle ? "0.1" : "0.01";
+  const productLabel = isTreacle ? "Treacle" : isJaggery ? "Jaggery" : "";
 
   const handleLogout = () => {
     logout();
@@ -128,7 +128,7 @@ export default function PackagingBatchDetail() {
   };
 
   const buildPayloadFromForm = () => {
-    if (!isSap && !isTreacle) {
+    if (!isTreacle && !isJaggery) {
       toast.error("Unsupported product type for packaging batch.");
       return null;
     }
@@ -149,7 +149,7 @@ export default function PackagingBatchDetail() {
     }
     payload.finishedQuantity = finishedQuantityValue;
 
-    if (isSap) {
+    if (isTreacle) {
       const bottle = parseNumber(form.bottleQuantity);
       const lid = parseNumber(form.lidQuantity);
       if (Number.isNaN(bottle) || Number.isNaN(lid) || bottle < 0 || lid < 0) {
@@ -226,6 +226,7 @@ export default function PackagingBatchDetail() {
       });
       setBatch(updated);
       toast.success("Packaging batch reopened");
+      navigate("/packaging");
     } catch (err) {
       console.error("Failed to reopen packaging batch", err);
       toast.error("Unable to reopen packaging batch. Please try again.");
@@ -237,7 +238,7 @@ export default function PackagingBatchDetail() {
   const batchDetailParts = [
     productLabel ? `${productLabel} product` : null,
     batch?.scheduledDate ? `Scheduled ${formatDate(batch.scheduledDate)}` : null,
-    typeof batch?.bucketCount === "number" ? `${batch.bucketCount} buckets` : null,
+    typeof batch?.canCount === "number" ? `${batch.canCount} cans` : null,
   ].filter(Boolean);
   const batchDetailLine = batchDetailParts.join(" • ");
 
@@ -291,30 +292,25 @@ export default function PackagingBatchDetail() {
                 <div className="flex w-full sm:w-auto sm:justify-end justify-stretch gap-2">
                   <Button
                     onClick={() => navigate("/packaging")}
-                    className="inline-flex items-center px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium w-full sm:w-auto"
+                    variant="outline"
+                    className="w-full sm:w-auto"
                   >
                     Back to Packaging
                   </Button>
                   <Button
                     type="submit"
                     form="packaging-form"
-                    className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium w-full sm:w-auto"
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
                     disabled={isSaving}
                   >
                     {isSaving ? "Saving…" : "Save Batch"}
                   </Button>
                 </div>
-              ) : (
-                <div className="flex flex-col gap-2 w-full sm:w-auto text-sm text-muted-foreground sm:items-end">
-                  <div className="text-center sm:text-right">
-                    Submitted batches are read-only. Reopen the batch to make changes.
-                  </div>
-                </div>
-              )}
+              ) : null}
             </div>
 
             <form id="packaging-form" onSubmit={handleSavePackaging} className="space-y-6">
-              <section className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
+              <section className="rounded-xl border bg-white shadow-sm p-6 space-y-4">
                 <div>
                   <h2 className="text-base font-medium text-foreground">Finished Output</h2>
                   <p className="text-sm text-muted-foreground">
@@ -340,7 +336,7 @@ export default function PackagingBatchDetail() {
                 </div>
               </section>
 
-              <section className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
+              <section className="rounded-xl border bg-white shadow-sm p-6 space-y-4">
                 <div>
                   <h2 className="text-base font-medium text-foreground">Packaging Materials</h2>
                   <p className="text-sm text-muted-foreground">
@@ -348,7 +344,7 @@ export default function PackagingBatchDetail() {
                   </p>
                 </div>
 
-                {isSap ? (
+                {isTreacle ? (
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="bottleQuantity">Bottle Quantity</Label>
@@ -432,6 +428,27 @@ export default function PackagingBatchDetail() {
                 )}
               </section>
             </form>
+
+            {isCompleted && (
+              <div className="mt-6 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <span>Submitted batches are read-only. Reopen the batch to make adjustments.</span>
+                <div>
+                  <Button
+                    onClick={handleReopenBatch}
+                    disabled={isReopening}
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground"
+                  >
+                    {isReopening ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Reopening…
+                      </>
+                    ) : (
+                      "Reopen Batch"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Packaging batch not found.</div>

@@ -32,7 +32,7 @@ function mapPackagingRow(row: any) {
 		packagingStatus: row.packaging_status as string,
 		processingStatus: row.processing_status as string,
 		notes: row.packaging_notes as string | null,
-		bucketCount: Number(row.bucket_count ?? 0),
+		canCount: Number(row.can_count ?? 0),
 		totalQuantity: Number(row.total_quantity ?? 0),
 		totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
 		finishedQuantity: row.finished_quantity !== null ? Number(row.finished_quantity) : null,
@@ -79,8 +79,8 @@ type PackagingContext = {
 	productType: ProductSlug;
 	packagingTable: string;
 	processingBatchTable: string;
-	batchBucketTable: string;
-	bucketTable: string;
+	batchCanTable: string;
+	canTable: string;
 	row: any;
 };
 
@@ -88,8 +88,8 @@ type ProcessingContext = {
 	productType: ProductSlug;
 	processingTable: string;
 	packagingTable: string;
-	batchBucketTable: string;
-	bucketTable: string;
+	batchCanTable: string;
+	canTable: string;
 	row: any;
 };
 
@@ -141,7 +141,7 @@ export async function availableProcessing(req: Request, res: Response) {
 					: (row.scheduled_date ?? null),
 			totalSapOutput: row.total_sap_output !== null && row.total_sap_output !== undefined ? Number(row.total_sap_output) : null,
 			totalQuantity: Number(row.total_quantity ?? 0),
-			bucketCount: Number(row.bucket_count ?? 0),
+			canCount: Number(row.can_count ?? 0),
 		}));
 		res.json({ batches });
 	} catch (error) {
@@ -215,20 +215,20 @@ export async function updateBatch(req: Request, res: Response) {
 
 		const productType = (existing.productType || "").toLowerCase();
 
-		if (productType === "sap") {
+		if (productType === "treacle") {
 			if (validated.bottleQuantity === undefined || validated.lidQuantity === undefined) {
 				return res
 					.status(400)
-					.json({ error: "Bottle and lid quantities are required for sap packaging." });
+					.json({ error: "Bottle and lid quantities are required for treacle (in-house) packaging." });
 			}
-		} else if (productType === "treacle") {
+		} else if (productType === "jaggery") {
 			if (
 				validated.alufoilQuantity === undefined ||
 				validated.vacuumBagQuantity === undefined ||
 				validated.parchmentPaperQuantity === undefined
 			) {
 				return res.status(400).json({
-					error: "Alufoil, vacuum bag, and parchment paper quantities are required for treacle packaging.",
+					error: "Alufoil, vacuum bag, and parchment paper quantities are required for jaggery packaging.",
 				});
 			}
 		}

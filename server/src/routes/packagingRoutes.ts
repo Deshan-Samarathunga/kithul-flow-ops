@@ -41,7 +41,7 @@ function mapPackagingRow(row: any) {
 		packagingStatus: row.packaging_status as string,
 		processingStatus: row.processing_status as string,
 		notes: row.packaging_notes as string | null,
-		bucketCount: Number(row.bucket_count ?? 0),
+		canCount: Number(row.can_count ?? 0),
 		totalQuantity: Number(row.total_quantity ?? 0),
 		totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
 		finishedQuantity: row.finished_quantity !== null ? Number(row.finished_quantity) : null,
@@ -111,11 +111,11 @@ async function fetchPackagingBatchByPackagingId(packagingId: string) {
       pb.scheduled_date,
       pb.total_sap_output,
       COALESCE(SUM(b.quantity), 0) AS total_quantity,
-      COUNT(pbb.bucket_id) AS bucket_count
+      COUNT(pbb.can_id) AS can_count
     FROM ${context.packagingTable} pkg
     JOIN ${context.processingBatchTable} pb ON pb.id = pkg.processing_batch_id
-    LEFT JOIN ${context.batchBucketTable} pbb ON pbb.processing_batch_id = pb.id
-    LEFT JOIN ${context.bucketTable} b ON b.id = pbb.bucket_id
+    LEFT JOIN ${context.batchCanTable} pbb ON pbb.processing_batch_id = pb.id
+    LEFT JOIN ${context.canTable} b ON b.id = pbb.can_id
     WHERE pkg.packaging_id = $1
     GROUP BY
       pkg.packaging_id,
@@ -149,8 +149,8 @@ type PackagingContext = {
 	productType: ProductSlug;
 	packagingTable: string;
 	processingBatchTable: string;
-	batchBucketTable: string;
-	bucketTable: string;
+	batchCanTable: string;
+	canTable: string;
 	row: any;
 };
 
@@ -158,8 +158,8 @@ type ProcessingContext = {
 	productType: ProductSlug;
 	processingTable: string;
 	packagingTable: string;
-	batchBucketTable: string;
-	bucketTable: string;
+	batchCanTable: string;
+	canTable: string;
 	row: any;
 };
 
@@ -172,8 +172,8 @@ async function resolvePackagingContext(packagingId: string): Promise<PackagingCo
 				productType,
 				packagingTable,
 				processingBatchTable: getTableName("processingBatches", productType),
-				batchBucketTable: getTableName("processingBatchBuckets", productType),
-				bucketTable: getTableName("buckets", productType),
+				batchCanTable: getTableName("processingBatchCans", productType),
+				canTable: getTableName("cans", productType),
 				row: rows[0],
 			};
 		}
@@ -190,8 +190,8 @@ async function resolveProcessingContextByBatchId(batchId: string): Promise<Proce
 				productType,
 				processingTable,
 				packagingTable: getTableName("packagingBatches", productType),
-				batchBucketTable: getTableName("processingBatchBuckets", productType),
-				bucketTable: getTableName("buckets", productType),
+				batchCanTable: getTableName("processingBatchCans", productType),
+				canTable: getTableName("cans", productType),
 				row: rows[0],
 			};
 		}
@@ -208,14 +208,14 @@ async function fetchEligibleProcessingBatches(productType?: ProductSlug) {
 		scheduledDate: string | null;
 		totalSapOutput: number | null;
 		totalQuantity: number;
-		bucketCount: number;
+		canCount: number;
 	}> = [];
 
 	for (const product of products) {
 		const processingTable = getTableName("processingBatches", product);
 		const packagingTable = getTableName("packagingBatches", product);
-		const batchBucketTable = getTableName("processingBatchBuckets", product);
-		const bucketTable = getTableName("buckets", product);
+		const batchCanTable = getTableName("processingBatchCans", product);
+		const canTable = getTableName("cans", product);
 
 		const query = `
 			SELECT
@@ -226,11 +226,11 @@ async function fetchEligibleProcessingBatches(productType?: ProductSlug) {
 				pb.scheduled_date,
 				pb.total_sap_output,
 				COALESCE(SUM(b.quantity), 0) AS total_quantity,
-				COUNT(pbb.bucket_id) AS bucket_count
+				COUNT(pbb.can_id) AS can_count
 			FROM ${processingTable} pb
 			LEFT JOIN ${packagingTable} pkg ON pkg.processing_batch_id = pb.id
-			LEFT JOIN ${batchBucketTable} pbb ON pbb.processing_batch_id = pb.id
-			LEFT JOIN ${bucketTable} b ON b.id = pbb.bucket_id
+			LEFT JOIN ${batchCanTable} pbb ON pbb.processing_batch_id = pb.id
+			LEFT JOIN ${canTable} b ON b.id = pbb.can_id
 			WHERE pb.status = 'completed' AND pkg.processing_batch_id IS NULL
 			GROUP BY pb.id, pb.batch_id, pb.batch_number, pb.product_type, pb.scheduled_date, pb.total_sap_output
 			ORDER BY pb.scheduled_date DESC, pb.batch_number ASC
@@ -248,7 +248,7 @@ async function fetchEligibleProcessingBatches(productType?: ProductSlug) {
 						: (row.scheduled_date as string | null),
 				totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
 				totalQuantity: Number(row.total_quantity ?? 0),
-				bucketCount: Number(row.bucket_count ?? 0),
+				canCount: Number(row.can_count ?? 0),
 			});
 		}
 	}
@@ -259,8 +259,8 @@ async function fetchEligibleProcessingBatches(productType?: ProductSlug) {
 async function fetchPackagingSummaries(productType: ProductSlug) {
 	const packagingTable = getTableName("packagingBatches", productType);
 	const processingBatchTable = getTableName("processingBatches", productType);
-	const batchBucketTable = getTableName("processingBatchBuckets", productType);
-	const bucketTable = getTableName("buckets", productType);
+	const batchCanTable = getTableName("processingBatchCans", productType);
+	const canTable = getTableName("cans", productType);
 
 	const query = `
 		SELECT
@@ -282,11 +282,11 @@ async function fetchPackagingSummaries(productType: ProductSlug) {
 			pkg.parchment_paper_quantity,
 			pkg.finished_quantity,
 			COALESCE(SUM(b.quantity), 0) AS total_quantity,
-			COUNT(pbb.bucket_id) AS bucket_count
+			COUNT(pbb.can_id) AS can_count
 		FROM ${packagingTable} pkg
 		JOIN ${processingBatchTable} pb ON pb.id = pkg.processing_batch_id
-		LEFT JOIN ${batchBucketTable} pbb ON pbb.processing_batch_id = pb.id
-		LEFT JOIN ${bucketTable} b ON b.id = pbb.bucket_id
+		LEFT JOIN ${batchCanTable} pbb ON pbb.processing_batch_id = pb.id
+		LEFT JOIN ${canTable} b ON b.id = pbb.can_id
 		GROUP BY
 			pkg.packaging_id,
 			pkg.status,

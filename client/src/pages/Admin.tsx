@@ -234,28 +234,28 @@ export default function Admin() {
                 <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
                   <button
                     type="button"
-                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "employees" ? "bg-[#1890ff] hover:bg-[#147de0] text-white" : "text-foreground hover:bg-gray-200"}`}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "employees" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-muted"}`}
                     onClick={() => setAdminTab("employees")}
                   >
                     Employees
                   </button>
                   <button
                     type="button"
-                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "centers" ? "bg-[#1890ff] hover:bg-[#147de0] text-white" : "text-foreground hover:bg-gray-200"}`}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "centers" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-muted"}`}
                     onClick={() => setAdminTab("centers")}
                   >
                     Centers
                   </button>
                   <button
                     type="button"
-                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "monitoring" ? "bg-[#1890ff] hover:bg-[#147de0] text-white" : "text-foreground hover:bg-gray-200"}`}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "monitoring" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-muted"}`}
                     onClick={() => setAdminTab("monitoring")}
                   >
                     Monitoring
                   </button>
                   <button
                     type="button"
-                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "reports" ? "bg-[#1890ff] hover:bg-[#147de0] text-white" : "text-foreground hover:bg-gray-200"}`}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "reports" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-muted"}`}
                     onClick={() => setAdminTab("reports")}
                   >
                     Reports
@@ -320,7 +320,7 @@ export default function Admin() {
             ) : (
               <div className="space-y-4">
                 {filteredEmployees.map((employee) => (
-                  <div key={employee.id} className="rounded-lg border bg-card p-5 shadow-sm">
+                  <div key={employee.id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex flex-col space-y-1">
                         <h3 className="text-sm font-semibold text-foreground">{employee.name || employee.userId}</h3>
@@ -335,7 +335,7 @@ export default function Admin() {
                           className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                             employee.isActive 
                               ? "bg-green-100 text-green-700" 
-                              : "bg-gray-100 text-gray-500"
+                              : "bg-muted text-muted-foreground"
                           }`}
                         >
                           {employee.isActive ? "Active" : "Inactive"}
@@ -343,7 +343,6 @@ export default function Admin() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="inline-flex items-center px-4 py-2 rounded-md bg-white border text-gray-700 focus:ring-2 focus:ring-offset-2 focus:ring-[#1890ff]"
                           onClick={() => navigate(`/admin/employees/${employee.id}/edit`)}
                         >
                           Edit
@@ -351,7 +350,6 @@ export default function Admin() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          className="inline-flex items-center px-4 py-2 rounded-md bg-[#e74c3c] text-white focus:ring-2 focus:ring-offset-2 focus:ring-[#e74c3c]"
                           onClick={() => setDeleteTarget(employee)}
                         >
                           Delete
@@ -375,7 +373,7 @@ export default function Admin() {
               <>
              <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 w-full">
-                 <div className="relative flex-1 max-w-md">
+                 <div className="relative flex-1">
                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                    <Input
                      placeholder="Search Centers"
@@ -386,7 +384,7 @@ export default function Admin() {
                  </div>
                  <Button
                    onClick={() => setShowCenterForm(true)}
-                   className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                   className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto sm:ml-auto"
                  >
                    <Plus className="h-4 w-4 mr-2" />
                    Add Center
@@ -425,19 +423,10 @@ export default function Admin() {
                 ) : (
                   <div className="space-y-4">
                     {filteredCenters.map((center) => (
-                      <div key={center.id} className="rounded-lg border bg-card p-5 shadow-sm">
+                      <div key={center.id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                           <div className="flex flex-col space-y-1">
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-sm font-semibold text-foreground">{center.centerName}</h3>
-                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                                center.isActive 
-                                  ? "bg-green-100 text-green-700" 
-                                  : "bg-gray-100 text-gray-500"
-                              }`}>
-                                {center.isActive ? "Active" : "Inactive"}
-                              </span>
-                            </div>
+                            <h3 className="text-sm font-semibold text-foreground">{center.centerName}</h3>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <span>ID: {center.centerId}</span>
                               <span className="text-muted-foreground/40">|</span>
@@ -453,11 +442,19 @@ export default function Admin() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3 flex-wrap">
+                            <span
+                              className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                                center.isActive 
+                                  ? "bg-green-100 text-green-700" 
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {center.isActive ? "Active" : "Inactive"}
+                            </span>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleEditCenter(center)}
-                              className="inline-flex items-center px-4 py-2 rounded-md bg-white border text-gray-700 focus:ring-2 focus:ring-offset-2 focus:ring-[#1890ff]"
                             >
                               <Edit className="h-4 w-4 mr-1" />
                               Edit
@@ -466,7 +463,6 @@ export default function Admin() {
                               variant="destructive"
                               size="sm"
                               onClick={() => setDeleteCenterTarget(center)}
-                              className="inline-flex items-center px-4 py-2 rounded-md bg-[#e74c3c] text-white focus:ring-2 focus:ring-offset-2 focus:ring-[#e74c3c]"
                             >
                               <Trash2 className="h-4 w-4 mr-1" />
                               Delete
@@ -547,9 +543,9 @@ export default function Admin() {
                   <h3 className="text-base font-semibold text-foreground mb-3">{module}</h3>
                   <Button
                     onClick={() => handleOpenReportDialog(module)}
-                    className="w-full inline-flex items-center justify-center px-6 py-3 rounded-md bg-[#1890ff] text-white focus:ring-2 focus:ring-offset-2 focus:ring-[#1890ff]"
+                    className="w-full bg-cta hover:bg-cta-hover text-cta-foreground"
                   >
-                    <FileText className="h-4 w-4 mr-2 text-white opacity-90" />
+                    <FileText className="h-4 w-4 mr-2" />
                     Download CSV/PDF
                   </Button>
                 </div>
@@ -571,7 +567,7 @@ export default function Admin() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="inline-flex items-center px-4 py-2 rounded-md bg-[#e74c3c] text-white focus:ring-2 focus:ring-offset-2 focus:ring-[#e74c3c]">
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -584,12 +580,12 @@ export default function Admin() {
             <AlertDialogTitle>Delete Center?</AlertDialogTitle>
             <AlertDialogDescription>
               This action will permanently remove {deleteCenterTarget?.centerName} ({deleteCenterTarget?.centerId}). 
-              This cannot be undone. Centers with associated buckets cannot be deleted.
+              This cannot be undone. Centers with associated cans cannot be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCenter} className="inline-flex items-center px-4 py-2 rounded-md bg-[#e74c3c] text-white focus:ring-2 focus:ring-offset-2 focus:ring-[#e74c3c]">
+            <AlertDialogAction onClick={handleDeleteCenter} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

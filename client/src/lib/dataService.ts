@@ -97,17 +97,17 @@ export class DataService {
     }
   }
 
-  // Buckets
-  static async getBuckets(draftId: string, centerId: string) {
+  // Cans
+  static async getCans(draftId: string, centerId: string) {
     try {
-      return await apiClient.getBuckets(draftId, centerId);
+      return await apiClient.getCans(draftId, centerId);
     } catch (error) {
-      console.error('Error fetching buckets:', error);
+      console.error('Error fetching cans:', error);
       throw error;
     }
   }
 
-  static async createBucket(data: {
+  static async createCan(data: {
     draftId: string;
     collectionCenterId: string;
     productType: 'sap' | 'treacle';
@@ -120,14 +120,14 @@ export class DataService {
     collectionTime?: string;
   }) {
     try {
-      return await apiClient.createBucket(data);
+      return await apiClient.createCan(data);
     } catch (error) {
-      console.error('Error creating bucket:', error);
+      console.error('Error creating can:', error);
       throw error;
     }
   }
 
-  static async updateBucket(bucketId: string, data: {
+  static async updateCan(canId: string, data: {
     brixValue?: number;
     phValue?: number;
     quantity?: number;
@@ -137,18 +137,18 @@ export class DataService {
     collectionTime?: string;
   }) {
     try {
-      return await apiClient.updateBucket(bucketId, data);
+      return await apiClient.updateCan(canId, data);
     } catch (error) {
-      console.error('Error updating bucket:', error);
+      console.error('Error updating can:', error);
       throw error;
     }
   }
 
-  static async deleteBucket(bucketId: string) {
+  static async deleteCan(canId: string) {
     try {
-      return await apiClient.deleteBucket(bucketId);
+      return await apiClient.deleteCan(canId);
     } catch (error) {
-      console.error('Error deleting bucket:', error);
+      console.error('Error deleting can:', error);
       throw error;
     }
   }
@@ -163,12 +163,12 @@ export class DataService {
     }
   }
 
-  static async getProcessingBuckets(status: string = 'active', batchId?: string) {
+  static async getProcessingCans(status: string = 'active', batchId?: string) {
     try {
-      const response = await apiClient.getProcessingBuckets({ status, forBatch: batchId });
-      return response.buckets;
+      const response = await apiClient.getProcessingCans({ status, forBatch: batchId });
+      return response.cans;
     } catch (error) {
-      console.error('Error fetching processing buckets:', error);
+      console.error('Error fetching processing cans:', error);
       throw error;
     }
   }
@@ -220,11 +220,11 @@ export class DataService {
     }
   }
 
-  static async updateProcessingBatchBuckets(batchId: string, bucketIds: string[]) {
+  static async updateProcessingBatchCans(batchId: string, canIds: string[]) {
     try {
-      return await apiClient.updateProcessingBatchBuckets(batchId, bucketIds);
+      return await apiClient.updateProcessingBatchCans(batchId, canIds);
     } catch (error) {
-      console.error('Error updating processing batch buckets:', error);
+      console.error('Error updating processing batch cans:', error);
       throw error;
     }
   }

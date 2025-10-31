@@ -28,7 +28,7 @@ type DraftSummary = {
   draftId: string;
   date: string | null;
   status: DraftStatus;
-  bucketCount: number;
+  canCount: number;
   totalQuantity: number;
   createdByName?: string | null;
   createdAt?: string | null;
@@ -122,8 +122,8 @@ const createSearchTokens = (draft: DraftSummary): string[] => {
   }
   pushToken(tokens, draft.createdAt);
   pushToken(tokens, draft.updatedAt);
-  pushToken(tokens, draft.bucketCount);
-  pushToken(tokens, formatNumeric(draft.bucketCount));
+  pushToken(tokens, draft.canCount);
+  pushToken(tokens, formatNumeric(draft.canCount));
   pushToken(tokens, draft.totalQuantity);
   pushToken(tokens, formatNumeric(draft.totalQuantity));
   return tokens;
@@ -148,7 +148,7 @@ const normalizeDraftRecord = (input: unknown): DraftSummary | null => {
     draftId,
     date: toOptionalString(record.date),
     status: normalizeStatus(statusValue) as DraftStatus,
-    bucketCount: toFiniteNumber(record.bucket_count ?? record.bucketCount),
+    canCount: toFiniteNumber(record.can_count ?? record.canCount),
     totalQuantity: toFiniteNumber(record.total_quantity ?? record.totalQuantity),
     createdByName: toOptionalString(record.created_by_name) ?? toOptionalString(record.createdByName),
     createdAt: toOptionalString(record.created_at) ?? toOptionalString(record.createdAt),
@@ -392,7 +392,7 @@ export default function FieldCollection() {
               Field Collection Drafts
             </h1>
             <p className="text-sm text-muted-foreground">
-              Field collectors create a single daily draft and record bucket
+              Field collectors create a single daily draft and record can
               details per center from there.
             </p>
           </div>
@@ -402,7 +402,7 @@ export default function FieldCollection() {
               <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
                 <button
                   type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "all" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "all" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
                   aria-pressed={listTab === "all"}
                   onClick={() => setListTab("all")}
                 >
@@ -410,7 +410,7 @@ export default function FieldCollection() {
                 </button>
                 <button
                   type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "active" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "active" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
                   aria-pressed={listTab === "active"}
                   onClick={() => setListTab("active")}
                 >
@@ -418,7 +418,7 @@ export default function FieldCollection() {
                 </button>
                 <button
                   type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "submitted" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "submitted" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
                   aria-pressed={listTab === "submitted"}
                   onClick={() => setListTab("submitted")}
                 >
@@ -533,7 +533,7 @@ export default function FieldCollection() {
                                 <span className="px-2 text-muted-foreground/40">|</span>
                                 <span className="font-medium">Collected on {formatDateLabel(draft.date)}</span>
                                 <span className="px-2 text-muted-foreground/40">|</span>
-                                <span>Buckets: {formatNumeric(draft.bucketCount)}</span>
+                                <span>Cans: {formatNumeric(draft.canCount)}</span>
                                 <span className="px-2 text-muted-foreground/40">|</span>
                                 <span>Total quantity: {formatNumeric(draft.totalQuantity)}</span>
                               </div>
@@ -623,7 +623,7 @@ export default function FieldCollection() {
                                 <span className="px-2 text-muted-foreground/40">|</span>
                                 <span className="font-medium">Collected on {formatDateLabel(draft.date)}</span>
                                 <span className="px-2 text-muted-foreground/40">|</span>
-                                <span>Buckets: {formatNumeric(draft.bucketCount)}</span>
+                                <span>Cans: {formatNumeric(draft.canCount)}</span>
                                 <span className="px-2 text-muted-foreground/40">|</span>
                                 <span>Total quantity: {formatNumeric(draft.totalQuantity)}</span>
                                 <span className="px-2 text-muted-foreground/40">|</span>

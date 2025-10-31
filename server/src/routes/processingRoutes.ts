@@ -3,12 +3,12 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import { auth, requireRole } from "../middleware/authMiddleware.js";
 import {
-  listBuckets as listProcessingBuckets,
+  listCans as listProcessingCans,
   listBatches as listProcessingBatches,
   createBatch as createProcessingBatch,
   getBatch as getProcessingBatch,
   updateBatch as updateProcessingBatch,
-  setBatchBuckets as setProcessingBatchBuckets,
+  setBatchCans as setProcessingBatchCans,
   submitBatch as submitProcessingBatch,
   reopenBatch as reopenProcessingBatch,
   deleteBatch as deleteProcessingBatch,
@@ -51,12 +51,12 @@ const updateBatchSchema = z.object({
 	gasUsedKg: numericMeasurement,
 });
 
-const updateBatchBucketsSchema = z.object({
-	bucketIds: z.array(z.string()).max(15, "A batch can contain at most 15 buckets"),
+const updateBatchCansSchema = z.object({
+	canIds: z.array(z.string()).max(15, "A batch can contain at most 15 cans"),
 });
 
-const mapBucketRow = (row: any) => ({
-	id: row.bucket_id as string,
+const mapCanRow = (row: any) => ({
+	id: row.can_id as string,
 	quantity: row.quantity !== null ? Number(row.quantity) : 0,
 	productType: row.product_type as string,
 	brixValue: row.brix_value !== null ? Number(row.brix_value) : null,
@@ -79,8 +79,8 @@ const mapBucketRow = (row: any) => ({
 type ProcessingBatchContext = {
 	productType: ProductSlug;
 	batchTable: string;
-	batchBucketTable: string;
-	bucketTable: string;
+	batchCanTable: string;
+	canTable: string;
 	draftTable: string;
 	packagingTable: string;
 	row: any;
@@ -106,8 +106,8 @@ async function resolveProcessingBatchContext(batchId: string): Promise<Processin
 			return {
 				productType,
 				batchTable,
-				batchBucketTable: getTableName("processingBatchBuckets", productType),
-				bucketTable: getTableName("buckets", productType),
+				batchCanTable: getTableName("processingBatchCans", productType),
+				canTable: getTableName("cans", productType),
 				draftTable: getTableName("drafts", productType),
 				packagingTable: getTableName("packagingBatches", productType),
 				row: rows[0],
@@ -117,14 +117,14 @@ async function resolveProcessingBatchContext(batchId: string): Promise<Processin
 	return null;
 }
 
-async function fetchBucketsForProduct(
+async function fetchCansForProduct(
 	productType: ProductSlug,
 	statusFilter?: string,
 	forBatch?: string
 ) {
-	const bucketTable = getTableName("buckets", productType);
+	const canTable = getTableName("cans", productType);
 	const draftTable = getTableName("drafts", productType);
-	const batchBucketTable = getTableName("processingBatchBuckets", productType);
+	const batchCanTable = getTableName("processingBatchCans", productType);
 	const batchTable = getTableName("processingBatches", productType);
 
 	const params: any[] = [];
@@ -147,7 +147,7 @@ async function fetchBucketsForProduct(
 
 	const query = `
 		SELECT
-			b.bucket_id,
+			b.can_id,
 			b.quantity,
 			b.product_type,
 			b.brix_value,
@@ -161,13 +161,13 @@ async function fetchBucketsForProduct(
 			cc.center_name,
 			cc.location,
 			pb.batch_id AS assigned_batch_id
-		FROM ${bucketTable} b
+		FROM ${canTable} b
 		JOIN ${draftTable} d ON b.draft_id = d.id
 		JOIN collection_centers cc ON b.collection_center_id = cc.id
-		LEFT JOIN ${batchBucketTable} pbb ON pbb.bucket_id = b.id
+		LEFT JOIN ${batchCanTable} pbb ON pbb.can_id = b.id
 		LEFT JOIN ${batchTable} pb ON pb.id = pbb.processing_batch_id
 		${whereClause}
-		ORDER BY b.created_at ASC, b.bucket_id ASC
+		ORDER BY b.created_at ASC, b.can_id ASC
 	`;
 
 	const { rows } = await pool.query(query, params);
@@ -176,8 +176,8 @@ async function fetchBucketsForProduct(
 
 async function fetchProcessingBatchSummaries(productType: ProductSlug) {
 	const batchTable = getTableName("processingBatches", productType);
-	const batchBucketTable = getTableName("processingBatchBuckets", productType);
-	const bucketTable = getTableName("buckets", productType);
+	const batchCanTable = getTableName("processingBatchCans", productType);
+	const canTable = getTableName("cans", productType);
 
 	const query = `
 		SELECT
@@ -192,10 +192,10 @@ async function fetchProcessingBatchSummaries(productType: ProductSlug) {
 			pb.created_at,
 			pb.updated_at,
 			COALESCE(SUM(b.quantity), 0) AS total_quantity,
-			COUNT(pbb.bucket_id) AS bucket_count
+			COUNT(pbb.can_id) AS can_count
 		FROM ${batchTable} pb
-		LEFT JOIN ${batchBucketTable} pbb ON pb.id = pbb.processing_batch_id
-		LEFT JOIN ${bucketTable} b ON b.id = pbb.bucket_id
+		LEFT JOIN ${batchCanTable} pbb ON pb.id = pbb.processing_batch_id
+		LEFT JOIN ${canTable} b ON b.id = pbb.can_id
 		GROUP BY
 			pb.id,
 			pb.batch_id,
@@ -234,10 +234,10 @@ async function fetchProcessingBatch(batchId: string) {
 			pb.created_at,
 			pb.updated_at,
 			COALESCE(SUM(b.quantity), 0) AS total_quantity,
-			COUNT(pbb.bucket_id) AS bucket_count
+			COUNT(pbb.can_id) AS can_count
 		FROM ${context.batchTable} pb
-		LEFT JOIN ${context.batchBucketTable} pbb ON pb.id = pbb.processing_batch_id
-		LEFT JOIN ${context.bucketTable} b ON b.id = pbb.bucket_id
+		LEFT JOIN ${context.batchCanTable} pbb ON pb.id = pbb.processing_batch_id
+		LEFT JOIN ${context.canTable} b ON b.id = pbb.can_id
 		WHERE pb.batch_id = $1
 		GROUP BY
 			pb.id,
@@ -260,15 +260,15 @@ async function fetchProcessingBatch(batchId: string) {
 
 	const batchRow = rows[0];
 
-	const bucketsQuery = `
-		SELECT b.bucket_id
-		FROM ${context.batchBucketTable} pbb
-		JOIN ${context.bucketTable} b ON b.id = pbb.bucket_id
+	const cansQuery = `
+		SELECT b.can_id
+		FROM ${context.batchCanTable} pbb
+		JOIN ${context.canTable} b ON b.id = pbb.can_id
 		WHERE pbb.processing_batch_id = $1
-		ORDER BY pbb.added_at ASC, b.bucket_id ASC
+		ORDER BY pbb.added_at ASC, b.can_id ASC
 	`;
 
-	const { rows: bucketRows } = await pool.query(bucketsQuery, [batchRow.id]);
+	const { rows: canRows } = await pool.query(cansQuery, [batchRow.id]);
 
 	return {
 		id: batchRow.batch_id as string,
@@ -290,17 +290,17 @@ async function fetchProcessingBatch(batchId: string) {
 			batchRow.updated_at instanceof Date
 				? batchRow.updated_at.toISOString()
 				: (batchRow.updated_at as string | null),
-		bucketCount: Number(batchRow.bucket_count ?? 0),
+		canCount: Number(batchRow.can_count ?? 0),
         totalQuantity: Number(batchRow.total_quantity ?? 0),
-        bucketIds: bucketRows.map((bucket) => bucket.bucket_id as string),
+        canIds: canRows.map((can) => can.can_id as string),
 	};
 }
 
 router.get(
-    "/buckets",
+    "/cans",
     auth,
     requireRole("Processing", "Administrator"),
-    listProcessingBuckets as any
+    listProcessingCans as any
 );
 
 router.get(
@@ -332,10 +332,10 @@ router.patch(
 );
 
 router.put(
-    "/batches/:batchId/buckets",
+    "/batches/:batchId/cans",
     auth,
     requireRole("Processing", "Administrator"),
-    setProcessingBatchBuckets as any
+    setProcessingBatchCans as any
 );
 
 router.post(

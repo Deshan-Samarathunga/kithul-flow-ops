@@ -1,30 +1,30 @@
-export const SUPPORTED_PRODUCTS = ["sap", "treacle"] as const;
+export const SUPPORTED_PRODUCTS = ["treacle", "jaggery"] as const;
 export type ProductSlug = (typeof SUPPORTED_PRODUCTS)[number];
 
 const TABLES = {
   drafts: {
-    sap: "field_collection_drafts",
     treacle: "field_collection_drafts",
+    jaggery: "field_collection_drafts",
   },
-  buckets: {
-    sap: "sap_buckets",
-    treacle: "treacle_buckets",
+  cans: {
+    treacle: "sap_cans", // SAP cans collected in field, processed to treacle
+    jaggery: "treacle_cans", // Treacle cans collected in field, processed to jaggery
   },
   processingBatches: {
-    sap: "sap_processing_batches",
-    treacle: "treacle_processing_batches",
+    treacle: "treacle_processing_batches", // SAP -> Treacle (in-house)
+    jaggery: "jaggery_processing_batches", // Treacle -> Jaggery
   },
-  processingBatchBuckets: {
-    sap: "sap_processing_batch_buckets",
-    treacle: "treacle_processing_batch_buckets",
+  processingBatchCans: {
+    treacle: "treacle_processing_batch_cans",
+    jaggery: "jaggery_processing_batch_cans",
   },
   packagingBatches: {
-    sap: "sap_packaging_batches",
-    treacle: "treacle_packaging_batches",
+    treacle: "treacle_packaging_batches", // For in-house treacle
+    jaggery: "jaggery_packaging_batches",
   },
   labelingBatches: {
-    sap: "sap_labeling_batches",
-    treacle: "treacle_labeling_batches",
+    treacle: "treacle_labeling_batches", // For in-house treacle
+    jaggery: "jaggery_labeling_batches",
   },
 } as const satisfies Record<string, Record<ProductSlug, string>>;
 

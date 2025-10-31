@@ -27,7 +27,7 @@ const productUnits: Record<ProductKey, string> = {
 const stageMeta: Record<ReportStage, { title: string; description: string }> = {
   field: {
     title: "Field collection daily report",
-    description: "Review the drafts and collection buckets recorded for the selected day.",
+    description: "Review the drafts and collection cans recorded for the selected day.",
   },
   processing: {
     title: "Processing daily report",
@@ -149,12 +149,12 @@ function buildDetailSheet(payload: StageReportPayload, stageName: string): Detai
         FieldMetrics | undefined
       ]>).filter((entry): entry is [ProductKey, FieldMetrics] => entry[1] !== undefined);
 
-      const header = ["Product", "Draft IDs", "Drafts", "Buckets", "Quantity (L)"];
+      const header = ["Product", "Draft IDs", "Drafts", "Cans", "Quantity (L)"];
       const rows = entries.map(([product, metrics]) => [
         productLabels[product],
   metrics.draftIds && metrics.draftIds.length > 0 ? metrics.draftIds.join(", ") : noValueDisplay,
         formatNumber(metrics.drafts),
-        formatNumber(metrics.buckets),
+        formatNumber(metrics.cans),
         formatNumber(metrics.quantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
       ]);
 
@@ -164,7 +164,7 @@ function buildDetailSheet(payload: StageReportPayload, stageName: string): Detai
           ? payload.totals.draftIds.join(", ")
           : noValueDisplay,
         formatNumber(payload.totals.drafts),
-        formatNumber(payload.totals.buckets),
+        formatNumber(payload.totals.cans),
         formatNumber(payload.totals.quantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
       ]);
 
@@ -382,8 +382,8 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
 
     if (stage === "field") {
       const perProduct: ProductMetricsMap<FieldMetrics> = {
-        sap: report.perProduct.sap.fieldCollection,
         treacle: report.perProduct.treacle.fieldCollection,
+        jaggery: report.perProduct.jaggery.fieldCollection,
       };
       return {
         stage,
@@ -396,8 +396,8 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
 
     if (stage === "processing") {
       const basePerProduct: ProductMetricsMap<ProcessingMetrics> = {
-        sap: report.perProduct.sap.processing,
         treacle: report.perProduct.treacle.processing,
+        jaggery: report.perProduct.jaggery.processing,
       };
       return {
         stage,
@@ -410,8 +410,8 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
 
     if (stage === "packaging") {
       const perProduct: ProductMetricsMap<PackagingMetrics> = {
-        sap: report.perProduct.sap.packaging,
         treacle: report.perProduct.treacle.packaging,
+        jaggery: report.perProduct.jaggery.packaging,
       };
 
       return {
@@ -424,8 +424,8 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
     }
 
     const perProduct: ProductMetricsMap<LabelingMetrics> = {
-      sap: report.perProduct.sap.labeling,
       treacle: report.perProduct.treacle.labeling,
+      jaggery: report.perProduct.jaggery.labeling,
     };
 
     return {
@@ -542,7 +542,7 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
             title: productLabels[product],
             metrics: [
               { label: "Draft ID", value: draftIdDisplay },
-              { label: "Buckets", value: formatNumber(metrics.buckets) },
+              { label: "Cans", value: formatNumber(metrics.cans) },
               {
                 label: "Quantity",
                 value: formatNumber(metrics.quantity, {
@@ -563,7 +563,7 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
               : noValueDisplay,
           },
           { label: "Drafts", value: formatNumber(stagePayload.totals.drafts) },
-          { label: "Buckets", value: formatNumber(stagePayload.totals.buckets) },
+          { label: "Cans", value: formatNumber(stagePayload.totals.cans) },
           {
             label: "Quantity",
             value: formatNumber(stagePayload.totals.quantity, {
@@ -858,9 +858,9 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
             value: draftIdDisplay,
           },
           {
-            key: "buckets",
-            label: "Total buckets",
-            value: formatNumber(stagePayload.totals.buckets),
+            key: "cans",
+            label: "Total cans",
+            value: formatNumber(stagePayload.totals.cans),
           }
         );
         break;
@@ -992,7 +992,7 @@ function renderStageSections(payload: StageReportPayload) {
               <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold text-foreground">Product</th>
-                  <th className="px-4 py-3 text-left font-semibold text-foreground">Buckets</th>
+                  <th className="px-4 py-3 text-left font-semibold text-foreground">Cans</th>
                   <th className="px-4 py-3 text-left font-semibold text-foreground">Quantity</th>
                 </tr>
               </thead>
@@ -1005,7 +1005,7 @@ function renderStageSections(payload: StageReportPayload) {
                     return (
                       <tr key={product} className={`${rowClass} border-b last:border-b-0 border-border/70`}>
                         <td className="px-4 py-3 font-medium text-foreground">{productLabels[product]}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{formatNumber(metrics.buckets)}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{formatNumber(metrics.cans)}</td>
                         <td className="px-4 py-3 text-muted-foreground">
                           {formatNumber(metrics.quantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} {unit}
                         </td>

@@ -19,7 +19,7 @@ export async function initializeDatabase() {
   try {
     await client.query("BEGIN");
 
-    for (const table of ["sap_processing_batches", "treacle_processing_batches"]) {
+    for (const table of ["treacle_processing_batches", "jaggery_processing_batches"]) {
       const fqtn = `public.${table}`;
       await client.query(`ALTER TABLE ${fqtn} ADD COLUMN IF NOT EXISTS used_gas_kg NUMERIC(12,2)`);
 

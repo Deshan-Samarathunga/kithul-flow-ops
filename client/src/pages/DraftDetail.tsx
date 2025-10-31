@@ -2,17 +2,17 @@ import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { DataService } from "@/lib/dataService";
 
 type DraftDetailData = {
-  buckets?: Array<Record<string, unknown>>;
+  cans?: Array<Record<string, unknown>>;
   status?: string | null;
   date?: string | null;
-  bucketCount?: number;
-  bucket_count?: number;
+  canCount?: number;
+  can_count?: number;
 } & Record<string, unknown>;
 
 export default function DraftDetail() {
@@ -33,10 +33,11 @@ export default function DraftDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [completedCenters, setCompletedCenters] = useState<Set<string>>(new Set());
+  const [isReopening, setIsReopening] = useState(false);
 
-  const centerBucketCounts = useMemo(() => {
+  const centerCanCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-  const entries = Array.isArray(draft?.buckets) ? draft.buckets : [];
+  const entries = Array.isArray(draft?.cans) ? draft.cans : [];
 
     entries.forEach((entry) => {
       if (!entry || typeof entry !== "object") {
@@ -60,9 +61,9 @@ export default function DraftDetail() {
         return;
       }
 
-      const bucketsValue = data["buckets"];
-      if (Array.isArray(bucketsValue)) {
-        counts[centerIdCandidate] = bucketsValue.length;
+      const cansValue = data["cans"];
+      if (Array.isArray(cansValue)) {
+        counts[centerIdCandidate] = cansValue.length;
         return;
       }
 
@@ -70,7 +71,7 @@ export default function DraftDetail() {
     });
 
     return counts;
-  }, [draft?.buckets]);
+  }, [draft?.cans]);
 
   useEffect(() => {
     const loadDraft = async () => {
@@ -198,6 +199,25 @@ export default function DraftDetail() {
     }
   };
 
+  const handleReopenDraft = async () => {
+    if (!draftId) {
+      toast.error("Missing draft identifier.");
+      return;
+    }
+
+    setIsReopening(true);
+    try {
+      await DataService.reopenDraft(draftId);
+      toast.success("Draft reopened successfully");
+      navigate("/field-collection");
+    } catch (err) {
+      console.error("Failed to reopen draft", err);
+      toast.error("Unable to reopen draft. Please try again.");
+    } finally {
+      setIsReopening(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -288,7 +308,7 @@ export default function DraftDetail() {
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold">Draft {new Date(draft.date).toISOString().split('T')[0]}</h1>
-            <p className="text-sm text-muted-foreground">Buckets: {draft.bucketCount ?? draft.bucket_count ?? 0}</p>
+            <p className="text-sm text-muted-foreground">Cans: {draft.canCount ?? draft.can_count ?? 0}</p>
           </div>
           {draft.status === "draft" && (
             <div className="flex gap-2">
@@ -298,6 +318,17 @@ export default function DraftDetail() {
                 disabled={loading || completedCenters.size === 0}
               >
                 Save draft
+              </Button>
+            </div>
+          )}
+          {(draft.status === "submitted" || draft.status === "completed") && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/field-collection")}
+                className="sm:flex-none"
+              >
+                Back to Field Collection
               </Button>
             </div>
           )}
@@ -314,8 +345,8 @@ export default function DraftDetail() {
                   {collectionCenters
                     .filter(center => !completedCenters.has(center.id))
                     .map((center) => {
-                      // Find if this center has any buckets
-                      const bucketCount = centerBucketCounts[center.id] ?? 0;
+                      // Find if this center has any cans
+                      const canCount = centerCanCounts[center.id] ?? 0;
                       
                       return (
                         <div key={center.id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
@@ -324,7 +355,7 @@ export default function DraftDetail() {
                               <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
                               <p className="text-xs sm:text-sm text-muted-foreground">{center.location}</p>
                               <p className="text-xs sm:text-sm text-muted-foreground">Center Agent: {center.centerAgent}</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">Active buckets: {bucketCount}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Active cans: {canCount}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Button
@@ -360,8 +391,8 @@ export default function DraftDetail() {
                   {collectionCenters
                     .filter(center => completedCenters.has(center.id))
                     .map((center) => {
-                      // Find if this center has any buckets
-                      const bucketCount = centerBucketCounts[center.id] ?? 0;
+                      // Find if this center has any cans
+                      const canCount = centerCanCounts[center.id] ?? 0;
                       
                       return (
                         <div key={`completed-${center.id}`} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
@@ -370,7 +401,7 @@ export default function DraftDetail() {
                               <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
                               <p className="text-xs sm:text-sm text-muted-foreground">{center.location}</p>
                               <p className="text-xs sm:text-sm text-muted-foreground">Center Agent: {center.centerAgent}</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">Completed buckets: {bucketCount}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Completed cans: {canCount}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Button
@@ -407,16 +438,16 @@ export default function DraftDetail() {
             </>
           )}
 
-          {/* Show only Completed Centers for submitted drafts */}
-          {draft.status === "submitted" && (
+          {/* Show only Completed Centers for submitted/completed drafts */}
+          {(draft.status === "submitted" || draft.status === "completed") && (
             <div>
               <h2 className="text-lg sm:text-xl font-semibold mb-4">Completed Centers</h2>
               <div className="space-y-4">
                 {collectionCenters
                   .filter(center => completedCenters.has(center.id))
                   .map((center) => {
-                    // Find if this center has any buckets
-                    const bucketCount = centerBucketCounts[center.id] ?? 0;
+                    // Find if this center has any cans
+                    const canCount = centerCanCounts[center.id] ?? 0;
                     
                     return (
                       <div key={center.id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
@@ -425,7 +456,7 @@ export default function DraftDetail() {
                             <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
                             <p className="text-xs sm:text-sm text-muted-foreground">{center.location}</p>
                             <p className="text-xs sm:text-sm text-muted-foreground">Center Agent: {center.centerAgent}</p>
-                            <p className="text-xs sm:text-sm text-muted-foreground">Completed buckets: {bucketCount}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">Completed cans: {canCount}</p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Button
@@ -448,6 +479,26 @@ export default function DraftDetail() {
                     No completed centers yet
                   </div>
                 )}
+              </div>
+              
+              {/* Reopen Draft Button */}
+              <div className="mt-6 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <span>Submitted drafts are read-only. Reopen the draft to make adjustments.</span>
+                <div>
+                  <Button
+                    onClick={handleReopenDraft}
+                    disabled={isReopening}
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground"
+                  >
+                    {isReopening ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Reopening…
+                      </>
+                    ) : (
+                      "Reopen Draft"
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           )}

@@ -24,8 +24,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-type BucketListItem = {
-  bucket_id: string;
+type CanListItem = {
+  can_id: string;
   product_type: string;
   quantity: number;
   brix_value: number | null;
@@ -33,7 +33,7 @@ type BucketListItem = {
   total_amount: number | null;
 };
 
-export default function CenterBuckets() {
+export default function CenterCans() {
   const navigate = useNavigate();
   const { draftId, centerId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -48,19 +48,19 @@ export default function CenterBuckets() {
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
 
   const [searchQuery, setSearchQuery] = usePersistentState<string>(
-    `centerBuckets.search.${centerId ?? "all"}`,
+    `centerCans.search.${centerId ?? "all"}`,
     ""
   );
   const productTypeParam = searchParams.get("productType");
   const [activeTab, setActiveTab] = usePersistentTab(
-    `tabs.centerBuckets.${centerId ?? "all"}`,
+    `tabs.centerCans.${centerId ?? "all"}`,
     "sap"
   );
 
-  const [buckets, setBuckets] = useState<BucketListItem[]>([]);
+  const [cans, setCans] = useState<CanListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [draftStatus, setDraftStatus] = useState<string>("draft");
+  const [draftStatus, setDraftStatus] = useState<string | null>(null);
   const [draftDate, setDraftDate] = useState<string>("");
 
   // Update active tab when productType parameter changes
@@ -92,8 +92,8 @@ export default function CenterBuckets() {
   const centerInfo = collectionCenters[centerId as keyof typeof collectionCenters] || { name: "Center", agent: "Unknown" };
   const centerName = centerInfo.name;
 
-  // Load buckets and draft status from API
-  const loadBuckets = useCallback(async () => {
+  // Load cans and draft status from API
+  const loadCans = useCallback(async () => {
     if (!draftId || !centerId || draftId === "new") {
       setLoading(false);
       return;
@@ -103,47 +103,56 @@ export default function CenterBuckets() {
       setLoading(true);
       setError(null);
 
-      const [bucketsData, draftData] = await Promise.all([
-        DataService.getBuckets(draftId, centerId),
+      const [cansData, draftData] = await Promise.all([
+        DataService.getCans(draftId, centerId),
         DataService.getDraft(draftId),
       ]);
 
-      const normalizedBuckets = (Array.isArray(bucketsData) ? bucketsData : [])
-        .map((bucket) => {
-          if (!bucket || typeof bucket !== "object") {
+      const normalizedCans = (Array.isArray(cansData) ? cansData : [])
+        .map((can) => {
+          if (!can || typeof can !== "object") {
             return null;
           }
 
-          const record = bucket as Record<string, unknown>;
-          const bucketId = typeof record.bucket_id === "string" ? record.bucket_id : null;
+          const record = can as Record<string, unknown>;
+          const canId = typeof record.can_id === "string" ? record.can_id : null;
           const productType = typeof record.product_type === "string" ? record.product_type : null;
 
-          if (!bucketId || !productType) {
+          if (!canId || !productType) {
             return null;
           }
 
           const quantityValue = Number(record.quantity ?? 0);
 
           return {
-            bucket_id: bucketId,
+            can_id: canId,
             product_type: productType,
             quantity: Number.isFinite(quantityValue) ? quantityValue : 0,
             brix_value: typeof record.brix_value === "number" ? record.brix_value : null,
             ph_value: typeof record.ph_value === "number" ? record.ph_value : null,
             total_amount: typeof record.total_amount === "number" ? record.total_amount : null,
-          } satisfies BucketListItem;
+          } satisfies CanListItem;
         })
-        .filter((bucket): bucket is BucketListItem => bucket !== null);
+        .filter((can): can is CanListItem => can !== null);
 
       const draftRecord = draftData && typeof draftData === "object"
         ? (draftData as Record<string, unknown>)
         : null;
 
-      const draftStatusValue = draftRecord && typeof draftRecord.status === "string" ? draftRecord.status : "draft";
+      const draftStatusValue = draftRecord && typeof draftRecord.status === "string" 
+        ? draftRecord.status.toLowerCase() 
+        : null;
       const draftDateValue = draftRecord && typeof draftRecord.date === "string" ? draftRecord.date : null;
 
-      setBuckets(normalizedBuckets);
-      setDraftStatus(draftStatusValue || "draft");
+      setCans(normalizedCans);
+      // Only set status if we have a valid value, otherwise keep it null
+      if (draftStatusValue) {
+        console.log("[CenterCans] Setting draftStatus to:", draftStatusValue);
+        setDraftStatus(draftStatusValue);
+      } else {
+        console.log("[CenterCans] No draftStatus found, setting to null");
+        setDraftStatus(null);
+      }
       setDraftDate(draftDateValue ? new Date(draftDateValue).toISOString().split("T")[0] : "");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load data";
@@ -155,26 +164,26 @@ export default function CenterBuckets() {
   }, [centerId, draftId]);
 
   useEffect(() => {
-    loadBuckets();
-  }, [loadBuckets]);
+    loadCans();
+  }, [loadCans]);
 
-  // Refresh buckets when page becomes visible (e.g., after navigation back)
+  // Refresh cans when page becomes visible (e.g., after navigation back)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        loadBuckets();
+        loadCans();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [loadBuckets]);
+  }, [loadCans]);
 
-  const filteredBuckets = buckets.filter(
-    (bucket) =>
-      bucket.product_type === activeTab &&
-      (bucket.bucket_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bucket.product_type.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredCans = cans.filter(
+    (can) =>
+      can.product_type === activeTab &&
+      (can.can_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        can.product_type.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleLogout = () => {
@@ -182,14 +191,14 @@ export default function CenterBuckets() {
     navigate("/");
   };
 
-  const handleDeleteCan = async (bucketId: string) => {
+  const handleDeleteCan = async (canId: string) => {
     try {
       setLoading(true);
-      await DataService.deleteBucket(bucketId);
+      await DataService.deleteCan(canId);
 
       toast.success('Can deleted successfully');
 
-      await loadBuckets();
+      await loadCans();
     } catch (error: unknown) {
       console.error('Error deleting can:', error);
       const message = error instanceof Error ? error.message : 'Failed to delete can';
@@ -230,7 +239,7 @@ export default function CenterBuckets() {
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold">{centerName} - {draftStatus === "draft" ? "Cans List" : "View Cans"}</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold">{centerName} - {!loading && draftStatus === "draft" ? "Cans List" : "View Cans"}</h1>
             <p className="text-sm text-muted-foreground">Draft: {draftDate}</p>
             <p className="text-sm text-muted-foreground">Center Agent: {centerInfo.agent}</p>
           </div>
@@ -244,62 +253,62 @@ export default function CenterBuckets() {
           
           <TabsContent value="sap" className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3 w-full">
+              <div className="flex items-center gap-3 flex-1 w-full">
                 <Input
                   placeholder="Search Cans"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="max-w-md w-full md:w-1/2"
+                  className="flex-1 w-full"
                 />
               </div>
-              {draftStatus === "draft" && (
+              {!loading && draftStatus === "draft" ? (
                 <Button
                   className="bg-cta hover:bg-cta-hover text-cta-foreground"
                   onClick={() => {
-                    navigate(`/field-collection/bucket/new?productType=sap&draftId=${draftId}&centerId=${centerId}`);
+                    navigate(`/field-collection/can/new?productType=sap&draftId=${draftId}&centerId=${centerId}`);
                   }}
                 >
                   Add New
                 </Button>
-              )}
+              ) : null}
             </div>
             <div className="space-y-4">
               {loading ? (
                 <div className="text-muted-foreground text-sm text-center py-4">Loading cans...</div>
               ) : error ? (
                 <div className="text-destructive text-sm text-center py-4">Error: {error}</div>
-              ) : filteredBuckets.length === 0 ? (
+              ) : filteredCans.length === 0 ? (
                 <div className="text-muted-foreground text-sm text-center py-4">No cans found.</div>
               ) : (
-                filteredBuckets.map((bucket) => (
-                  <div key={bucket.bucket_id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                filteredCans.map((can) => (
+                  <div key={can.can_id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex items-center gap-4 text-sm">
-                        <span>Can ID: <span className="font-semibold text-foreground">{bucket.bucket_id}</span></span>
+                        <span>Can ID: <span className="font-semibold text-foreground">{can.can_id}</span></span>
                         <span className="px-2 text-muted-foreground/40">|</span>
-                        <span>Product: {bucket.product_type}</span>
+                        <span>Product: {can.product_type}</span>
                         <span className="px-2 text-muted-foreground/40">|</span>
-                        <span>Quantity: {bucket.quantity} L</span>
-                        {bucket.brix_value !== null && (
+                        <span>Quantity: {can.quantity} L</span>
+                        {can.brix_value !== null && (
                           <>
                             <span className="px-2 text-muted-foreground/40">|</span>
-                            <span>Brix: {bucket.brix_value}</span>
+                            <span>Brix: {can.brix_value}</span>
                           </>
                         )}
-                        {bucket.ph_value !== null && (
+                        {can.ph_value !== null && (
                           <>
                             <span className="px-2 text-muted-foreground/40">|</span>
-                            <span>pH: {bucket.ph_value}</span>
+                            <span>pH: {can.ph_value}</span>
                           </>
                         )}
-                        {bucket.total_amount !== null && (
+                        {can.total_amount !== null && (
                           <>
                             <span className="px-2 text-muted-foreground/40">|</span>
-                            <span>Amount: Rs. {bucket.total_amount}</span>
+                            <span>Amount: Rs. {can.total_amount}</span>
                           </>
                         )}
                       </div>
-                      {draftStatus === "draft" && (
+                      {!loading && draftStatus === "draft" ? (
                         <div className="flex items-center gap-2">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -315,13 +324,13 @@ export default function CenterBuckets() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete can?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This action will permanently remove can {bucket.bucket_id}. This cannot be undone.
+                                  This action will permanently remove can {can.can_id}. This cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => handleDeleteCan(bucket.bucket_id)}
+                                  onClick={() => handleDeleteCan(can.can_id)}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
                                   Delete
@@ -330,7 +339,7 @@ export default function CenterBuckets() {
                             </AlertDialogContent>
                           </AlertDialog>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ))
@@ -340,62 +349,62 @@ export default function CenterBuckets() {
           
           <TabsContent value="treacle" className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3 w-full">
+              <div className="flex items-center gap-3 flex-1 w-full">
                 <Input
                   placeholder="Search Cans"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="max-w-md w-full md:w-1/2"
+                  className="flex-1 w-full"
                 />
               </div>
-              {draftStatus === "draft" && (
+              {!loading && draftStatus === "draft" ? (
                 <Button
                   className="bg-cta hover:bg-cta-hover text-cta-foreground"
                   onClick={() => {
-                    navigate(`/field-collection/bucket/new?productType=treacle&draftId=${draftId}&centerId=${centerId}`);
+                    navigate(`/field-collection/can/new?productType=treacle&draftId=${draftId}&centerId=${centerId}`);
                   }}
                 >
                   Add New
                 </Button>
-              )}
+              ) : null}
             </div>
             <div className="space-y-4">
               {loading ? (
                 <div className="text-muted-foreground text-sm text-center py-4">Loading cans...</div>
               ) : error ? (
                 <div className="text-destructive text-sm text-center py-4">Error: {error}</div>
-              ) : filteredBuckets.length === 0 ? (
+              ) : filteredCans.length === 0 ? (
                 <div className="text-muted-foreground text-sm text-center py-4">No cans found.</div>
               ) : (
-                filteredBuckets.map((bucket) => (
-                  <div key={bucket.bucket_id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                filteredCans.map((can) => (
+                  <div key={can.can_id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex items-center gap-4 text-sm">
-                        <span>Can ID: <span className="font-semibold text-foreground">{bucket.bucket_id}</span></span>
+                        <span>Can ID: <span className="font-semibold text-foreground">{can.can_id}</span></span>
                         <span className="px-2 text-muted-foreground/40">|</span>
-                        <span>Product: {bucket.product_type}</span>
+                        <span>Product: {can.product_type}</span>
                         <span className="px-2 text-muted-foreground/40">|</span>
-                        <span>Quantity: {bucket.quantity} L</span>
-                        {bucket.brix_value && (
+                        <span>Quantity: {can.quantity} L</span>
+                        {can.brix_value && (
                           <>
                             <span className="px-2 text-muted-foreground/40">|</span>
-                            <span>Brix: {bucket.brix_value}</span>
+                            <span>Brix: {can.brix_value}</span>
                           </>
                         )}
-                        {bucket.ph_value && (
+                        {can.ph_value && (
                           <>
                             <span className="px-2 text-muted-foreground/40">|</span>
-                            <span>pH: {bucket.ph_value}</span>
+                            <span>pH: {can.ph_value}</span>
                           </>
                         )}
-                        {bucket.total_amount && (
+                        {can.total_amount && (
                           <>
                             <span className="px-2 text-muted-foreground/40">|</span>
-                            <span>Amount: Rs. {bucket.total_amount}</span>
+                            <span>Amount: Rs. {can.total_amount}</span>
                           </>
                         )}
                       </div>
-                      {draftStatus === "draft" && (
+                      {!loading && draftStatus === "draft" ? (
                         <div className="flex items-center gap-2">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -411,13 +420,13 @@ export default function CenterBuckets() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete can?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This action will permanently remove can {bucket.bucket_id}. This cannot be undone.
+                                  This action will permanently remove can {can.can_id}. This cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => handleDeleteCan(bucket.bucket_id)}
+                                  onClick={() => handleDeleteCan(can.can_id)}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
                                   Delete
@@ -426,7 +435,7 @@ export default function CenterBuckets() {
                             </AlertDialogContent>
                           </AlertDialog>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ))
