@@ -97,13 +97,13 @@ export async function updateCenterDynamic(id: number, setClause: string, params:
   return rows[0] ?? null;
 }
 
-export async function centerHasBuckets(centerId: number) {
+export async function centerHasCans(centerId: number) {
   const { rows } = await pool.query(
     `SELECT 1 FROM (
-      SELECT collection_center_id FROM sap_buckets
+      SELECT collection_center_id FROM sap_cans
       UNION ALL
-      SELECT collection_center_id FROM treacle_buckets
-    ) buckets WHERE collection_center_id = $1 LIMIT 1`,
+      SELECT collection_center_id FROM treacle_cans
+    ) cans WHERE collection_center_id = $1 LIMIT 1`,
     [centerId]
   );
   return rows.length > 0;

@@ -12,9 +12,9 @@ import {
   submitCenter as submitFieldCenter,
   reopenCenter as reopenFieldCenter,
   getCompletedCenters as getFieldCompletedCenters,
-  createBucket as createFieldBucket,
-  updateBucket as updateFieldBucket,
-  deleteBucket as deleteFieldBucket,
+  createCan as createFieldCan,
+  updateCan as updateFieldCan,
+  deleteCan as deleteFieldCan,
 } from "../controllers/fieldCollectionController.js";
 import {
   SUPPORTED_PRODUCTS,
@@ -27,12 +27,12 @@ const router = express.Router();
 
 const DRAFTS_TABLE = "field_collection_drafts";
 const CENTER_COMPLETIONS_TABLE = "field_collection_center_completions";
-const BUCKET_TOTALS_SOURCE = SUPPORTED_PRODUCTS.map(
-  (product) => `SELECT draft_id, quantity FROM ${getTableName("buckets", product)}`
+const CAN_TOTALS_SOURCE = SUPPORTED_PRODUCTS.map(
+  (product) => `SELECT draft_id, quantity FROM ${getTableName("cans", product)}`
 ).join(" UNION ALL ");
-const BUCKETS_SOURCE = SUPPORTED_PRODUCTS.map(
+const CANS_SOURCE = SUPPORTED_PRODUCTS.map(
   (product) =>
-    `SELECT id, bucket_id, draft_id, collection_center_id, product_type, brix_value, ph_value, quantity, created_at, updated_at FROM ${getTableName("buckets", product)}`,
+    `SELECT id, can_id, draft_id, collection_center_id, product_type, brix_value, ph_value, quantity, created_at, updated_at FROM ${getTableName("cans", product)}`,
 ).join(" UNION ALL ");
 
 const createDraftSchema = z.object({
@@ -43,7 +43,7 @@ const updateDraftSchema = z.object({
   status: z.enum(["draft", "submitted", "completed"]).optional(),
 });
 
-const createBucketSchema = z.object({
+const createCanSchema = z.object({
   draftId: z.string(),
   collectionCenterId: z.string(),
   productType: z.enum(["sap", "treacle"]),
@@ -52,13 +52,13 @@ const createBucketSchema = z.object({
   quantity: z.number().positive(),
 });
 
-const updateBucketSchema = z.object({
+const updateCanSchema = z.object({
   brixValue: z.number().min(0).max(100).optional(),
   phValue: z.number().min(0).max(14).optional(),
   quantity: z.number().positive().optional(),
 });
 
-const BUCKET_UPDATE_FIELD_MAP: Record<keyof z.infer<typeof updateBucketSchema>, string> = {
+const CAN_UPDATE_FIELD_MAP: Record<keyof z.infer<typeof updateCanSchema>, string> = {
   brixValue: "brix_value",
   phValue: "ph_value",
   quantity: "quantity",
@@ -70,7 +70,7 @@ type DraftSummaryRow = {
   date: Date | string | null;
   status: string;
   created_by_name: string | null;
-  bucket_count: number;
+  can_count: number;
   total_quantity: number;
   created_at: Date | string | null;
   updated_at: Date | string | null;
@@ -80,7 +80,7 @@ type DraftContext = {
   row: any;
 };
 
-type BucketContext = {
+type CanContext = {
   productType: ProductSlug;
   table: string;
   row: any;
@@ -177,7 +177,7 @@ async function fetchDraftSummaries(
   }
 
   if (productFilter) {
-    whereClauses.push(`EXISTS (SELECT 1 FROM ${getTableName("buckets", productFilter)} b WHERE b.draft_id = d.id)`);
+    whereClauses.push(`EXISTS (SELECT 1 FROM ${getTableName("cans", productFilter)} b WHERE b.draft_id = d.id)`);
   }
 
   if (createdByFilter) {
@@ -188,9 +188,9 @@ async function fetchDraftSummaries(
   const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
   const query = `
-    WITH bucket_totals AS (
-      SELECT draft_id, COUNT(*) AS bucket_count, COALESCE(SUM(quantity), 0) AS total_quantity
-      FROM (${BUCKET_TOTALS_SOURCE}) AS all_buckets
+    WITH can_totals AS (
+      SELECT draft_id, COUNT(*) AS can_count, COALESCE(SUM(quantity), 0) AS total_quantity
+      FROM (${CAN_TOTALS_SOURCE}) AS all_cans
       GROUP BY draft_id
     )
     SELECT
@@ -199,13 +199,13 @@ async function fetchDraftSummaries(
       d.date,
       d.status,
       u.name AS created_by_name,
-      COALESCE(bucket_totals.bucket_count, 0) AS bucket_count,
-      COALESCE(bucket_totals.total_quantity, 0) AS total_quantity,
+      COALESCE(can_totals.can_count, 0) AS can_count,
+      COALESCE(can_totals.total_quantity, 0) AS total_quantity,
       d.created_at,
       d.updated_at
     FROM ${DRAFTS_TABLE} d
     LEFT JOIN users u ON d.created_by = u.user_id
-    LEFT JOIN bucket_totals ON bucket_totals.draft_id = d.id
+    LEFT JOIN can_totals ON can_totals.draft_id = d.id
     ${whereSql}
     ORDER BY d.date DESC, d.created_at DESC
   `;
@@ -213,7 +213,7 @@ async function fetchDraftSummaries(
   const { rows } = await pool.query(query, params);
   return rows.map((row) => ({
     ...row,
-    bucket_count: toNumber(row.bucket_count),
+    can_count: toNumber(row.can_count),
     total_quantity: toNumber(row.total_quantity),
   })) as DraftSummaryRow[];
 }
@@ -233,10 +233,10 @@ async function resolveDraftContext(draftId: string): Promise<DraftContext | null
   };
 }
 
-async function resolveBucketContext(bucketId: string): Promise<BucketContext | null> {
+async function resolveCanContext(canId: string): Promise<CanContext | null> {
   for (const productType of SUPPORTED_PRODUCTS) {
-    const table = getTableName("buckets", productType);
-    const { rows } = await pool.query(`SELECT * FROM ${table} WHERE bucket_id = $1`, [bucketId]);
+    const table = getTableName("cans", productType);
+    const { rows } = await pool.query(`SELECT * FROM ${table} WHERE can_id = $1`, [canId]);
     if (rows.length > 0) {
       return { productType, table, row: rows[0] };
     }
@@ -315,7 +315,7 @@ router.post("/drafts/:draftId/reopen", auth, requireRole("Field Collection", "Ad
   }
 });
 
-router.get("/drafts/:draftId/centers/:centerId/buckets", auth, requireRole("Field Collection", "Administrator"), async (req, res) => {
+router.get("/drafts/:draftId/centers/:centerId/cans", auth, requireRole("Field Collection", "Administrator"), async (req, res) => {
   try {
     const { draftId, centerId } = req.params;
     const context = await resolveDraftContext(draftId);
@@ -330,7 +330,7 @@ router.get("/drafts/:draftId/centers/:centerId/buckets", auth, requireRole("Fiel
     const query = `
       SELECT
         b.id,
-        b.bucket_id,
+        b.can_id,
         b.product_type,
         b.brix_value,
         b.ph_value,
@@ -338,26 +338,26 @@ router.get("/drafts/:draftId/centers/:centerId/buckets", auth, requireRole("Fiel
         cc.center_name,
         cc.center_id,
         d.date AS draft_date
-      FROM (${BUCKETS_SOURCE}) b
+      FROM (${CANS_SOURCE}) b
       JOIN collection_centers cc ON b.collection_center_id = cc.id
       JOIN ${DRAFTS_TABLE} d ON b.draft_id = d.id
       WHERE d.draft_id = $1 AND (cc.center_id = $2 OR cc.center_name = $2)
-      ORDER BY b.bucket_id
+      ORDER BY b.can_id
     `;
 
     const { rows } = await pool.query(query, [draftId, centerId]);
     res.json(rows);
   } catch (error) {
-    console.error("Error fetching buckets:", error);
-    res.status(500).json({ error: "Failed to fetch buckets" });
+    console.error("Error fetching cans:", error);
+    res.status(500).json({ error: "Failed to fetch cans" });
   }
 });
 
-router.post("/buckets", auth, requireRole("Field Collection", "Administrator"), createFieldBucket as any);
+router.post("/cans", auth, requireRole("Field Collection", "Administrator"), createFieldCan as any);
 
-router.put("/buckets/:bucketId", auth, requireRole("Field Collection", "Administrator"), updateFieldBucket as any);
+router.put("/cans/:canId", auth, requireRole("Field Collection", "Administrator"), updateFieldCan as any);
 
-router.delete("/buckets/:bucketId", auth, requireRole("Field Collection", "Administrator"), deleteFieldBucket as any);
+router.delete("/cans/:canId", auth, requireRole("Field Collection", "Administrator"), deleteFieldCan as any);
 
 router.get("/centers", auth, requireRole("Field Collection", "Administrator"), listFieldCenters as any);
 

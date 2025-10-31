@@ -47,7 +47,7 @@ const formatVolumeByProduct = (
   if (value === null || value === undefined) {
     return "—";
   }
-  const unit = (productType || "").toLowerCase() === "sap" ? "L" : "kg";
+  const unit = (productType || "").toLowerCase() === "treacle" ? "L" : "kg";
   return `${Number(value).toFixed(1)} ${unit}`;
 };
 
@@ -60,9 +60,9 @@ export default function Labeling() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = usePersistentState<string>("labeling.search", "");
-  const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">(() => {
+  const [productTypeFilter, setProductTypeFilter] = useState<"treacle" | "jaggery">(() => {
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("labeling.productType") : null;
-    return saved === "treacle" || saved === "sap" ? saved : "sap";
+    return saved === "jaggery" || saved === "treacle" ? saved : "treacle";
   });
   const [deleteTarget, setDeleteTarget] = useState<{ packagingId: string; batchNumber: string } | null>(null);
   const [isDeletingLabeling, setIsDeletingLabeling] = useState<boolean>(false);
@@ -163,7 +163,7 @@ useEffect(() => {
     void loadBatches();
   };
 
-  const fetchEligiblePackagingBatches = async (product: "sap" | "treacle") => {
+  const fetchEligiblePackagingBatches = async (product: "treacle" | "jaggery") => {
     setIsEligibleLoading(true);
     try {
       const list = await DataService.getEligiblePackagingBatchesForLabeling(product);
@@ -218,7 +218,7 @@ useEffect(() => {
 
   const buildLabelingUpdatePayload = (batch: LabelingBatchDto) => {
     const productType = (batch.productType || "").toLowerCase();
-    const isSap = productType === "sap";
+    const isTreacle = productType === "treacle";
 
     // All labeling batches require sticker and corrugated carton
     if (
@@ -240,8 +240,8 @@ useEffect(() => {
       corrugatedCartonQuantity: Number(batch.corrugatedCartonQuantity),
     };
 
-    if (isSap) {
-      // Sap requires shrink sleeve and neck tag
+    if (isTreacle) {
+      // Treacle (in-house) requires shrink sleeve and neck tag
       if (
         batch.shrinkSleeveQuantity === null ||
         batch.shrinkSleeveQuantity === undefined ||
@@ -366,14 +366,14 @@ useEffect(() => {
 
   const labelingMetrics = useMemo(() => {
     type Metrics = { total: number; completed: number; active: number };
-    const metrics: Record<"sap" | "treacle", Metrics> = {
-      sap: { total: 0, completed: 0, active: 0 },
+    const metrics: Record<"treacle" | "jaggery", Metrics> = {
       treacle: { total: 0, completed: 0, active: 0 },
+      jaggery: { total: 0, completed: 0, active: 0 },
     };
 
     batches.forEach((batch) => {
       const key = (batch.productType || "").toLowerCase();
-      if (key !== "sap" && key !== "treacle") {
+      if (key !== "treacle" && key !== "jaggery") {
         return;
       }
       metrics[key].total += 1;
@@ -389,12 +389,12 @@ useEffect(() => {
     return metrics;
   }, [batches]);
 
-  const selectedProductLabel = productTypeFilter === "sap" ? "Sap" : "Treacle";
+  const selectedProductLabel = productTypeFilter === "treacle" ? "Treacle" : "Jaggery";
   const selectedMetrics = labelingMetrics[productTypeFilter];
 
   const hasCompletedLabeling = useMemo(
     () =>
-      (labelingMetrics.sap.completed ?? 0) + (labelingMetrics.treacle.completed ?? 0) > 0,
+      (labelingMetrics.treacle.completed ?? 0) + (labelingMetrics.jaggery.completed ?? 0) > 0,
     [labelingMetrics],
   );
 
@@ -424,7 +424,7 @@ useEffect(() => {
               Finished Qty: {formatVolumeByProduct(batch.finishedQuantity ?? null, batch.productType)}
             </span>
             <span className="px-2 text-muted-foreground/40">|</span>
-            <span>Buckets: {batch.bucketCount}</span>
+            <span>Cans: {batch.canCount}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -509,7 +509,7 @@ useEffect(() => {
           <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">Labeling</h1>
             <p className="text-sm text-muted-foreground">
-              Review packaged batches and capture labeling accessory quantities for sap and treacle production.
+              Review packaged batches and capture labeling accessory quantities for treacle (in-house) and jaggery production.
             </p>
           </div>
 
@@ -673,14 +673,14 @@ useEffect(() => {
                         <div>
                           <p className="font-semibold">Batch ID: {batch.batchNumber}</p>
                           <p className="text-xs text-muted-foreground">
-                            Scheduled {formatDate(batch.scheduledDate)} · {batch.bucketCount} bucket
-                            {batch.bucketCount === 1 ? "" : "s"}
+                            Scheduled {formatDate(batch.scheduledDate)} · {batch.canCount} can
+                            {batch.canCount === 1 ? "" : "s"}
                           </p>
                         </div>
                         <div className="text-sm text-muted-foreground sm:text-right">
                           <div>{(batch.productType ?? "").toUpperCase() || "—"}</div>
                           <div>
-                            Finished Qty: {typeof batch.finishedQuantity === "number" ? batch.finishedQuantity.toFixed(1) : "—"} {batch.productType?.toLowerCase() === "sap" ? "L" : "kg"}
+                            Finished Qty: {typeof batch.finishedQuantity === "number" ? batch.finishedQuantity.toFixed(1) : "—"} {batch.productType?.toLowerCase() === "treacle" ? "L" : "kg"}
                           </div>
                         </div>
                       </div>

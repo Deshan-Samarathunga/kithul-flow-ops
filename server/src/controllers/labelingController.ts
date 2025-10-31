@@ -33,7 +33,7 @@ function mapLabelingRow(row: any) {
     labelingNotes: (row.labeling_notes as string | null) ?? null,
     finishedQuantity: row.finished_quantity !== null ? Number(row.finished_quantity) : null,
     totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
-    bucketCount: Number(row.bucket_count ?? 0),
+    canCount: Number(row.can_count ?? 0),
     totalQuantity: Number(row.total_quantity ?? 0),
     stickerQuantity:
       row.labeling_sticker_quantity !== null ? Number(row.labeling_sticker_quantity) : null,
@@ -66,8 +66,8 @@ type LabelingContext = {
   packagingTable: string;
   labelingTable: string;
   processingBatchTable: string;
-  batchBucketTable: string;
-  bucketTable: string;
+  batchCanTable: string;
+  canTable: string;
   packagingPk: number;
   labelingPk: number | null;
 };
@@ -127,7 +127,7 @@ export async function availablePackaging(req: Request, res: Response) {
       finishedQuantity: row.finished_quantity !== null && row.finished_quantity !== undefined ? Number(row.finished_quantity) : null,
       totalSapOutput: row.total_sap_output !== null && row.total_sap_output !== undefined ? Number(row.total_sap_output) : null,
       totalQuantity: Number(row.total_quantity ?? 0),
-      bucketCount: Number(row.bucket_count ?? 0),
+      canCount: Number(row.can_count ?? 0),
     }));
     res.json({ batches });
   } catch (error) {
@@ -195,11 +195,11 @@ export async function updateBatch(req: Request, res: Response) {
       return res.status(400).json({ error: "Sticker and corrugated carton quantities are required." });
     }
 
-    if (productType === "sap") {
+    if (productType === "treacle") {
       if (sanitized.shrinkSleeveQuantity === undefined || sanitized.neckTagQuantity === undefined) {
-        return res.status(400).json({ error: "Shrink sleeve and neck tag quantities are required for sap labeling." });
+        return res.status(400).json({ error: "Shrink sleeve and neck tag quantities are required for treacle (in-house) labeling." });
       }
-    } else if (productType === "treacle") {
+    } else if (productType === "jaggery") {
       sanitized.shrinkSleeveQuantity = null;
       sanitized.neckTagQuantity = null;
     } else {
@@ -211,7 +211,7 @@ export async function updateBatch(req: Request, res: Response) {
     const neckTagQuantityValue = sanitized.neckTagQuantity ?? null;
     const cartonQuantityValue = sanitized.corrugatedCartonQuantity ?? null;
     const allQuantitiesCaptured =
-      productType === "sap"
+      productType === "treacle"
         ? stickerQuantityValue !== null && shrinkQuantityValue !== null && neckTagQuantityValue !== null && cartonQuantityValue !== null
         : stickerQuantityValue !== null && cartonQuantityValue !== null;
     const statusValue =

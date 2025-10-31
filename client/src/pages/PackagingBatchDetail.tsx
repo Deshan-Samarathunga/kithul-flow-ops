@@ -41,14 +41,14 @@ export default function PackagingBatchDetail() {
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
 
   const productType = normalizeStatus(batch?.productType);
-  const isSap = productType === "sap";
   const isTreacle = productType === "treacle";
+  const isJaggery = productType === "jaggery";
   const normalizedStatus = normalizeStatus(batch?.packagingStatus);
   const isCompleted = normalizedStatus === "completed";
   const isEditable = !isCompleted;
   const resolvedPackagingId = batch?.packagingId ?? packagingId ?? "";
-  const finishedQuantityStep = isSap ? "0.1" : "0.01";
-  const productLabel = isSap ? "Sap" : isTreacle ? "Treacle" : "";
+  const finishedQuantityStep = isTreacle ? "0.1" : "0.01";
+  const productLabel = isTreacle ? "Treacle" : isJaggery ? "Jaggery" : "";
 
   const handleLogout = () => {
     logout();
@@ -128,7 +128,7 @@ export default function PackagingBatchDetail() {
   };
 
   const buildPayloadFromForm = () => {
-    if (!isSap && !isTreacle) {
+    if (!isTreacle && !isJaggery) {
       toast.error("Unsupported product type for packaging batch.");
       return null;
     }
@@ -149,7 +149,7 @@ export default function PackagingBatchDetail() {
     }
     payload.finishedQuantity = finishedQuantityValue;
 
-    if (isSap) {
+    if (isTreacle) {
       const bottle = parseNumber(form.bottleQuantity);
       const lid = parseNumber(form.lidQuantity);
       if (Number.isNaN(bottle) || Number.isNaN(lid) || bottle < 0 || lid < 0) {
@@ -237,7 +237,7 @@ export default function PackagingBatchDetail() {
   const batchDetailParts = [
     productLabel ? `${productLabel} product` : null,
     batch?.scheduledDate ? `Scheduled ${formatDate(batch.scheduledDate)}` : null,
-    typeof batch?.bucketCount === "number" ? `${batch.bucketCount} buckets` : null,
+    typeof batch?.canCount === "number" ? `${batch.canCount} cans` : null,
   ].filter(Boolean);
   const batchDetailLine = batchDetailParts.join(" • ");
 
@@ -348,7 +348,7 @@ export default function PackagingBatchDetail() {
                   </p>
                 </div>
 
-                {isSap ? (
+                {isTreacle ? (
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="bottleQuantity">Bottle Quantity</Label>

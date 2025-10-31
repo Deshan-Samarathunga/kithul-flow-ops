@@ -2,15 +2,15 @@ import { pool } from "../db.js";
 import { getTableName, type ProductSlug } from "../routes/utils/productTables.js";
 
 export async function fetchFieldCollectionMetrics(product: ProductSlug, targetDate: string) {
-  const bucketsTable = getTableName("buckets", product);
+  const cansTable = getTableName("cans", product);
   const query = `
     SELECT
       ARRAY_REMOVE(ARRAY_AGG(DISTINCT d.id::text), NULL) AS draft_ids,
       COUNT(DISTINCT d.id) AS draft_count,
-      COUNT(b.id) AS bucket_count,
+      COUNT(b.id) AS can_count,
       COALESCE(SUM(b.quantity), 0) AS total_quantity
     FROM field_collection_drafts d
-    LEFT JOIN ${bucketsTable} b ON b.draft_id = d.id
+    LEFT JOIN ${cansTable} b ON b.draft_id = d.id
     WHERE d.date::date = $1
       AND LOWER(d.status) IN ('submitted', 'completed')
   `;
@@ -20,13 +20,13 @@ export async function fetchFieldCollectionMetrics(product: ProductSlug, targetDa
 
 export async function fetchProcessingMetrics(product: ProductSlug, targetDate: string) {
   const processingTable = getTableName("processingBatches", product);
-  const batchBucketTable = getTableName("processingBatchBuckets", product);
-  const bucketTable = getTableName("buckets", product);
+  const batchCanTable = getTableName("processingBatchCans", product);
+  const canTable = getTableName("cans", product);
   const query = `
-    WITH bucket_totals AS (
+    WITH can_totals AS (
       SELECT pbb.processing_batch_id, COALESCE(SUM(b.quantity), 0) AS total_input
-      FROM ${batchBucketTable} pbb
-      JOIN ${bucketTable} b ON b.id = pbb.bucket_id
+      FROM ${batchCanTable} pbb
+      JOIN ${canTable} b ON b.id = pbb.can_id
       GROUP BY pbb.processing_batch_id
     )
     SELECT
@@ -34,9 +34,9 @@ export async function fetchProcessingMetrics(product: ProductSlug, targetDate: s
       COUNT(*) FILTER (WHERE LOWER(pb.status) = 'completed') AS completed_batches,
       COALESCE(SUM(pb.total_sap_output), 0) AS total_output,
       COALESCE(SUM(pb.used_gas_kg), 0) AS total_gas_used_kg,
-      COALESCE(SUM(bucket_totals.total_input), 0) AS total_input
+      COALESCE(SUM(can_totals.total_input), 0) AS total_input
     FROM ${processingTable} pb
-    LEFT JOIN bucket_totals ON bucket_totals.processing_batch_id = pb.id
+    LEFT JOIN can_totals ON can_totals.processing_batch_id = pb.id
     WHERE pb.scheduled_date::date = $1
       AND LOWER(pb.status) IN ('completed', 'submitted')
   `;

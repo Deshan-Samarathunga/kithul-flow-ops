@@ -4,10 +4,10 @@ import { pool } from "../db.js";
 import { SUPPORTED_PRODUCTS, getTableName, normalizeProduct, type ProductSlug } from "../routes/utils/productTables.js";
 import {
   resolveProcessingBatchContext as svcResolveProcessingBatchContext,
-  fetchBucketsForProduct as svcFetchBucketsForProduct,
+  fetchCansForProduct as svcFetchCansForProduct,
   fetchProcessingBatchSummaries as svcFetchProcessingBatchSummaries,
   fetchProcessingBatch as svcFetchProcessingBatch,
-  mapBucketRow as svcMapBucketRow,
+  mapCanRow as svcMapCanRow,
 } from "../services/processingService.js";
 
 const PRODUCT_TYPES = SUPPORTED_PRODUCTS;
@@ -29,17 +29,17 @@ const updateBatchSchema = z.object({
   gasUsedKg: numericMeasurement,
 });
 
-const updateBatchBucketsSchema = z.object({
-  bucketIds: z.array(z.string()).max(15, "A batch can contain at most 15 buckets"),
+const updateBatchCansSchema = z.object({
+  canIds: z.array(z.string()).max(15, "A batch can contain at most 15 cans"),
 });
 
-const mapBucketRow = (row: any) => svcMapBucketRow(row);
+const mapCanRow = (row: any) => svcMapCanRow(row);
 
 type ProcessingBatchContext = {
   productType: ProductSlug;
   batchTable: string;
-  batchBucketTable: string;
-  bucketTable: string;
+  batchCanTable: string;
+  canTable: string;
   draftTable: string;
   packagingTable: string;
   row: any;
@@ -49,8 +49,8 @@ async function resolveProcessingBatchContext(batchId: string): Promise<Processin
   return svcResolveProcessingBatchContext(batchId) as unknown as ProcessingBatchContext | null;
 }
 
-async function fetchBucketsForProduct(productType: ProductSlug, statusFilter?: string, forBatch?: string) {
-  return svcFetchBucketsForProduct(productType, statusFilter, forBatch);
+async function fetchCansForProduct(productType: ProductSlug, statusFilter?: string, forBatch?: string) {
+  return svcFetchCansForProduct(productType, statusFilter, forBatch);
 }
 
 async function fetchProcessingBatchSummaries(productType: ProductSlug) {
@@ -61,7 +61,7 @@ async function fetchProcessingBatch(batchId: string) {
   return svcFetchProcessingBatch(batchId);
 }
 
-export async function listBuckets(req: Request, res: Response) {
+export async function listCans(req: Request, res: Response) {
   try {
     const statusFilter = typeof req.query.status === "string" ? (req.query.status as string).toLowerCase() : undefined;
     const forBatch = typeof req.query.forBatch === "string" && (req.query.forBatch as string).trim() ? (req.query.forBatch as string).trim() : undefined;
@@ -72,12 +72,12 @@ export async function listBuckets(req: Request, res: Response) {
       targetProducts = [context.productType];
     }
 
-    const productBuckets = await Promise.all(targetProducts.map((product) => fetchBucketsForProduct(product, statusFilter, forBatch)));
-    const buckets = productBuckets.flat().map(mapBucketRow);
-    res.json({ buckets });
+    const productCans = await Promise.all(targetProducts.map((product) => fetchCansForProduct(product, statusFilter, forBatch)));
+    const cans = productCans.flat().map(mapCanRow);
+    res.json({ cans });
   } catch (error) {
-    console.error("Error fetching processing buckets:", error);
-    res.status(500).json({ error: "Failed to fetch buckets" });
+    console.error("Error fetching processing cans:", error);
+    res.status(500).json({ error: "Failed to fetch cans" });
   }
 }
 
@@ -94,7 +94,7 @@ export async function listBatches(_req: Request, res: Response) {
       gasUsedKg: row.used_gas_kg !== null ? Number(row.used_gas_kg) : null,
       createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : (row.created_at as string | null),
       updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : (row.updated_at as string | null),
-      bucketCount: Number(row.bucket_count ?? 0),
+      canCount: Number(row.can_count ?? 0),
       totalQuantity: Number(row.total_quantity ?? 0),
     }));
     res.json({ batches });
@@ -109,7 +109,7 @@ export async function createBatch(req: Request, res: Response) {
     const validated = createBatchSchema.parse(req.body ?? {});
     const user = (req as any).user;
 
-    const productType = normalizeProduct(validated.productType) ?? "sap";
+    const productType = normalizeProduct(validated.productType) ?? "treacle";
     const batchTable = getTableName("processingBatches", productType);
     const client = await pool.connect();
     try {
@@ -249,11 +249,11 @@ export async function updateBatch(req: Request, res: Response) {
   }
 }
 
-export async function setBatchBuckets(req: Request, res: Response) {
+export async function setBatchCans(req: Request, res: Response) {
   const client = await pool.connect();
   try {
     const { batchId } = req.params as { batchId: string };
-    const validated = updateBatchBucketsSchema.parse(req.body ?? {});
+    const validated = updateBatchCansSchema.parse(req.body ?? {});
     const context = await resolveProcessingBatchContext(batchId);
     if (!context) {
       return res.status(404).json({ error: "Batch not found" });
@@ -262,43 +262,43 @@ export async function setBatchBuckets(req: Request, res: Response) {
 
     await client.query("BEGIN");
 
-    await client.query(`DELETE FROM ${context.batchBucketTable} WHERE processing_batch_id = $1`, [batchPk]);
+    await client.query(`DELETE FROM ${context.batchCanTable} WHERE processing_batch_id = $1`, [batchPk]);
 
-    if (validated.bucketIds.length > 0) {
-      const bucketLookupQuery = `
-        SELECT id, bucket_id
-        FROM ${context.bucketTable}
-        WHERE bucket_id = ANY($1::text[])
+    if (validated.canIds.length > 0) {
+      const canLookupQuery = `
+        SELECT id, can_id
+        FROM ${context.canTable}
+        WHERE can_id = ANY($1::text[])
       `;
 
-      const { rows: bucketRows } = await client.query(bucketLookupQuery, [validated.bucketIds]);
+      const { rows: canRows } = await client.query(canLookupQuery, [validated.canIds]);
 
-      if (bucketRows.length !== validated.bucketIds.length) {
-        const foundIds = new Set(bucketRows.map((bucket) => bucket.bucket_id as string));
-        const missing = validated.bucketIds.filter((id) => !foundIds.has(id));
-        throw new Error(`Buckets not found: ${missing.join(", ")}`);
+      if (canRows.length !== validated.canIds.length) {
+        const foundIds = new Set(canRows.map((can) => can.can_id as string));
+        const missing = validated.canIds.filter((id) => !foundIds.has(id));
+        throw new Error(`Cans not found: ${missing.join(", ")}`);
       }
 
-      const bucketPkIds = bucketRows.map((bucket) => Number(bucket.id));
+      const canPkIds = canRows.map((can) => Number(can.id));
 
       const conflictQuery = `
-        SELECT b.bucket_id
-        FROM ${context.batchBucketTable} pbb
-        JOIN ${context.bucketTable} b ON b.id = pbb.bucket_id
-        WHERE pbb.processing_batch_id <> $1 AND pbb.bucket_id = ANY($2::bigint[])
+        SELECT b.can_id
+        FROM ${context.batchCanTable} pbb
+        JOIN ${context.canTable} b ON b.id = pbb.can_id
+        WHERE pbb.processing_batch_id <> $1 AND pbb.can_id = ANY($2::bigint[])
       `;
 
-      const { rows: conflicts } = await client.query(conflictQuery, [batchPk, bucketPkIds]);
+      const { rows: conflicts } = await client.query(conflictQuery, [batchPk, canPkIds]);
       if (conflicts.length > 0) {
-        const occupied = conflicts.map((conflict) => conflict.bucket_id as string);
-        throw new Error(`Buckets already assigned to another batch: ${occupied.join(", ")}`);
+        const occupied = conflicts.map((conflict) => conflict.can_id as string);
+        throw new Error(`Cans already assigned to another batch: ${occupied.join(", ")}`);
       }
 
-      const insertValues = bucketPkIds.map((_, index) => `($1, $${index + 2})`).join(", ");
-      const params = [batchPk, ...bucketPkIds];
+      const insertValues = canPkIds.map((_, index) => `($1, $${index + 2})`).join(", ");
+      const params = [batchPk, ...canPkIds];
 
       const insertQuery = `
-        INSERT INTO ${context.batchBucketTable} (processing_batch_id, bucket_id)
+        INSERT INTO ${context.batchCanTable} (processing_batch_id, can_id)
         VALUES ${insertValues}
       `;
 
@@ -314,8 +314,8 @@ export async function setBatchBuckets(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: "Validation error", details: error.issues });
     }
-    console.error("Error updating batch buckets:", error);
-    const message = error instanceof Error ? error.message : "Failed to update batch buckets";
+    console.error("Error updating batch cans:", error);
+    const message = error instanceof Error ? error.message : "Failed to update batch cans";
     res.status(400).json({ error: message });
   } finally {
     client.release();
@@ -424,7 +424,7 @@ export async function deleteBatch(req: Request, res: Response) {
     }
 
     const batchPk = Number(context.row.id);
-    await client.query(`DELETE FROM ${context.batchBucketTable} WHERE processing_batch_id = $1`, [batchPk]);
+    await client.query(`DELETE FROM ${context.batchCanTable} WHERE processing_batch_id = $1`, [batchPk]);
     await client.query(`DELETE FROM ${context.packagingTable} WHERE processing_batch_id = $1`, [batchPk]);
     await client.query(`DELETE FROM ${context.batchTable} WHERE id = $1`, [batchPk]);
 

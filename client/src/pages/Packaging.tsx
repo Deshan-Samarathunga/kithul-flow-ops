@@ -62,23 +62,23 @@ export default function Packaging() {
   }, []);
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
   const [searchQuery, setSearchQuery] = usePersistentState<string>("packaging.search", "");
-  const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">(() => {
+  const [productTypeFilter, setProductTypeFilter] = useState<"treacle" | "jaggery">(() => {
     const qp = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("productType") : null;
-    if (qp === "treacle" || qp === "sap") return qp;
+    if (qp === "jaggery" || qp === "treacle") return qp;
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("packaging.productType") : null;
-    return saved === "treacle" || saved === "sap" ? saved : "sap";
+    return saved === "jaggery" || saved === "treacle" ? saved : "treacle";
   });
 
   const packagingMetrics = useMemo(() => {
     type Metrics = { total: number; active: number; completed: number };
-    const metrics: Record<"sap" | "treacle", Metrics> = {
-      sap: { total: 0, active: 0, completed: 0 },
+    const metrics: Record<"treacle" | "jaggery", Metrics> = {
       treacle: { total: 0, active: 0, completed: 0 },
+      jaggery: { total: 0, active: 0, completed: 0 },
     };
 
     batches.forEach((batch) => {
       const key = (batch.productType || "").toLowerCase();
-      if (key !== "sap" && key !== "treacle") {
+      if (key !== "treacle" && key !== "jaggery") {
         return;
       }
       const status = (batch.packagingStatus || "").toLowerCase();
@@ -103,7 +103,7 @@ export default function Packaging() {
         batch.batchNumber,
         batch.productType,
         batch.scheduledDate ?? "",
-        batch.bucketCount.toString(),
+        batch.canCount.toString(),
         batch.totalQuantity.toString(),
       ]
         .join(" ")
@@ -131,7 +131,7 @@ export default function Packaging() {
     }
   };
 
-  const fetchEligibleProcessingBatches = async (product: "sap" | "treacle") => {
+  const fetchEligibleProcessingBatches = async (product: "treacle" | "jaggery") => {
     setIsEligibleLoading(true);
     try {
       const list = await DataService.getEligibleProcessingBatchesForPackaging(product);
@@ -203,7 +203,7 @@ export default function Packaging() {
       return null;
     }
 
-    if (productType === "sap") {
+    if (productType === "treacle") {
       if (
         batch.bottleQuantity === null ||
         batch.bottleQuantity === undefined ||
@@ -219,7 +219,7 @@ export default function Packaging() {
       };
     }
 
-    if (productType === "treacle") {
+    if (productType === "jaggery") {
       if (
         batch.alufoilQuantity === null ||
         batch.alufoilQuantity === undefined ||
@@ -361,7 +361,7 @@ export default function Packaging() {
     if (value === null || value === undefined) {
       return "—";
     }
-    const unit = (productType || "").toLowerCase() === "sap" ? "L" : "kg";
+    const unit = (productType || "").toLowerCase() === "treacle" ? "L" : "kg";
     return `${Number(value).toFixed(1)} ${unit}`;
   };
 
@@ -402,7 +402,7 @@ export default function Packaging() {
   });
 
   const filteredByType = filteredBatches;
-  const selectedProductLabel = productTypeFilter === "sap" ? "Sap" : "Treacle";
+  const selectedProductLabel = productTypeFilter === "treacle" ? "Treacle" : "Jaggery";
   const selectedMetrics = packagingMetrics[productTypeFilter];
   const activePackagingBatches = useMemo(
     () =>
@@ -421,7 +421,7 @@ export default function Packaging() {
 
   const hasCompletedPackaging = useMemo(
     () =>
-      (packagingMetrics.sap.completed ?? 0) + (packagingMetrics.treacle.completed ?? 0) > 0,
+      (packagingMetrics.treacle.completed ?? 0) + (packagingMetrics.jaggery.completed ?? 0) > 0,
     [packagingMetrics],
   );
 
@@ -435,18 +435,18 @@ export default function Packaging() {
 
   const renderPackagingCard = (batch: PackagingBatchDto, variant: "active" | "completed" = "active") => {
     const productType = (batch.productType || "").toLowerCase();
-    const isSap = productType === "sap";
     const isTreacle = productType === "treacle";
+    const isJaggery = productType === "jaggery";
     const hasFinishedQuantity =
       batch.finishedQuantity !== null && batch.finishedQuantity !== undefined;
     const packagingId = batch.packagingId ?? batch.id;
-    const hasPackagingData = isSap
+    const hasPackagingData = isTreacle
       ? hasFinishedQuantity &&
         batch.bottleQuantity !== null &&
         batch.bottleQuantity !== undefined &&
         batch.lidQuantity !== null &&
         batch.lidQuantity !== undefined
-      : isTreacle
+      : isJaggery
       ? hasFinishedQuantity &&
         batch.alufoilQuantity !== null &&
         batch.alufoilQuantity !== undefined &&
@@ -456,7 +456,7 @@ export default function Packaging() {
         batch.parchmentPaperQuantity !== undefined
       : false;
 
-    const productLabel = productType ? productType.charAt(0).toUpperCase() + productType.slice(1) : "Sap";
+    const productLabel = productType ? (productType === "treacle" ? "Treacle" : productType.charAt(0).toUpperCase() + productType.slice(1)) : "Treacle";
     const showFinishedQuantity = variant === "completed";
     return (
       <div
@@ -477,7 +477,7 @@ export default function Packaging() {
               Total quantity: {formatVolumeByProduct(batch.totalSapOutput ?? null, batch.productType)}
             </span>
             <span className="px-2 text-muted-foreground/40">|</span>
-            <span>Buckets: {batch.bucketCount}</span>
+            <span>Cans: {batch.canCount}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -568,19 +568,19 @@ export default function Packaging() {
               <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
                 <button
                   type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "sap" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
-                  aria-pressed={productTypeFilter === "sap"}
-                  onClick={() => setProductTypeFilter("sap")}
-                >
-                  Sap
-                </button>
-                <button
-                  type="button"
                   className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "treacle" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
                   aria-pressed={productTypeFilter === "treacle"}
                   onClick={() => setProductTypeFilter("treacle")}
                 >
                   Treacle
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "jaggery" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  aria-pressed={productTypeFilter === "jaggery"}
+                  onClick={() => setProductTypeFilter("jaggery")}
+                >
+                  Jaggery
                 </button>
               </div>
 
@@ -760,8 +760,8 @@ export default function Packaging() {
                         <div>
                           <p className="font-semibold">Batch ID: {batch.batchNumber}</p>
                           <p className="text-xs text-muted-foreground">
-                            Scheduled {formatDate(batch.scheduledDate)} · {batch.bucketCount} bucket
-                            {batch.bucketCount === 1 ? "" : "s"}
+                            Scheduled {formatDate(batch.scheduledDate)} · {batch.canCount} can
+                            {batch.canCount === 1 ? "" : "s"}
                           </p>
                         </div>
                         <div className="text-sm text-muted-foreground sm:text-right">

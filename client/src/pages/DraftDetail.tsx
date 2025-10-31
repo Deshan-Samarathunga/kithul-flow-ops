@@ -8,11 +8,11 @@ import { toast } from "sonner";
 import { DataService } from "@/lib/dataService";
 
 type DraftDetailData = {
-  buckets?: Array<Record<string, unknown>>;
+  cans?: Array<Record<string, unknown>>;
   status?: string | null;
   date?: string | null;
-  bucketCount?: number;
-  bucket_count?: number;
+  canCount?: number;
+  can_count?: number;
 } & Record<string, unknown>;
 
 export default function DraftDetail() {
@@ -34,9 +34,9 @@ export default function DraftDetail() {
   const [error, setError] = useState<string | null>(null);
   const [completedCenters, setCompletedCenters] = useState<Set<string>>(new Set());
 
-  const centerBucketCounts = useMemo(() => {
+  const centerCanCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-  const entries = Array.isArray(draft?.buckets) ? draft.buckets : [];
+  const entries = Array.isArray(draft?.cans) ? draft.cans : [];
 
     entries.forEach((entry) => {
       if (!entry || typeof entry !== "object") {
@@ -60,9 +60,9 @@ export default function DraftDetail() {
         return;
       }
 
-      const bucketsValue = data["buckets"];
-      if (Array.isArray(bucketsValue)) {
-        counts[centerIdCandidate] = bucketsValue.length;
+      const cansValue = data["cans"];
+      if (Array.isArray(cansValue)) {
+        counts[centerIdCandidate] = cansValue.length;
         return;
       }
 
@@ -70,7 +70,7 @@ export default function DraftDetail() {
     });
 
     return counts;
-  }, [draft?.buckets]);
+  }, [draft?.cans]);
 
   useEffect(() => {
     const loadDraft = async () => {
@@ -288,7 +288,7 @@ export default function DraftDetail() {
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold">Draft {new Date(draft.date).toISOString().split('T')[0]}</h1>
-            <p className="text-sm text-muted-foreground">Buckets: {draft.bucketCount ?? draft.bucket_count ?? 0}</p>
+            <p className="text-sm text-muted-foreground">Cans: {draft.canCount ?? draft.can_count ?? 0}</p>
           </div>
           {draft.status === "draft" && (
             <div className="flex gap-2">
@@ -314,8 +314,8 @@ export default function DraftDetail() {
                   {collectionCenters
                     .filter(center => !completedCenters.has(center.id))
                     .map((center) => {
-                      // Find if this center has any buckets
-                      const bucketCount = centerBucketCounts[center.id] ?? 0;
+                      // Find if this center has any cans
+                      const canCount = centerCanCounts[center.id] ?? 0;
                       
                       return (
                         <div key={center.id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
@@ -324,7 +324,7 @@ export default function DraftDetail() {
                               <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
                               <p className="text-xs sm:text-sm text-muted-foreground">{center.location}</p>
                               <p className="text-xs sm:text-sm text-muted-foreground">Center Agent: {center.centerAgent}</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">Active buckets: {bucketCount}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Active cans: {canCount}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Button
@@ -360,8 +360,8 @@ export default function DraftDetail() {
                   {collectionCenters
                     .filter(center => completedCenters.has(center.id))
                     .map((center) => {
-                      // Find if this center has any buckets
-                      const bucketCount = centerBucketCounts[center.id] ?? 0;
+                      // Find if this center has any cans
+                      const canCount = centerCanCounts[center.id] ?? 0;
                       
                       return (
                         <div key={`completed-${center.id}`} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
@@ -370,7 +370,7 @@ export default function DraftDetail() {
                               <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
                               <p className="text-xs sm:text-sm text-muted-foreground">{center.location}</p>
                               <p className="text-xs sm:text-sm text-muted-foreground">Center Agent: {center.centerAgent}</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">Completed buckets: {bucketCount}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Completed cans: {canCount}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Button
@@ -415,8 +415,8 @@ export default function DraftDetail() {
                 {collectionCenters
                   .filter(center => completedCenters.has(center.id))
                   .map((center) => {
-                    // Find if this center has any buckets
-                    const bucketCount = centerBucketCounts[center.id] ?? 0;
+                    // Find if this center has any cans
+                    const canCount = centerCanCounts[center.id] ?? 0;
                     
                     return (
                       <div key={center.id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
@@ -425,7 +425,7 @@ export default function DraftDetail() {
                             <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
                             <p className="text-xs sm:text-sm text-muted-foreground">{center.location}</p>
                             <p className="text-xs sm:text-sm text-muted-foreground">Center Agent: {center.centerAgent}</p>
-                            <p className="text-xs sm:text-sm text-muted-foreground">Completed buckets: {bucketCount}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">Completed cans: {canCount}</p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Button

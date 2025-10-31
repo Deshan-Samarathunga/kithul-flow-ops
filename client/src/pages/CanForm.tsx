@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { DataService } from "@/lib/dataService";
 
-export default function BucketForm() {
+export default function CanForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const draftId = searchParams.get("draftId");
@@ -79,8 +79,8 @@ export default function BucketForm() {
     }
 
     try {
-      // Create bucket data
-      const bucketData = {
+      // Create can data
+      const canData = {
         draftId: draftId,
         collectionCenterId: centerId || 'center001',
         productType: productTypeLower as 'sap' | 'treacle',
@@ -90,7 +90,7 @@ export default function BucketForm() {
         quantity: parseFloat(formData.quantity),
       };
 
-      await DataService.createBucket(bucketData);
+      await DataService.createCan(canData);
       
       toast.success("Can added successfully");
       navigate(`/field-collection/draft/${draftId}/center/${centerId || 'center001'}?productType=${productTypeLower}`);

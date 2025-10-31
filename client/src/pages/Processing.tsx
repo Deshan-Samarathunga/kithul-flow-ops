@@ -36,9 +36,9 @@ export default function Processing() {
   const [submittingBatchId, setSubmittingBatchId] = useState<string | null>(null);
   const [reopeningBatchId, setReopeningBatchId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [productTypeFilter, setProductTypeFilter] = useState<"sap" | "treacle">(() => {
+  const [productTypeFilter, setProductTypeFilter] = useState<"treacle" | "jaggery">(() => {
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("processing.productType") : null;
-    return saved === "treacle" || saved === "sap" ? saved : "sap";
+    return saved === "jaggery" || saved === "treacle" ? saved : "treacle";
   });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; batchNumber: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -51,7 +51,7 @@ export default function Processing() {
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
-  const selectedProductLabel = productTypeFilter === "sap" ? "Sap" : "Treacle";
+  const selectedProductLabel = productTypeFilter === "treacle" ? "Treacle" : "Jaggery";
 
   const handleLogout = () => {
     logout();
@@ -153,7 +153,7 @@ export default function Processing() {
     if (value === null || value === undefined) {
       return "—";
     }
-    const unit = productType === "sap" ? "L" : "kg";
+    const unit = productType === "treacle" ? "L" : "kg";
     return `${Number(value).toFixed(1)} ${unit}`;
   };
 
@@ -162,14 +162,14 @@ export default function Processing() {
 
   const batchMetrics = useMemo(() => {
     type Metric = { total: number; active: number; completed: number };
-    const metrics: Record<"sap" | "treacle", Metric> = {
-      sap: { total: 0, active: 0, completed: 0 },
+    const metrics: Record<"treacle" | "jaggery", Metric> = {
       treacle: { total: 0, active: 0, completed: 0 },
+      jaggery: { total: 0, active: 0, completed: 0 },
     };
 
     batches.forEach((batch) => {
       const key = (batch.productType || "").toLowerCase();
-      if (key !== "sap" && key !== "treacle") {
+      if (key !== "treacle" && key !== "jaggery") {
         return;
       }
 
@@ -274,19 +274,19 @@ export default function Processing() {
               <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
                 <button
                   type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "sap" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
-                  aria-pressed={productTypeFilter === "sap"}
-                  onClick={() => setProductTypeFilter("sap")}
-                >
-                  Sap
-                </button>
-                <button
-                  type="button"
                   className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "treacle" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
                   aria-pressed={productTypeFilter === "treacle"}
                   onClick={() => setProductTypeFilter("treacle")}
                 >
                   Treacle
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "jaggery" ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
+                  aria-pressed={productTypeFilter === "jaggery"}
+                  onClick={() => setProductTypeFilter("jaggery")}
+                >
+                  Jaggery
                 </button>
               </div>
 
@@ -389,7 +389,7 @@ export default function Processing() {
                             Total quantity: {formatVolumeByProduct(batch.totalQuantity, batch.productType)}
                           </span>
                           <span className="px-2 text-muted-foreground/40">|</span>
-                          <span>Buckets: {batch.bucketCount}</span>
+                          <span>Cans: {batch.canCount}</span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <Button

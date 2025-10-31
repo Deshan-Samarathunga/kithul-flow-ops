@@ -11,8 +11,8 @@ import RequireRole from "@/lib/RequireRole";
 import Login from "./pages/Login";
 import FieldCollection from "./pages/FieldCollection";
 import DraftDetail from "./pages/DraftDetail";
-import CenterBuckets from "./pages/CenterBuckets";
-import BucketForm from "./pages/BucketForm";
+import CenterCans from "./pages/CenterCans";
+import CanForm from "./pages/CanForm";
 import Processing from "./pages/Processing";
 import BatchDetail from "./pages/BatchDetail";
 import Packaging from "./pages/Packaging";
@@ -63,21 +63,21 @@ const App = () => (
             <Route path="/field-collection/draft/:draftId/center/:centerId" element={
               <RequireAuth>
                 <RequireRole allow={["Field Collection", "Administrator"]}>
-                  <CenterBuckets />
+                  <CenterCans />
                 </RequireRole>
               </RequireAuth>
             } />
-            <Route path="/field-collection/bucket/new" element={
+            <Route path="/field-collection/can/new" element={
               <RequireAuth>
                 <RequireRole allow={["Field Collection", "Administrator"]}>
-                  <BucketForm />
+                  <CanForm />
                 </RequireRole>
               </RequireAuth>
             } />
-            <Route path="/field-collection/bucket/:bucketId/edit" element={
+            <Route path="/field-collection/can/:canId/edit" element={
               <RequireAuth>
                 <RequireRole allow={["Field Collection", "Administrator"]}>
-                  <BucketForm />
+                  <CanForm />
                 </RequireRole>
               </RequireAuth>
             } />

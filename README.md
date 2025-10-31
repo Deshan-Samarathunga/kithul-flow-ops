@@ -103,7 +103,7 @@ cd client && npm install && npm run dev
 
 ### Core modules
 
-- **Field Collection**: Drafts, buckets, quality metrics
+- **Field Collection**: Drafts, cans, quality metrics
 - **Processing**: Batches, submission, reopen, reports
 - **Packaging**: Costs, materials, finished quantities
 - **Labeling**: Final checks, labeling, analysis
@@ -133,7 +133,7 @@ cd client && npm install && npm run dev
 
 ## 🌟 Overview
 
-Kithul Flow Ops is a modern, enterprise-grade production management system specifically designed for the kithul (coconut palm) industry. The system manages a complete 4-stage production pipeline, ensuring quality control, traceability, and efficient workflow management from raw material collection to final product packaging.
+Kithul Flow Ops is a modern, enterprise-grade production management system specifically designed for the kithul industry. The system manages a complete 4-stage production pipeline, ensuring quality control, traceability, and efficient workflow management from raw material collection to final product packaging.
 
 ### Key Benefits
 
@@ -359,13 +359,13 @@ kithul-flow-ops/
 
 ### Field Collection
 - **Draft Management**: Create and manage collection drafts
-- **Bucket Entry**: Record product quality metrics
+- **Can Entry**: Record product quality metrics
 - **Center Management**: Submit center completions
 - **Limited Reports**: Field collection specific reports
 
 ### Processing
 - **Batch Management**: Create and manage processing batches
-- **Bucket Assignment**: Assign buckets to processing batches
+- **Can Assignment**: Assign cans to processing batches
 - **Quality Tracking**: Monitor processing metrics
 - **Processing Reports**: Batch and efficiency reports
 
@@ -391,7 +391,7 @@ The database uses a **product-separated approach** with comprehensive normalizat
 - `field_collection_drafts` - Daily collection drafts
 
 ### Product-Specific Tables
-- `sap_buckets` / `treacle_buckets` - Individual product containers
+- `sap_cans` / `treacle_cans` - Individual product containers
 - `sap_processing_batches` / `treacle_processing_batches` - Manufacturing batches
 - `sap_packaging_batches` / `treacle_packaging_batches` - Packaging workflows
 - `sap_labeling_batches` / `treacle_labeling_batches` - Final labeling stage
@@ -536,13 +536,13 @@ For support and questions:
 
 ### Field Collection
 - **Draft Management**: Create and manage collection drafts
-- **Bucket Entry**: Record product quality metrics
+- **Can Entry**: Record product quality metrics
 - **Center Management**: Submit center completions
 - **Limited Reports**: Field collection specific reports
 
 ### Processing
 - **Batch Management**: Create and manage processing batches
-- **Bucket Assignment**: Assign buckets to processing batches
+- **Can Assignment**: Assign cans to processing batches
 - **Quality Tracking**: Monitor processing metrics
 - **Processing Reports**: Batch and efficiency reports
 
@@ -568,7 +568,7 @@ The database uses a **product-separated approach** with comprehensive normalizat
 - `field_collection_drafts` - Daily collection drafts
 
 ### Product-Specific Tables
-- `sap_buckets` / `treacle_buckets` - Individual product containers
+- `sap_cans` / `treacle_cans` - Individual product containers
 - `sap_processing_batches` / `treacle_processing_batches` - Manufacturing batches
 - `sap_packaging_batches` / `treacle_packaging_batches` - Packaging workflows
 - `sap_labeling_batches` / `treacle_labeling_batches` - Final labeling stage

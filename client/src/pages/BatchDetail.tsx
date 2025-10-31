@@ -17,10 +17,10 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
-import type { ProcessingBatchDto, ProcessingBucketDto } from "@/lib/apiClient";
+import type { ProcessingBatchDto, ProcessingCanDto } from "@/lib/apiClient";
 import { ChevronRight } from "lucide-react";
 
-const MAX_BUCKET_SELECTION = 15;
+const MAX_CAN_SELECTION = 15;
 
 export default function BatchDetail() {
   const navigate = useNavigate();
@@ -29,12 +29,12 @@ export default function BatchDetail() {
   const [batch, setBatch] = useState<ProcessingBatchDto | null>(null);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [isBatchLoading, setIsBatchLoading] = useState<boolean>(true);
-  const [availableBuckets, setAvailableBuckets] = useState<ProcessingBucketDto[]>([]);
-  const [bucketError, setBucketError] = useState<string | null>(null);
-  const [isBucketLoading, setIsBucketLoading] = useState<boolean>(true);
-  const [selectedBuckets, setSelectedBuckets] = useState<string[]>([]);
+  const [availableCans, setAvailableCans] = useState<ProcessingCanDto[]>([]);
+  const [canError, setCanError] = useState<string | null>(null);
+  const [isCanLoading, setIsCanLoading] = useState<boolean>(true);
+  const [selectedCans, setSelectedCans] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [bucketSearch, setBucketSearch] = useState<string>("");
+  const [canSearch, setCanSearch] = useState<string>("");
   const [productionDialogOpen, setProductionDialogOpen] = useState(false);
   const [productionForm, setProductionForm] = useState({
     totalSapOutput: "",
@@ -63,7 +63,7 @@ export default function BatchDetail() {
     try {
       const remoteBatch = await DataService.getProcessingBatch(id);
       setBatch(remoteBatch);
-      setSelectedBuckets((remoteBatch.bucketIds ?? []).slice(0, MAX_BUCKET_SELECTION));
+      setSelectedCans((remoteBatch.canIds ?? []).slice(0, MAX_CAN_SELECTION));
     } catch (err: unknown) {
       console.error("Failed to load batch", err);
       setBatchError("Unable to load batch. Please try again later.");
@@ -72,23 +72,23 @@ export default function BatchDetail() {
     }
   };
 
-  const loadBuckets = async (id: string) => {
-    setIsBucketLoading(true);
-    setBucketError(null);
+  const loadCans = async (id: string) => {
+    setIsCanLoading(true);
+    setCanError(null);
     try {
-      const buckets = await DataService.getProcessingBuckets("active", id);
-      const normalized = buckets.map((bucket) => ({
-        ...bucket,
-        quantity: Number(bucket.quantity ?? 0),
-        brixValue: bucket.brixValue !== null ? Number(bucket.brixValue) : null,
-        phValue: bucket.phValue !== null ? Number(bucket.phValue) : null,
+      const cans = await DataService.getProcessingCans("active", id);
+      const normalized = cans.map((can) => ({
+        ...can,
+        quantity: Number(can.quantity ?? 0),
+        brixValue: can.brixValue !== null ? Number(can.brixValue) : null,
+        phValue: can.phValue !== null ? Number(can.phValue) : null,
       }));
-      setAvailableBuckets(normalized);
+      setAvailableCans(normalized);
     } catch (err: unknown) {
-      console.error("Failed to load buckets", err);
-      setBucketError("Unable to load buckets. Please try again later.");
+      console.error("Failed to load cans", err);
+      setCanError("Unable to load cans. Please try again later.");
     } finally {
-      setIsBucketLoading(false);
+      setIsCanLoading(false);
     }
   };
 
@@ -97,17 +97,17 @@ export default function BatchDetail() {
       return;
     }
     void loadBatch(batchId);
-    void loadBuckets(batchId);
+    void loadCans(batchId);
   }, [batchId]);
 
   useEffect(() => {
-    if (availableBuckets.length === 0) {
+    if (availableCans.length === 0) {
       return;
     }
-    setSelectedBuckets((prev) =>
-      prev.filter((id) => availableBuckets.some((bucket) => bucket.id === id))
+    setSelectedCans((prev) =>
+      prev.filter((id) => availableCans.some((can) => can.id === id))
     );
-  }, [availableBuckets]);
+  }, [availableCans]);
 
   useEffect(() => {
     if (!batch) {
@@ -125,21 +125,21 @@ export default function BatchDetail() {
     });
   }, [batch]);
 
-  const handleToggleBucket = (bucketId: string) => {
+  const handleToggleCan = (canId: string) => {
     if (!isEditable) {
       return;
     }
-    setSelectedBuckets((prev) => {
-      if (prev.includes(bucketId)) {
-        return prev.filter((id) => id !== bucketId);
+    setSelectedCans((prev) => {
+      if (prev.includes(canId)) {
+        return prev.filter((id) => id !== canId);
       }
 
-      if (prev.length >= MAX_BUCKET_SELECTION) {
-        toast.error(`You can select up to ${MAX_BUCKET_SELECTION} buckets per batch.`);
+      if (prev.length >= MAX_CAN_SELECTION) {
+        toast.error(`You can select up to ${MAX_CAN_SELECTION} cans per batch.`);
         return prev;
       }
 
-      return [...prev, bucketId];
+      return [...prev, canId];
     });
   };
 
@@ -149,14 +149,14 @@ export default function BatchDetail() {
     }
     setIsSaving(true);
     try {
-      const updated = await DataService.updateProcessingBatchBuckets(batchId, selectedBuckets);
+      const updated = await DataService.updateProcessingBatchCans(batchId, selectedCans);
       setBatch(updated);
-      setSelectedBuckets((updated.bucketIds ?? []).slice(0, MAX_BUCKET_SELECTION));
-      await loadBuckets(batchId);
+      setSelectedCans((updated.canIds ?? []).slice(0, MAX_CAN_SELECTION));
+      await loadCans(batchId);
       toast.success("Batch updated successfully");
       navigate("/processing");
     } catch (err: unknown) {
-      console.error("Failed to save batch buckets", err);
+      console.error("Failed to save batch cans", err);
       const message = err instanceof Error ? err.message : "Unable to save batch";
       toast.error(message);
     } finally {
@@ -223,8 +223,8 @@ export default function BatchDetail() {
     if (value === null || value === undefined || !batch) {
       return "Not recorded";
     }
-    const unit = batch.productType === "sap" ? "L" : "kg";
-    const digits = batch.productType === "sap" ? 1 : 2;
+    const unit = batch.productType === "treacle" ? "L" : "kg";
+    const digits = batch.productType === "treacle" ? 1 : 2;
     return `${Number(value).toFixed(digits)} ${unit}`;
   };
 
@@ -239,13 +239,13 @@ export default function BatchDetail() {
     if (value === null || value === undefined || !batch) {
       return "—";
     }
-    const unit = batch.productType === "sap" ? "L" : "kg";
-    const digits = batch.productType === "sap" ? 1 : 2;
+    const unit = batch.productType === "treacle" ? "L" : "kg";
+    const digits = batch.productType === "treacle" ? 1 : 2;
     return `${Number(value).toFixed(digits)} ${unit}`;
   };
 
-  const sortedBuckets = useMemo(() => {
-    const copy = [...availableBuckets];
+  const sortedCans = useMemo(() => {
+    const copy = [...availableCans];
     copy.sort((a, b) => {
       const createdA = a.createdAt ? Date.parse(a.createdAt) : 0;
       const createdB = b.createdAt ? Date.parse(b.createdAt) : 0;
@@ -255,24 +255,24 @@ export default function BatchDetail() {
       return a.id.localeCompare(b.id);
     });
     return copy;
-  }, [availableBuckets]);
+  }, [availableCans]);
 
-  const filteredBuckets = useMemo(() => {
-    const term = bucketSearch.trim().toLowerCase();
+  const filteredCans = useMemo(() => {
+    const term = canSearch.trim().toLowerCase();
     if (!term) {
-      return sortedBuckets;
+      return sortedCans;
     }
 
-    return sortedBuckets.filter((bucket) => {
+    return sortedCans.filter((can) => {
       const values = [
-        bucket.id,
-        bucket.collectionCenter?.name,
-        bucket.collectionCenter?.location,
-        bucket.productType,
-        bucket.draft?.id,
-        bucket.draft?.status,
-        bucket.draft?.date,
-        bucket.quantity?.toString(),
+        can.id,
+        can.collectionCenter?.name,
+        can.collectionCenter?.location,
+        can.productType,
+        can.draft?.id,
+        can.draft?.status,
+        can.draft?.date,
+        can.quantity?.toString(),
       ]
         .filter(Boolean)
         .join(" ")
@@ -280,83 +280,83 @@ export default function BatchDetail() {
 
       return values.includes(term);
     });
-  }, [bucketSearch, sortedBuckets]);
+  }, [canSearch, sortedCans]);
 
-  const selectedBucketsSummary = useMemo(() => {
-    return selectedBuckets.reduce(
-      (acc, bucketId) => {
-        const bucket = availableBuckets.find((item) => item.id === bucketId);
-        if (!bucket) {
+  const selectedCansSummary = useMemo(() => {
+    return selectedCans.reduce(
+      (acc, canId) => {
+        const can = availableCans.find((item) => item.id === canId);
+        if (!can) {
           return acc;
         }
 
         return {
           count: acc.count + 1,
-          totalQuantity: acc.totalQuantity + (bucket.quantity ?? 0),
+          totalQuantity: acc.totalQuantity + (can.quantity ?? 0),
         };
       },
       { count: 0, totalQuantity: 0 }
     );
-  }, [availableBuckets, selectedBuckets]);
+  }, [availableCans, selectedCans]);
 
-  const selectionLimitReached = selectedBuckets.length >= MAX_BUCKET_SELECTION;
-  const noBucketsAvailable = !isBucketLoading && !bucketError && sortedBuckets.length === 0;
+  const selectionLimitReached = selectedCans.length >= MAX_CAN_SELECTION;
+  const noCansAvailable = !isCanLoading && !canError && sortedCans.length === 0;
   const noSearchMatches =
-    !isBucketLoading && !bucketError && sortedBuckets.length > 0 && filteredBuckets.length === 0;
+    !isCanLoading && !canError && sortedCans.length > 0 && filteredCans.length === 0;
 
-  const bucketsToRender = isEditable
-    ? filteredBuckets
-    : filteredBuckets
-        .filter((bucket) => selectedBuckets.includes(bucket.id))
-        .slice(0, MAX_BUCKET_SELECTION);
-  const noSelectedBuckets = !isEditable && bucketsToRender.length === 0;
+  const cansToRender = isEditable
+    ? filteredCans
+    : filteredCans
+        .filter((can) => selectedCans.includes(can.id))
+        .slice(0, MAX_CAN_SELECTION);
+  const noSelectedCans = !isEditable && cansToRender.length === 0;
 
   const selectAllState = useMemo(() => {
-    if (!isEditable || bucketsToRender.length === 0) {
+    if (!isEditable || cansToRender.length === 0) {
       return false;
     }
-    return bucketsToRender.every((bucket) => selectedBuckets.includes(bucket.id));
-  }, [bucketsToRender, selectedBuckets, isEditable]);
+    return cansToRender.every((can) => selectedCans.includes(can.id));
+  }, [cansToRender, selectedCans, isEditable]);
 
   const visibleSelectedQuantity = useMemo(() => {
-    return bucketsToRender
-      .filter((bucket) => selectedBuckets.includes(bucket.id))
-      .reduce((sum, bucket) => sum + (bucket.quantity ?? 0), 0);
-  }, [bucketsToRender, selectedBuckets]);
+    return cansToRender
+      .filter((can) => selectedCans.includes(can.id))
+      .reduce((sum, can) => sum + (can.quantity ?? 0), 0);
+  }, [cansToRender, selectedCans]);
 
   const toggleSelectAllVisible = () => {
     if (!isEditable) {
       return;
     }
 
-    const visibleBucketIds = bucketsToRender.map((bucket) => bucket.id);
-    const allSelected = visibleBucketIds.every((id) => selectedBuckets.includes(id));
+    const visibleCanIds = cansToRender.map((can) => can.id);
+    const allSelected = visibleCanIds.every((id) => selectedCans.includes(id));
 
     if (allSelected) {
-      // Deselect all visible buckets
-      setSelectedBuckets((prev) => prev.filter((id) => !visibleBucketIds.includes(id)));
+      // Deselect all visible cans
+      setSelectedCans((prev) => prev.filter((id) => !visibleCanIds.includes(id)));
     } else {
-      // Select all visible buckets, respecting the limit
-      const toAdd = visibleBucketIds.filter((id) => !selectedBuckets.includes(id));
-      const currentCount = selectedBuckets.length;
-      const canAdd = MAX_BUCKET_SELECTION - currentCount;
+      // Select all visible cans, respecting the limit
+      const toAdd = visibleCanIds.filter((id) => !selectedCans.includes(id));
+      const currentCount = selectedCans.length;
+      const canAdd = MAX_CAN_SELECTION - currentCount;
       
       if (canAdd <= 0) {
-        toast.error(`You can select up to ${MAX_BUCKET_SELECTION} buckets per batch.`);
+        toast.error(`You can select up to ${MAX_CAN_SELECTION} cans per batch.`);
         return;
       }
 
       const addCount = Math.min(toAdd.length, canAdd);
-      setSelectedBuckets((prev) => [...prev, ...toAdd.slice(0, addCount)]);
+      setSelectedCans((prev) => [...prev, ...toAdd.slice(0, addCount)]);
       
       if (toAdd.length > canAdd) {
-        toast.error(`Only ${addCount} more bucket(s) could be selected due to the ${MAX_BUCKET_SELECTION}-bucket limit.`);
+        toast.error(`Only ${addCount} more can(s) could be selected due to the ${MAX_CAN_SELECTION}-can limit.`);
       }
     }
   };
 
-  const productionOutputLabel = batch?.productType === "sap" ? "Sap out after melting (L)" : "Output quantity (kg)";
-  const productionOutputStep = batch?.productType === "sap" ? "0.1" : "0.01";
+  const productionOutputLabel = batch?.productType === "treacle" ? "Treacle output (L)" : "Jaggery output (kg)";
+  const productionOutputStep = batch?.productType === "treacle" ? "0.1" : "0.01";
 
   if (!batchId) {
     return <div className="p-6">No batch selected.</div>;
@@ -466,71 +466,71 @@ export default function BatchDetail() {
 
             <div className="mb-6">
               <p className="text-sm text-muted-foreground">
-                Select buckets from field collection to add to this batch
+                Select cans from field collection to add to this batch
               </p>
             </div>
 
             <div className="space-y-4">
               <h2 className="text-lg font-medium text-gray-800 mb-2 mt-6">
-                {isEditable ? "Available Buckets" : "Selected Buckets"}
+                {isEditable ? "Available Cans" : "Selected Cans"}
               </h2>
 
               <div className="max-w-md w-full md:w-1/2">
                 <Input
-                  value={bucketSearch}
-                  onChange={(event) => setBucketSearch(event.target.value)}
+                  value={canSearch}
+                  onChange={(event) => setCanSearch(event.target.value)}
                   placeholder={
                     isEditable
-                      ? "Search buckets by ID, center, product, or draft"
-                      : "Search within selected buckets"
+                      ? "Search cans by ID, center, product, or draft"
+                      : "Search within selected cans"
                   }
                   className="w-full rounded-lg border border-gray-200 p-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
                 />
               </div>
 
-              {isBucketLoading && (
+              {isCanLoading && (
                 <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-                  Loading buckets…
+                  Loading cans…
                 </div>
               )}
 
-              {bucketError && !isBucketLoading && (
+              {canError && !isCanLoading && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-                  {bucketError}
+                  {canError}
                 </div>
               )}
 
-              {noBucketsAvailable && (
+              {noCansAvailable && (
                 <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-                  No active buckets available.
+                  No active cans available.
                 </div>
               )}
 
               {noSearchMatches && isEditable && (
                 <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-                  No buckets match your search. Adjust the filters to see more buckets.
+                  No cans match your search. Adjust the filters to see more cans.
                 </div>
               )}
 
-              {noSelectedBuckets && (
+              {noSelectedCans && (
                 <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-                  No buckets are selected for this submitted batch.
+                  No cans are selected for this submitted batch.
                 </div>
               )}
 
-              {isEditable && !isBucketLoading && !bucketError && bucketsToRender.length > 0 && (
+              {isEditable && !isCanLoading && !canError && cansToRender.length > 0 && (
                 <div className="flex items-start gap-4 pl-4">
                   <Checkbox
-                    id="select-all-buckets"
+                    id="select-all-cans"
                     checked={selectAllState}
                     onCheckedChange={() => toggleSelectAllVisible()}
                     className="mt-1"
                   />
                   <label
-                    htmlFor="select-all-buckets"
+                    htmlFor="select-all-cans"
                     className="flex-1 text-sm text-muted-foreground cursor-pointer"
                   >
-                    Select all visible buckets ({bucketsToRender.length})
+                    Select all visible cans ({cansToRender.length})
                     {visibleSelectedQuantity > 0 && (
                       <span className="ml-2 font-medium text-gray-800">
                         · Total: {visibleSelectedQuantity.toFixed(1)} kg
@@ -540,36 +540,36 @@ export default function BatchDetail() {
                 </div>
               )}
 
-              {!isBucketLoading && !bucketError &&
-                bucketsToRender.map((bucket) => {
-                  const isChecked = selectedBuckets.includes(bucket.id);
+              {!isCanLoading && !canError &&
+                cansToRender.map((can) => {
+                  const isChecked = selectedCans.includes(can.id);
                   const disableSelection = !isEditable || (selectionLimitReached && !isChecked);
 
                   const info = (
                     <>
                       <div className="flex items-center flex-wrap gap-3 text-sm text-gray-600">
                         <Badge variant="secondary" className="font-mono text-xs uppercase tracking-wide">
-                          Bucket ID · {bucket.id}
+                          Can ID · {can.id}
                         </Badge>
                         <span>
-                          Draft {bucket.draft.id}
+                          Draft {can.draft.id}
                         </span>
                         <span>
-                          Created: {formatDate(bucket.createdAt)}
+                          Created: {formatDate(can.createdAt)}
                         </span>
                       </div>
                       <div className="mt-3 flex items-center flex-wrap gap-3 text-sm text-gray-600">
                         <span className="font-medium text-gray-800">
-                          Collection Center: {bucket.collectionCenter.name}
+                          Collection Center: {can.collectionCenter.name}
                         </span>
                         <span className="px-2 text-gray-300">|</span>
-                        <span>Quantity: {bucket.quantity} kg</span>
+                        <span>Quantity: {can.quantity} kg</span>
                         <span className="px-2 text-gray-300">|</span>
-                        <span>Product: {bucket.productType}</span>
+                        <span>Product: {can.productType}</span>
                         <span className="px-2 text-gray-300">|</span>
-                        <span>Brix: {formatNumber(bucket.brixValue, 1)}</span>
+                        <span>Brix: {formatNumber(can.brixValue, 1)}</span>
                         <span className="px-2 text-gray-300">|</span>
-                        <span>pH: {formatNumber(bucket.phValue, 2)}</span>
+                        <span>pH: {formatNumber(can.phValue, 2)}</span>
                         
                       </div>
                     </>
@@ -577,15 +577,15 @@ export default function BatchDetail() {
 
                   return (
                     <div
-                      key={bucket.id}
+                      key={can.id}
                       className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 mb-4 hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-start gap-4">
                         {isEditable ? (
                           <Checkbox
-                            id={bucket.id}
+                            id={can.id}
                             checked={isChecked}
-                            onCheckedChange={() => handleToggleBucket(bucket.id)}
+                            onCheckedChange={() => handleToggleCan(can.id)}
                             className="mt-1"
                             disabled={disableSelection}
                           />
@@ -594,7 +594,7 @@ export default function BatchDetail() {
                         )}
                         {isEditable ? (
                           <label
-                            htmlFor={bucket.id}
+                            htmlFor={can.id}
                             className={`flex-1 ${
                               disableSelection ? "pointer-events-none opacity-60" : "cursor-pointer"
                             }`}
@@ -613,7 +613,7 @@ export default function BatchDetail() {
             <div className="mt-8 space-y-4">
               {isEditable && selectionLimitReached && (
                 <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-warning-foreground">
-                  You have reached the {MAX_BUCKET_SELECTION}-bucket limit for this batch. Deselect one to pick
+                  You have reached the {MAX_CAN_SELECTION}-can limit for this batch. Deselect one to pick
                   another.
                 </div>
               )}
@@ -639,7 +639,7 @@ export default function BatchDetail() {
                 </DialogHeader>
                 {isEditable ? (
                   <form onSubmit={handleSaveProduction} className="space-y-5">
-                    {batch.productType === "sap" && (
+                    {batch.productType === "treacle" && (
                       <div className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm">
                         <div className="flex items-center justify-between">
                           <span className="text-muted-foreground">Sap in</span>

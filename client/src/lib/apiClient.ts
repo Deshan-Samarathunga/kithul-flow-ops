@@ -5,7 +5,7 @@ const API_BASE_URL = `${normalizedBase}/api`;
 
 type JsonRecord = Record<string, unknown>;
 
-export type ProcessingBucketDto = {
+export type ProcessingCanDto = {
   id: string;
   quantity: number;
   productType: string;
@@ -36,11 +36,11 @@ export type ProcessingBatchDto = {
   createdBy?: string;
   createdAt: string | null;
   updatedAt: string | null;
-  bucketCount: number;
+  canCount: number;
   totalQuantity: number;
   totalSapOutput?: number | null;
   gasUsedKg?: number | null;
-  bucketIds?: string[];
+  canIds?: string[];
 };
 
 export type EligibleProcessingBatchDto = {
@@ -50,7 +50,7 @@ export type EligibleProcessingBatchDto = {
   scheduledDate: string | null;
   totalSapOutput: number | null;
   totalQuantity: number;
-  bucketCount: number;
+  canCount: number;
 };
 
 export type PackagingBatchDto = {
@@ -64,7 +64,7 @@ export type PackagingBatchDto = {
   processingStatus: string;
   startedAt: string | null;
   updatedAt: string | null;
-  bucketCount: number;
+  canCount: number;
   totalQuantity: number;
   totalSapOutput?: number | null;
   finishedQuantity?: number | null;
@@ -89,7 +89,7 @@ export type LabelingBatchDto = {
   processingStatus: string;
   startedAt: string | null;
   updatedAt: string | null;
-  bucketCount: number;
+  canCount: number;
   totalQuantity: number;
   totalSapOutput?: number | null;
   finishedQuantity?: number | null;
@@ -107,17 +107,17 @@ export type EligiblePackagingBatchDto = {
   finishedQuantity: number | null;
   totalSapOutput: number | null;
   totalQuantity: number;
-  bucketCount: number;
+  canCount: number;
 };
 
 export type DailyProductionReport = {
   date: string;
   generatedAt: string;
-  perProduct: Record<"sap" | "treacle", {
-    product: "sap" | "treacle";
+  perProduct: Record<"treacle" | "jaggery", {
+    product: "treacle" | "jaggery";
     fieldCollection: {
       drafts: number;
-      buckets: number;
+      cans: number;
       quantity: number;
       draftIds: string[];
     };
@@ -150,7 +150,7 @@ export type DailyProductionReport = {
   totals: {
     fieldCollection: {
       drafts: number;
-      buckets: number;
+      cans: number;
       quantity: number;
       draftIds: string[];
     };
@@ -343,15 +343,15 @@ class ApiClient {
     return this.request<JsonRecord[]>(`/field-collection/drafts/${draftId}/completed-centers`);
   }
 
-  async getBuckets(draftId: string, centerId: string) {
-    return this.request<JsonRecord[]>(`/field-collection/drafts/${draftId}/centers/${centerId}/buckets`);
+  async getCans(draftId: string, centerId: string) {
+    return this.request<JsonRecord[]>(`/field-collection/drafts/${draftId}/centers/${centerId}/cans`);
   }
 
-  async createBucket(data: {
+  async createCan(data: {
     draftId: string;
     collectionCenterId: string;
     productType: 'sap' | 'treacle';
-    bucketId?: string;
+    canId?: string;
     serialNumber?: string; // 8 digits
     brixValue?: number;
     phValue?: number;
@@ -361,13 +361,13 @@ class ApiClient {
     farmerName?: string;
     collectionTime?: string;
   }) {
-    return this.request<JsonRecord>('/field-collection/buckets', {
+    return this.request<JsonRecord>('/field-collection/cans', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateBucket(bucketId: string, data: {
+  async updateCan(canId: string, data: {
     brixValue?: number;
     phValue?: number;
     quantity?: number;
@@ -376,14 +376,14 @@ class ApiClient {
     farmerName?: string;
     collectionTime?: string;
   }) {
-    return this.request<JsonRecord>(`/field-collection/buckets/${bucketId}`, {
+    return this.request<JsonRecord>(`/field-collection/cans/${canId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteBucket(bucketId: string) {
-    return this.request<undefined>(`/field-collection/buckets/${bucketId}`, {
+  async deleteCan(canId: string) {
+    return this.request<undefined>(`/field-collection/cans/${canId}`, {
       method: 'DELETE',
     });
   }
@@ -393,13 +393,13 @@ class ApiClient {
   }
 
   // Processing API
-  async getProcessingBuckets(params?: { status?: string; forBatch?: string }) {
+  async getProcessingCans(params?: { status?: string; forBatch?: string }) {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.append('status', params.status);
     if (params?.forBatch) searchParams.append('forBatch', params.forBatch);
     const query = searchParams.toString();
-    const endpoint = `/processing/buckets${query ? `?${query}` : ''}`;
-    return this.request<{ buckets: ProcessingBucketDto[] }>(endpoint);
+    const endpoint = `/processing/cans${query ? `?${query}` : ''}`;
+    return this.request<{ cans: ProcessingCanDto[] }>(endpoint);
   }
 
   async getProcessingBatches() {
@@ -434,10 +434,10 @@ class ApiClient {
     });
   }
 
-  async updateProcessingBatchBuckets(batchId: string, bucketIds: string[]) {
-    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/buckets`, {
+  async updateProcessingBatchCans(batchId: string, canIds: string[]) {
+    return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/cans`, {
       method: 'PUT',
-      body: JSON.stringify({ bucketIds }),
+      body: JSON.stringify({ canIds }),
     });
   }
 

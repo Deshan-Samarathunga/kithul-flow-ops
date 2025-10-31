@@ -375,7 +375,7 @@ export default function Admin() {
               <>
              <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 w-full">
-                 <div className="relative flex-1 max-w-md">
+                 <div className="relative flex-1">
                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                    <Input
                      placeholder="Search Centers"
@@ -386,7 +386,7 @@ export default function Admin() {
                  </div>
                  <Button
                    onClick={() => setShowCenterForm(true)}
-                   className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                   className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto sm:ml-auto"
                  >
                    <Plus className="h-4 w-4 mr-2" />
                    Add Center
@@ -584,7 +584,7 @@ export default function Admin() {
             <AlertDialogTitle>Delete Center?</AlertDialogTitle>
             <AlertDialogDescription>
               This action will permanently remove {deleteCenterTarget?.centerName} ({deleteCenterTarget?.centerId}). 
-              This cannot be undone. Centers with associated buckets cannot be deleted.
+              This cannot be undone. Centers with associated cans cannot be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

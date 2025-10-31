@@ -10,17 +10,17 @@ import {
 import {
   resolveDraftContext as svcResolveDraftContext,
   fetchDraftRowByInternalId as svcFetchDraftRowByInternalId,
-  resolveBucketContext as svcResolveBucketContext,
+  resolveCanContext as svcResolveCanContext,
 } from "../services/fieldCollectionService.js";
 
 const DRAFTS_TABLE = "field_collection_drafts";
 const CENTER_COMPLETIONS_TABLE = "field_collection_center_completions";
-const BUCKET_TOTALS_SOURCE = SUPPORTED_PRODUCTS.map(
-  (product) => `SELECT draft_id, quantity FROM ${getTableName("buckets", product)}`
+const CAN_TOTALS_SOURCE = SUPPORTED_PRODUCTS.map(
+  (product) => `SELECT draft_id, quantity FROM ${getTableName("cans", product)}`
 ).join(" UNION ALL ");
-const BUCKETS_SOURCE = SUPPORTED_PRODUCTS.map(
+const CANS_SOURCE = SUPPORTED_PRODUCTS.map(
   (product) =>
-    `SELECT id, bucket_id, draft_id, collection_center_id, product_type, brix_value, ph_value, quantity, created_at, updated_at FROM ${getTableName("buckets", product)}`
+    `SELECT id, can_id, draft_id, collection_center_id, product_type, brix_value, ph_value, quantity, created_at, updated_at FROM ${getTableName("cans", product)}`
 ).join(" UNION ALL ");
 
 const createDraftSchema = z.object({
@@ -31,25 +31,25 @@ const updateDraftSchema = z.object({
   status: z.enum(["draft", "submitted", "completed"]).optional(),
 });
 
-const createBucketSchema = z.object({
+const createCanSchema = z.object({
   draftId: z.string(),
   collectionCenterId: z.string(),
   productType: z.enum(["sap", "treacle"]),
-  // Either provide a full bucketId in the <PRD>-######## format (SAP-######## or TCL-########) or provide a numeric serialNumber (8 digits)
-  bucketId: z.string().trim().min(1).optional(),
+  // Either provide a full canId in the <PRD>-######## format (SAP-######## or TCL-########) or provide a numeric serialNumber (8 digits)
+  canId: z.string().trim().min(1).optional(),
   serialNumber: z.string().regex(/^\d{1,8}$/).optional(),
   brixValue: z.number().min(0).max(100).optional(),
   phValue: z.number().min(0).max(14).optional(),
   quantity: z.number().positive(),
 });
 
-const updateBucketSchema = z.object({
+const updateCanSchema = z.object({
   brixValue: z.number().min(0).max(100).optional(),
   phValue: z.number().min(0).max(14).optional(),
   quantity: z.number().positive().optional(),
 });
 
-const BUCKET_UPDATE_FIELD_MAP: Record<keyof z.infer<typeof updateBucketSchema>, string> = {
+const CAN_UPDATE_FIELD_MAP: Record<keyof z.infer<typeof updateCanSchema>, string> = {
   brixValue: "brix_value",
   phValue: "ph_value",
   quantity: "quantity",
@@ -61,7 +61,7 @@ type DraftSummaryRow = {
   date: Date | string | null;
   status: string;
   created_by_name: string | null;
-  bucket_count: number;
+  can_count: number;
   total_quantity: number;
   created_at: Date | string | null;
   updated_at: Date | string | null;
@@ -154,7 +154,7 @@ async function fetchDraftSummaries(
   }
 
   if (productFilter) {
-    whereClauses.push(`EXISTS (SELECT 1 FROM ${getTableName("buckets", productFilter)} b WHERE b.draft_id = d.id)`);
+    whereClauses.push(`EXISTS (SELECT 1 FROM ${getTableName("cans", productFilter)} b WHERE b.draft_id = d.id)`);
   }
 
   if (createdByFilter) {
@@ -165,9 +165,9 @@ async function fetchDraftSummaries(
   const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
   const query = `
-    WITH bucket_totals AS (
-      SELECT draft_id, COUNT(*) AS bucket_count, COALESCE(SUM(quantity), 0) AS total_quantity
-      FROM (${BUCKET_TOTALS_SOURCE}) AS all_buckets
+    WITH can_totals AS (
+      SELECT draft_id, COUNT(*) AS can_count, COALESCE(SUM(quantity), 0) AS total_quantity
+      FROM (${CAN_TOTALS_SOURCE}) AS all_cans
       GROUP BY draft_id
     )
     SELECT
@@ -176,13 +176,13 @@ async function fetchDraftSummaries(
       d.date,
       d.status,
       u.name AS created_by_name,
-      COALESCE(bucket_totals.bucket_count, 0) AS bucket_count,
-      COALESCE(bucket_totals.total_quantity, 0) AS total_quantity,
+      COALESCE(can_totals.can_count, 0) AS can_count,
+      COALESCE(can_totals.total_quantity, 0) AS total_quantity,
       d.created_at,
       d.updated_at
     FROM ${DRAFTS_TABLE} d
     LEFT JOIN users u ON d.created_by = u.user_id
-    LEFT JOIN bucket_totals ON bucket_totals.draft_id = d.id
+    LEFT JOIN can_totals ON can_totals.draft_id = d.id
     ${whereSql}
     ORDER BY d.date DESC, d.created_at DESC
   `;
@@ -190,7 +190,7 @@ async function fetchDraftSummaries(
   const { rows } = await pool.query(query, params);
   return rows.map((row) => ({
     ...row,
-    bucket_count: toNumber(row.bucket_count),
+    can_count: toNumber(row.can_count),
     total_quantity: toNumber(row.total_quantity),
   })) as DraftSummaryRow[];
 }
@@ -239,10 +239,10 @@ export async function getDraft(req: Request, res: Response) {
     }
 
     const draftRow = context.row;
-    const bucketsQuery = `
+    const cansQuery = `
       SELECT
         b.id,
-        b.bucket_id,
+        b.can_id,
         b.product_type,
         b.brix_value,
         b.ph_value,
@@ -250,32 +250,32 @@ export async function getDraft(req: Request, res: Response) {
         cc.center_id,
         cc.center_name,
         cc.location
-      FROM (${BUCKETS_SOURCE}) b
+      FROM (${CANS_SOURCE}) b
       JOIN collection_centers cc ON b.collection_center_id = cc.id
       WHERE b.draft_id = $1
-      ORDER BY cc.center_name, b.bucket_id
+      ORDER BY cc.center_name, b.can_id
     `;
 
-    const { rows: bucketRows } = await pool.query(bucketsQuery, [draftRow.id]);
+    const { rows: canRows } = await pool.query(cansQuery, [draftRow.id]);
 
-    const centers = bucketRows.reduce<Record<string, any>>((acc, bucket) => {
-      const key = bucket.center_name as string;
+    const centers = canRows.reduce<Record<string, any>>((acc, can) => {
+      const key = can.center_name as string;
       if (!acc[key]) {
         acc[key] = {
-          name: bucket.center_name,
-          centerId: bucket.center_id,
-          location: bucket.location,
-          buckets: [],
+          name: can.center_name,
+          centerId: can.center_id,
+          location: can.location,
+          cans: [],
         };
       }
-      acc[key].buckets.push({
-        id: bucket.bucket_id,
-        productType: bucket.product_type,
-        brixValue: bucket.brix_value,
-        phValue: bucket.ph_value,
-        quantity: bucket.quantity,
-        collectionCenterId: bucket.center_id,
-        collectionCenterName: bucket.center_name,
+      acc[key].cans.push({
+        id: can.can_id,
+        productType: can.product_type,
+        brixValue: can.brix_value,
+        phValue: can.ph_value,
+        quantity: can.quantity,
+        collectionCenterId: can.center_id,
+        collectionCenterName: can.center_name,
       });
       return acc;
     }, {});
@@ -285,8 +285,8 @@ export async function getDraft(req: Request, res: Response) {
       product_type: null,
       created_at: toIsoString(draftRow.created_at),
       updated_at: toIsoString(draftRow.updated_at),
-      buckets: Object.values(centers),
-      bucketCount: bucketRows.length,
+      cans: Object.values(centers),
+      canCount: canRows.length,
     };
 
     res.json(response);
@@ -396,7 +396,7 @@ export async function deleteDraft(req: Request, res: Response) {
     }
 
     for (const product of SUPPORTED_PRODUCTS) {
-      await pool.query(`DELETE FROM ${getTableName("buckets", product)} WHERE draft_id = $1`, [context.row.id]);
+      await pool.query(`DELETE FROM ${getTableName("cans", product)} WHERE draft_id = $1`, [context.row.id]);
     }
     await pool.query(`DELETE FROM ${CENTER_COMPLETIONS_TABLE} WHERE draft_id = $1`, [draftId]);
     const { rows } = await pool.query(`DELETE FROM ${DRAFTS_TABLE} WHERE draft_id = $1 RETURNING *`, [draftId]);
@@ -408,8 +408,8 @@ export async function deleteDraft(req: Request, res: Response) {
   }
 }
 
-async function resolveBucketContext(bucketId: string) {
-  return svcResolveBucketContext(bucketId) as any;
+async function resolveCanContext(canId: string) {
+  return svcResolveCanContext(canId) as any;
 }
 
 export async function listCenters(_req: Request, res: Response) {
@@ -485,12 +485,21 @@ export async function getCompletedCenters(req: Request, res: Response) {
   }
 }
 
-export async function createBucket(req: Request, res: Response) {
+export async function createCan(req: Request, res: Response) {
   const client = await pool.connect();
+  let canTable: string | undefined;
+  let productType: string | undefined;
+  let validated: z.infer<typeof createCanSchema> | undefined;
   try {
-    const validated = createBucketSchema.parse(req.body ?? {});
-    const productType = validated.productType;
-    const bucketTable = getTableName("buckets", productType);
+    validated = createCanSchema.parse(req.body ?? {});
+    productType = validated.productType;
+    // Map field collection product types to processing product types for table lookup
+    // "sap" -> "treacle" (sap_cans are processed to treacle)
+    // "treacle" -> "jaggery" (treacle_cans are processed to jaggery)
+    const processingProductType: ProductSlug = productType === "sap" ? "treacle" : "jaggery";
+    canTable = getTableName("cans", processingProductType);
+    
+    console.log(`Creating can: productType=${productType}, processingProductType=${processingProductType}, canTable=${canTable}`);
 
     const ctx = await resolveDraftContext(validated.draftId);
     if (!ctx) return res.status(404).json({ error: "Draft not found" });
@@ -502,44 +511,59 @@ export async function createBucket(req: Request, res: Response) {
       return res.status(400).json({ error: "Draft is missing an internal identifier" });
     }
 
+    // Try to find collection center by center_id, numeric id, or name
     const centerQuery = `
-      SELECT id, center_id FROM collection_centers
-      WHERE center_id = $1 OR CAST(id AS TEXT) = $1 OR LOWER(center_name) = LOWER($1)
+      SELECT id, center_id, center_name FROM collection_centers
+      WHERE is_active = true 
+        AND (
+          center_id = $1 
+          OR CAST(id AS TEXT) = $1 
+          OR LOWER(TRIM(center_name)) = LOWER(TRIM($1))
+          OR LOWER(TRIM(center_name)) LIKE LOWER(TRIM($1)) || '%'
+        )
       LIMIT 1
     `;
     const { rows: centerRows } = await client.query(centerQuery, [validated.collectionCenterId]);
     const centerRow = centerRows[0];
-    if (!centerRow) return res.status(400).json({ error: "Invalid collection center ID" });
+    if (!centerRow) {
+      // Log available centers for debugging
+      const { rows: allCenters } = await client.query(
+        `SELECT id, center_id, center_name, is_active FROM collection_centers LIMIT 10`
+      );
+      console.error(`Collection center not found for ID: ${validated.collectionCenterId}`);
+      console.error(`Available centers:`, allCenters.map(c => ({ id: c.id, center_id: c.center_id, name: c.center_name, active: c.is_active })));
+      return res.status(400).json({ error: `Invalid collection center ID: ${validated.collectionCenterId}` });
+    }
 
-    // Build/validate bucket id
+    // Build/validate can id
     const prefix = productType === "sap" ? "SAP-" : "TCL-";
-    let bucketId = (validated.bucketId ?? "").trim();
+    let canId = (validated.canId ?? "").trim();
 
-    if (!bucketId) {
+    if (!canId) {
       if (!validated.serialNumber) {
-        return res.status(400).json({ error: "Either bucketId or serialNumber (8 digits) is required" });
+        return res.status(400).json({ error: "Either canId or serialNumber (8 digits) is required" });
       }
       const padded = String(validated.serialNumber).padStart(8, '0');
-      bucketId = `${prefix}${padded}`;
+      canId = `${prefix}${padded}`;
     }
 
     const pattern = productType === "sap" ? /^SAP-\d{8}$/ : /^TCL-\d{8}$/;
-    if (!pattern.test(bucketId)) {
-      return res.status(400).json({ error: `Invalid bucket ID format. Expected ${prefix}########` });
+    if (!pattern.test(canId)) {
+      return res.status(400).json({ error: `Invalid can ID format. Expected ${prefix}########` });
     }
 
     // Enforce uniqueness
-    const { rows: existingBuckets } = await client.query(`SELECT 1 FROM ${bucketTable} WHERE bucket_id = $1 LIMIT 1`, [bucketId]);
-    if (existingBuckets.length > 0) {
-      return res.status(409).json({ error: "Bucket ID already exists" });
+    const { rows: existingCans } = await client.query(`SELECT 1 FROM ${canTable} WHERE can_id = $1 LIMIT 1`, [canId]);
+    if (existingCans.length > 0) {
+      return res.status(409).json({ error: "Can ID already exists" });
     }
 
     await client.query("BEGIN");
     try { await client.query("SET LOCAL session_replication_role = replica"); } catch {}
 
     const insertQuery = `
-      INSERT INTO ${bucketTable} (
-        bucket_id,
+      INSERT INTO ${canTable} (
+        can_id,
         draft_id,
         collection_center_id,
         product_type,
@@ -552,7 +576,7 @@ export async function createBucket(req: Request, res: Response) {
     `;
 
     const { rows } = await client.query(insertQuery, [
-      bucketId,
+      canId,
       draftInternalId,
       centerRow.id,
       productType,
@@ -568,20 +592,33 @@ export async function createBucket(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: "Validation error", details: error.issues });
     }
-    console.error("Error creating bucket:", error);
-    res.status(500).json({ error: "Failed to create bucket" });
+    console.error("Error creating can:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error("Error details:", { 
+      errorMessage, 
+      errorStack, 
+      productType: productType || "unknown", 
+      canTable: canTable || "unknown",
+      validatedData: validated ? { 
+        draftId: validated.draftId, 
+        collectionCenterId: validated.collectionCenterId,
+        productType: validated.productType 
+      } : "validation failed"
+    });
+    res.status(500).json({ error: "Failed to create can", details: errorMessage });
   } finally {
     client.release();
   }
 }
 
-export async function updateBucket(req: Request, res: Response) {
+export async function updateCan(req: Request, res: Response) {
   try {
-    const { bucketId } = req.params as { bucketId: string };
-    const validated = updateBucketSchema.parse(req.body ?? {});
+    const { canId } = req.params as { canId: string };
+    const validated = updateCanSchema.parse(req.body ?? {});
 
-    const context = await resolveBucketContext(bucketId);
-    if (!context) return res.status(404).json({ error: "Bucket not found" });
+    const context = await resolveCanContext(canId);
+    if (!context) return res.status(404).json({ error: "Can not found" });
 
     const draftRow = await fetchDraftRowByInternalId((context.row as any).draft_id);
     if (!draftRow) return res.status(404).json({ error: "Draft not found" });
@@ -589,17 +626,17 @@ export async function updateBucket(req: Request, res: Response) {
 
     const fields = Object.entries(validated)
       .filter((entry): entry is [keyof typeof validated, number] => entry[1] !== undefined)
-      .map(([key, value], index) => ({ column: BUCKET_UPDATE_FIELD_MAP[key as keyof typeof validated], value, index }));
+      .map(([key, value], index) => ({ column: CAN_UPDATE_FIELD_MAP[key as keyof typeof validated], value, index }));
     if (fields.length === 0) return res.status(400).json({ error: "No fields to update" });
 
     const setClause = fields.map(({ column, index }) => `${column} = $${index + 1}`).join(", ");
     const params: Array<number | string> = fields.map((field) => field.value as number);
-    params.push(bucketId);
+    params.push(canId);
 
     const updateQuery = `
       UPDATE ${context.table}
       SET ${setClause}, updated_at = CURRENT_TIMESTAMP
-      WHERE bucket_id = $${params.length}
+      WHERE can_id = $${params.length}
       RETURNING *
     `;
 
@@ -609,25 +646,25 @@ export async function updateBucket(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: "Validation error", details: error.issues });
     }
-    console.error("Error updating bucket:", error);
-    res.status(500).json({ error: "Failed to update bucket" });
+    console.error("Error updating can:", error);
+    res.status(500).json({ error: "Failed to update can" });
   }
 }
 
-export async function deleteBucket(req: Request, res: Response) {
+export async function deleteCan(req: Request, res: Response) {
   try {
-    const { bucketId } = req.params as { bucketId: string };
-    const context = await resolveBucketContext(bucketId);
-    if (!context) return res.status(404).json({ error: "Bucket not found" });
+    const { canId } = req.params as { canId: string };
+    const context = await resolveCanContext(canId);
+    if (!context) return res.status(404).json({ error: "Can not found" });
 
     const draftRow = await fetchDraftRowByInternalId((context.row as any).draft_id);
     if (!draftRow) return res.status(404).json({ error: "Draft not found" });
     if (!canAccessDraft((req as any).user, draftRow)) return res.status(403).json({ error: "Forbidden" });
 
-    const { rows } = await pool.query(`DELETE FROM ${context.table} WHERE bucket_id = $1 RETURNING *`, [bucketId]);
-    res.json({ message: "Bucket deleted successfully", bucket: rows[0] });
+    const { rows } = await pool.query(`DELETE FROM ${context.table} WHERE can_id = $1 RETURNING *`, [canId]);
+    res.json({ message: "Can deleted successfully", can: rows[0] });
   } catch (error) {
-    console.error("Error deleting bucket:", error);
-    res.status(500).json({ error: "Failed to delete bucket" });
+    console.error("Error deleting can:", error);
+    res.status(500).json({ error: "Failed to delete can" });
   }
 }

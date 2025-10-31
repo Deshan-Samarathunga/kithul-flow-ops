@@ -50,8 +50,8 @@ export default function LabelingBatchDetail() {
   const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
 
   const productType = normalizeStatus(batch?.productType);
-  const isSap = productType === "sap";
   const isTreacle = productType === "treacle";
+  const isJaggery = productType === "jaggery";
   const normalizedStatus = normalizeStatus(batch?.labelingStatus);
   const isCompleted = normalizedStatus === "completed";
 
@@ -125,7 +125,7 @@ export default function LabelingBatchDetail() {
   };
 
   const buildPayloadFromForm = () => {
-    if (!isSap && !isTreacle) {
+    if (!isTreacle && !isJaggery) {
       toast.error("Unsupported product type for labeling batch.");
       return null;
     }
@@ -146,7 +146,7 @@ export default function LabelingBatchDetail() {
     payload.stickerQuantity = sticker;
     payload.corrugatedCartonQuantity = carton;
 
-    if (isSap) {
+    if (isTreacle) {
       const shrink = parseNumber(form.shrinkSleeveQuantity);
       const neck = parseNumber(form.neckTagQuantity);
       if (Number.isNaN(shrink) || Number.isNaN(neck) || shrink < 0 || neck < 0) {
@@ -230,16 +230,16 @@ export default function LabelingBatchDetail() {
     </div>
   );
 
-  const productLabel = isSap ? "Sap" : isTreacle ? "Treacle" : "";
+  const productLabel = isTreacle ? "Treacle" : isJaggery ? "Jaggery" : "";
   const scheduledDate = formatDate(batch?.scheduledDate ?? batch?.startedAt);
-  const bucketCountDisplay =
-    typeof batch?.bucketCount === "number" ? batch.bucketCount.toLocaleString() : "—";
+  const canCountDisplay =
+    typeof batch?.canCount === "number" ? batch.canCount.toLocaleString() : "—";
   const finishedQuantityDisplay =
     batch?.finishedQuantity !== null && batch?.finishedQuantity !== undefined
       ? `${Number(batch.finishedQuantity).toLocaleString(undefined, {
           minimumFractionDigits: 0,
           maximumFractionDigits: 2,
-        })} ${isSap ? "L" : "kg"}`
+        })} ${isTreacle ? "L" : "kg"}`
       : "—";
   const statusLabelText = isCompleted ? "Submitted" : formatStatusLabelText(batch?.labelingStatus);
   const statusBadgeClass = isCompleted ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700";
@@ -273,7 +273,7 @@ export default function LabelingBatchDetail() {
                   <span className="text-gray-300">|</span>
                   <span>Finished Qty: {finishedQuantityDisplay}</span>
                   <span className="text-gray-300">|</span>
-                  <span>Buckets: {bucketCountDisplay}</span>
+                  <span>Cans: {canCountDisplay}</span>
                   <span className="text-gray-300">|</span>
                   {isCompleted ? (
                     <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">Submitted</span>
@@ -322,8 +322,8 @@ export default function LabelingBatchDetail() {
                     <p className="text-sm font-semibold text-gray-800 mt-1">{finishedQuantityDisplay}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase">Bucket Count</p>
-                    <p className="text-sm font-semibold text-gray-800 mt-1">{bucketCountDisplay}</p>
+                    <p className="text-xs font-medium text-gray-500 uppercase">Can Count</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-1">{canCountDisplay}</p>
                   </div>
                 </div>
               </section>
@@ -371,7 +371,7 @@ export default function LabelingBatchDetail() {
                   </div>
                 </div>
 
-                {isSap && (
+                {isTreacle && (
                   <div className="grid grid-cols-2 gap-6 mt-6">
                     <div className="space-y-2">
                       <Label htmlFor="shrinkSleeveQuantity">Shrink Sleeve Quantity</Label>

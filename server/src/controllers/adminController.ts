@@ -12,7 +12,7 @@ import {
   getCenterById as svcGetCenterById,
   insertCenter as svcInsertCenter,
   updateCenterDynamic as svcUpdateCenterDynamic,
-  centerHasBuckets as svcCenterHasBuckets,
+  centerHasCans as svcCenterHasCans,
   deleteCenterById as svcDeleteCenterById,
 } from "../services/adminService.js";
 import { normalizeRole, isAllowedRole, ROLE_LIST } from "../roles.js";
@@ -452,10 +452,10 @@ export async function deleteCenter(req: Request, res: Response) {
       return res.status(404).json({ error: "Center not found" });
     }
 
-    const hasBuckets = await svcCenterHasBuckets(centerId);
-    if (hasBuckets) {
-      return res.status(400).json({ 
-        error: "Cannot delete center with associated buckets. Deactivate instead." 
+    const hasCans = await svcCenterHasCans(centerId);
+    if (hasCans) {
+      return res.status(400).json({
+        error: "Cannot delete center with associated cans. Deactivate instead."
       });
     }
 

@@ -1,5 +1,5 @@
 -- Sample data focused on the Field Collection module for local development.
--- Run after applying the schema migrations to populate drafts and buckets
+-- Run after applying the schema migrations to populate drafts and cans
 -- referenced by the Field Collection page only.
 -- ---------------------------------------------------------------------------
 
@@ -30,7 +30,7 @@ VALUES
   ('treacle-2025-08-27', '2025-08-27', 'completed', 'field02')
 ON CONFLICT (draft_id) DO NOTHING;
 
--- ---------- 50 SAP buckets ----------
+-- ---------- 50 SAP cans ----------
 WITH sap_centers AS (
   SELECT id, ROW_NUMBER() OVER (ORDER BY center_id) AS rn
   FROM public.collection_centers
@@ -45,8 +45,8 @@ sap_meta AS (
     GREATEST((SELECT COUNT(*) FROM sap_drafts), 1) AS draft_count,
     GREATEST((SELECT COUNT(*) FROM sap_centers), 1) AS center_count
 )
-INSERT INTO public.sap_buckets (
-  bucket_id,
+INSERT INTO public.sap_cans (
+  can_id,
   draft_id,
   collection_center_id,
   product_type,
@@ -71,9 +71,9 @@ FROM (
 ) AS series
 JOIN sap_drafts d ON d.rn = series.draft_idx
 JOIN sap_centers c ON c.rn = series.center_idx
-ON CONFLICT (bucket_id) DO NOTHING;
+ON CONFLICT (can_id) DO NOTHING;
 
--- ---------- 50 Treacle buckets ----------
+-- ---------- 50 Treacle cans ----------
 WITH treacle_centers AS (
   SELECT id, ROW_NUMBER() OVER (ORDER BY center_id) AS rn
   FROM public.collection_centers
@@ -88,8 +88,8 @@ treacle_meta AS (
     GREATEST((SELECT COUNT(*) FROM treacle_drafts), 1) AS draft_count,
     GREATEST((SELECT COUNT(*) FROM treacle_centers), 1) AS center_count
 )
-INSERT INTO public.treacle_buckets (
-  bucket_id,
+INSERT INTO public.treacle_cans (
+  can_id,
   draft_id,
   collection_center_id,
   product_type,
@@ -114,7 +114,7 @@ FROM (
 ) AS series
 JOIN treacle_drafts d ON d.rn = series.draft_idx
 JOIN treacle_centers c ON c.rn = series.center_idx
-ON CONFLICT (bucket_id) DO NOTHING;
+ON CONFLICT (can_id) DO NOTHING;
 
 -- Deterministic center completion timestamps for UI examples
 INSERT INTO public.field_collection_center_completions (draft_id, center_id, completed_at)
