@@ -14,9 +14,7 @@ const ROLE_SYNONYMS: Record<string, Role> = {
   labelling: "Labeling",
 };
 
-const ROLE_LOOKUP = new Map<string, Role>(
-  ROLE_LIST.map((role) => [role.toLowerCase(), role])
-);
+const ROLE_LOOKUP = new Map<string, Role>(ROLE_LIST.map((role) => [role.toLowerCase(), role]));
 
 for (const [alias, canonical] of Object.entries(ROLE_SYNONYMS)) {
   ROLE_LOOKUP.set(alias.toLowerCase(), canonical);

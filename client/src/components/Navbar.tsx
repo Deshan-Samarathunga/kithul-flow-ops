@@ -29,7 +29,13 @@ const roleColors = {
   Labeling: "bg-pink-100 text-pink-800",
 };
 
-export const Navbar = ({ userRole = "Guest", userName = "User", userAvatar, onLogout, breadcrumb }: NavbarProps) => {
+export const Navbar = ({
+  userRole = "Guest",
+  userName = "User",
+  userAvatar,
+  onLogout,
+  breadcrumb,
+}: NavbarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -157,37 +163,42 @@ export const Navbar = ({ userRole = "Guest", userName = "User", userAvatar, onLo
 
         {/* Breadcrumbs - Center (Desktop) */}
         <div className="hidden lg:flex items-center space-x-2 text-sm text-white/90 absolute left-1/2 -translate-x-1/2">
-          {breadcrumb ? (
-            breadcrumb
-          ) : (
-            breadcrumbs.map((crumb, index) => (
-              <div key={crumb.path} className="flex items-center">
-                {index > 0 && <ChevronRight className="h-4 w-4 mx-1 opacity-60" />}
-                <Link
-                  to={crumb.path}
-                  className={`hover:text-white transition-colors truncate max-w-[120px] ${
-                    index === breadcrumbs.length - 1 ? "font-semibold text-black" : ""
-                  }`}
-                >
-                  {crumb.label}
-                </Link>
-              </div>
-            ))
-          )}
+          {breadcrumb
+            ? breadcrumb
+            : breadcrumbs.map((crumb, index) => (
+                <div key={crumb.path} className="flex items-center">
+                  {index > 0 && <ChevronRight className="h-4 w-4 mx-1 opacity-60" />}
+                  <Link
+                    to={crumb.path}
+                    className={`hover:text-white transition-colors truncate max-w-[120px] ${
+                      index === breadcrumbs.length - 1 ? "font-semibold text-black" : ""
+                    }`}
+                  >
+                    {crumb.label}
+                  </Link>
+                </div>
+              ))}
         </div>
 
         {/* User Menu - Right */}
         <div className="flex items-center space-x-2 sm:space-x-3">
-          <Badge variant="secondary" className="hidden sm:inline-flex bg-white/20 text-white border-white/30 text-xs">
+          <Badge
+            variant="secondary"
+            className="hidden sm:inline-flex bg-white/20 text-white border-white/30 text-xs"
+          >
             {userRole}
           </Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-white/20 hover:bg-white/30">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full bg-white/20 hover:bg-white/30"
+              >
                 <Avatar className="h-8 w-8">
                   {avatarSrc ? (
-                  <AvatarImage src={avatarSrc} alt={userName} className="object-cover" />
-                ) : null}
+                    <AvatarImage src={avatarSrc} alt={userName} className="object-cover" />
+                  ) : null}
                   <AvatarFallback className="bg-white text-primary text-sm font-semibold">
                     {initials}
                   </AvatarFallback>
@@ -214,4 +225,3 @@ export const Navbar = ({ userRole = "Guest", userName = "User", userAvatar, onLo
     </nav>
   );
 };
-

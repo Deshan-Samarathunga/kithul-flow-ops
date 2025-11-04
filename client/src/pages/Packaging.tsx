@@ -33,7 +33,9 @@ import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
 import { usePersistentState } from "@/hooks/usePersistentState";
 
 function normalizePackagingStatus(status: string | null | undefined) {
-  return String(status ?? "").trim().toLowerCase();
+  return String(status ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 export default function Packaging() {
@@ -46,12 +48,21 @@ export default function Packaging() {
   const [eligibleProcessing, setEligibleProcessing] = useState<EligibleProcessingBatchDto[]>([]);
   const [eligibleSearch, setEligibleSearch] = useState<string>("");
   const [isEligibleLoading, setIsEligibleLoading] = useState<boolean>(false);
-  const [createDialog, setCreateDialog] = usePersistentState<{ open: boolean }>("packaging.createDialogOpen", { open: false });
+  const [createDialog, setCreateDialog] = usePersistentState<{ open: boolean }>(
+    "packaging.createDialogOpen",
+    { open: false },
+  );
   const [selectedProcessingId, setSelectedProcessingId] = useState<string | null>(null);
   const [isCreatingPackagingBatch, setIsCreatingPackagingBatch] = useState<boolean>(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ packagingId: string; batchNumber: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    packagingId: string;
+    batchNumber: string;
+  } | null>(null);
   const [isDeletingPackaging, setIsDeletingPackaging] = useState<boolean>(false);
-  const [reportDialogOpen, setReportDialogOpen] = usePersistentState<boolean>("packaging.reportDialogOpen", false);
+  const [reportDialogOpen, setReportDialogOpen] = usePersistentState<boolean>(
+    "packaging.reportDialogOpen",
+    false,
+  );
   const [submittingPackagingId, setSubmittingPackagingId] = useState<string | null>(null);
   const [reopeningPackagingId, setReopeningPackagingId] = useState<string | null>(null);
   const userRole = user?.role || "Guest";
@@ -60,12 +71,18 @@ export default function Packaging() {
     const raw = import.meta.env.VITE_API_URL || "";
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
-  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
+  const userAvatar = user?.profileImage
+    ? new URL(user.profileImage, apiBase).toString()
+    : undefined;
   const [searchQuery, setSearchQuery] = usePersistentState<string>("packaging.search", "");
   const [productTypeFilter, setProductTypeFilter] = useState<"treacle" | "jaggery">(() => {
-    const qp = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("productType") : null;
+    const qp =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("productType")
+        : null;
     if (qp === "jaggery" || qp === "treacle") return qp;
-    const saved = typeof window !== "undefined" ? window.localStorage.getItem("packaging.productType") : null;
+    const saved =
+      typeof window !== "undefined" ? window.localStorage.getItem("packaging.productType") : null;
     return saved === "jaggery" || saved === "treacle" ? saved : "treacle";
   });
 
@@ -356,7 +373,7 @@ export default function Packaging() {
 
   const formatVolumeByProduct = (
     value: number | null | undefined,
-    productType: PackagingBatchDto["productType"]
+    productType: PackagingBatchDto["productType"],
   ) => {
     if (value === null || value === undefined) {
       return "—";
@@ -376,7 +393,10 @@ export default function Packaging() {
     if (Number.isInteger(numeric)) {
       return numeric.toLocaleString();
     }
-    return numeric.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return numeric.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
   };
 
   const filteredBatches = batches.filter((batch) => {
@@ -420,8 +440,7 @@ export default function Packaging() {
   );
 
   const hasCompletedPackaging = useMemo(
-    () =>
-      (packagingMetrics.treacle.completed ?? 0) + (packagingMetrics.jaggery.completed ?? 0) > 0,
+    () => (packagingMetrics.treacle.completed ?? 0) + (packagingMetrics.jaggery.completed ?? 0) > 0,
     [packagingMetrics],
   );
 
@@ -433,7 +452,10 @@ export default function Packaging() {
     setReportDialogOpen(true);
   };
 
-  const renderPackagingCard = (batch: PackagingBatchDto, variant: "active" | "completed" = "active") => {
+  const renderPackagingCard = (
+    batch: PackagingBatchDto,
+    variant: "active" | "completed" = "active",
+  ) => {
     const productType = (batch.productType || "").toLowerCase();
     const isTreacle = productType === "treacle";
     const isJaggery = productType === "jaggery";
@@ -447,16 +469,20 @@ export default function Packaging() {
         batch.lidQuantity !== null &&
         batch.lidQuantity !== undefined
       : isJaggery
-      ? hasFinishedQuantity &&
-        batch.alufoilQuantity !== null &&
-        batch.alufoilQuantity !== undefined &&
-        batch.vacuumBagQuantity !== null &&
-        batch.vacuumBagQuantity !== undefined &&
-        batch.parchmentPaperQuantity !== null &&
-        batch.parchmentPaperQuantity !== undefined
-      : false;
+        ? hasFinishedQuantity &&
+          batch.alufoilQuantity !== null &&
+          batch.alufoilQuantity !== undefined &&
+          batch.vacuumBagQuantity !== null &&
+          batch.vacuumBagQuantity !== undefined &&
+          batch.parchmentPaperQuantity !== null &&
+          batch.parchmentPaperQuantity !== undefined
+        : false;
 
-    const productLabel = productType ? (productType === "treacle" ? "Treacle" : productType.charAt(0).toUpperCase() + productType.slice(1)) : "Treacle";
+    const productLabel = productType
+      ? productType === "treacle"
+        ? "Treacle"
+        : productType.charAt(0).toUpperCase() + productType.slice(1)
+      : "Treacle";
     const showFinishedQuantity = variant === "completed";
     return (
       <div
@@ -471,10 +497,13 @@ export default function Packaging() {
               Batch ID: <span className="font-semibold text-foreground">{batch.batchNumber}</span>
             </span>
             <span className="px-2 text-muted-foreground/40">|</span>
-            <span className="font-medium">{formatDate(batch.startedAt ?? batch.scheduledDate)}</span>
+            <span className="font-medium">
+              {formatDate(batch.startedAt ?? batch.scheduledDate)}
+            </span>
             <span className="px-2 text-muted-foreground/40">|</span>
             <span>
-              Total quantity: {formatVolumeByProduct(batch.totalSapOutput ?? null, batch.productType)}
+              Total quantity:{" "}
+              {formatVolumeByProduct(batch.totalSapOutput ?? null, batch.productType)}
             </span>
             <span className="px-2 text-muted-foreground/40">|</span>
             <span>Cans: {batch.canCount}</span>
@@ -500,7 +529,9 @@ export default function Packaging() {
                 size="sm"
                 className="bg-cta hover:bg-cta-hover text-cta-foreground flex-1 sm:flex-none"
                 onClick={() => void handleSubmitPackagingBatch(batch)}
-                disabled={submittingPackagingId === packagingId || !hasPackagingData || !packagingId}
+                disabled={
+                  submittingPackagingId === packagingId || !hasPackagingData || !packagingId
+                }
               >
                 {submittingPackagingId === packagingId ? (
                   <>
@@ -517,14 +548,14 @@ export default function Packaging() {
                 variant="destructive"
                 size="sm"
                 className="sm:flex-none"
-                onClick={() =>
-                  setDeleteTarget({ packagingId, batchNumber: batch.batchNumber })
-                }
+                onClick={() => setDeleteTarget({ packagingId, batchNumber: batch.batchNumber })}
                 disabled={isDeletingPackaging && deleteTarget?.packagingId === packagingId}
                 aria-label={`Delete batch ${batch.batchNumber}`}
                 title={`Delete batch ${batch.batchNumber}`}
               >
-                <span className="inline-flex items-center gap-1"><Trash2 className="h-4 w-4" /> Delete</span>
+                <span className="inline-flex items-center gap-1">
+                  <Trash2 className="h-4 w-4" /> Delete
+                </span>
               </Button>
             )}
             {variant === "completed" && (
@@ -553,7 +584,12 @@ export default function Packaging() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+      <Navbar
+        userRole={userRole}
+        userName={userName}
+        userAvatar={userAvatar}
+        onLogout={handleLogout}
+      />
       <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="space-y-6 sm:space-y-8">
           <div className="space-y-2">
@@ -631,17 +667,18 @@ export default function Packaging() {
               <span className="font-medium text-foreground">{selectedProductLabel} Overview</span>
               <span className="px-2 text-muted-foreground/40">·</span>
               <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#e74c3c" }} /> Active: {selectedMetrics.active}
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#e74c3c" }} />{" "}
+                Active: {selectedMetrics.active}
               </span>
               <span className="px-2 text-muted-foreground/40">·</span>
               <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#2ecc71" }} /> Completed: {selectedMetrics.completed}
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#2ecc71" }} />{" "}
+                Completed: {selectedMetrics.completed}
               </span>
             </div>
           </div>
 
           <div className="space-y-4">
-
             {isLoading && (
               <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
                 Loading packaging batches…
@@ -680,7 +717,9 @@ export default function Packaging() {
                       No completed batches yet.
                     </div>
                   ) : (
-                    completedPackagingBatches.map((batch) => renderPackagingCard(batch, "completed"))
+                    completedPackagingBatches.map((batch) =>
+                      renderPackagingCard(batch, "completed"),
+                    )
                   )}
                 </section>
               </div>
@@ -689,7 +728,11 @@ export default function Packaging() {
         </div>
       </main>
 
-  <ReportGenerationDialog stage="packaging" open={reportDialogOpen} onOpenChange={setReportDialogOpen} />
+      <ReportGenerationDialog
+        stage="packaging"
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+      />
 
       <Dialog
         open={createDialog.open}
@@ -753,7 +796,7 @@ export default function Packaging() {
                         "w-full rounded-lg border p-4 text-left transition-colors",
                         isSelected
                           ? "border-cta bg-cta/10 text-foreground"
-                          : "hover:border-cta hover:bg-muted"
+                          : "hover:border-cta hover:bg-muted",
                       )}
                     >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -767,7 +810,11 @@ export default function Packaging() {
                         <div className="text-sm text-muted-foreground sm:text-right">
                           <div>{(batch.productType ?? "").toUpperCase() || "—"}</div>
                           <div>
-                            Collected: {typeof batch.totalQuantity === "number" ? batch.totalQuantity.toFixed(1) : "—"} kg
+                            Collected:{" "}
+                            {typeof batch.totalQuantity === "number"
+                              ? batch.totalQuantity.toFixed(1)
+                              : "—"}{" "}
+                            kg
                           </div>
                           {typeof batch.totalSapOutput === "number" && (
                             <div>Sap out: {batch.totalSapOutput.toFixed(1)} L</div>
@@ -818,8 +865,9 @@ export default function Packaging() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Packaging Batch?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove packaging and any downstream labeling data linked to batch {deleteTarget?.batchNumber}.
-              You can recreate it later from the list of completed processing batches.
+              This will remove packaging and any downstream labeling data linked to batch{" "}
+              {deleteTarget?.batchNumber}. You can recreate it later from the list of completed
+              processing batches.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -834,12 +882,6 @@ export default function Packaging() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </div>
   );
 }
-
-
-
-
-

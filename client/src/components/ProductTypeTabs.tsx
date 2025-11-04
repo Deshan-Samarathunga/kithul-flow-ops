@@ -15,7 +15,7 @@ export function ProductTypeTabs({ value, onChange, className }: ProductTypeTabsP
           "px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150",
           value === "treacle"
             ? "bg-cta hover:bg-cta-hover text-cta-foreground"
-            : "text-foreground hover:bg-gray-200"
+            : "text-foreground hover:bg-gray-200",
         )}
         aria-pressed={value === "treacle"}
         onClick={() => onChange("treacle")}
@@ -28,7 +28,7 @@ export function ProductTypeTabs({ value, onChange, className }: ProductTypeTabsP
           "px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150",
           value === "jaggery"
             ? "bg-cta hover:bg-cta-hover text-cta-foreground"
-            : "text-foreground hover:bg-gray-200"
+            : "text-foreground hover:bg-gray-200",
         )}
         aria-pressed={value === "jaggery"}
         onClick={() => onChange("jaggery")}
@@ -38,4 +38,3 @@ export function ProductTypeTabs({ value, onChange, className }: ProductTypeTabsP
     </div>
   );
 }
-

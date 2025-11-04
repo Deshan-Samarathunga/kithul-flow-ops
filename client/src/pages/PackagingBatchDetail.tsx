@@ -11,7 +11,9 @@ import DataService from "@/lib/dataService";
 import type { PackagingBatchDto } from "@/lib/apiClient";
 
 function normalizeStatus(status: string | null | undefined) {
-  return String(status ?? "").trim().toLowerCase();
+  return String(status ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 export default function PackagingBatchDetail() {
@@ -38,7 +40,9 @@ export default function PackagingBatchDetail() {
     const raw = import.meta.env.VITE_API_URL || "";
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
-  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
+  const userAvatar = user?.profileImage
+    ? new URL(user.profileImage, apiBase).toString()
+    : undefined;
 
   const productType = normalizeStatus(batch?.productType);
   const isTreacle = productType === "treacle";
@@ -95,11 +99,17 @@ export default function PackagingBatchDetail() {
           ? String(batch.finishedQuantity)
           : "",
       bottleQuantity:
-        batch.bottleQuantity !== null && batch.bottleQuantity !== undefined ? String(batch.bottleQuantity) : "",
+        batch.bottleQuantity !== null && batch.bottleQuantity !== undefined
+          ? String(batch.bottleQuantity)
+          : "",
       lidQuantity:
-        batch.lidQuantity !== null && batch.lidQuantity !== undefined ? String(batch.lidQuantity) : "",
+        batch.lidQuantity !== null && batch.lidQuantity !== undefined
+          ? String(batch.lidQuantity)
+          : "",
       alufoilQuantity:
-        batch.alufoilQuantity !== null && batch.alufoilQuantity !== undefined ? String(batch.alufoilQuantity) : "",
+        batch.alufoilQuantity !== null && batch.alufoilQuantity !== undefined
+          ? String(batch.alufoilQuantity)
+          : "",
       vacuumBagQuantity:
         batch.vacuumBagQuantity !== null && batch.vacuumBagQuantity !== undefined
           ? String(batch.vacuumBagQuantity)
@@ -268,7 +278,9 @@ export default function PackagingBatchDetail() {
 
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {isLoading ? (
-          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Loading packaging batch…</div>
+          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
+            Loading packaging batch…
+          </div>
         ) : error ? (
           <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive">
             {error}
@@ -282,7 +294,9 @@ export default function PackagingBatchDetail() {
                   <span>Scheduled for {formatDate(batch.scheduledDate ?? batch.startedAt)}</span>
                   <span className="px-2 text-muted-foreground/40">|</span>
                   {isCompleted ? (
-                    <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">Submitted</span>
+                    <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">
+                      Submitted
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">Status {batch.packagingStatus}</span>
                   )}
@@ -314,7 +328,8 @@ export default function PackagingBatchDetail() {
                 <div>
                   <h2 className="text-base font-medium text-foreground">Finished Output</h2>
                   <p className="text-sm text-muted-foreground">
-                    Enter the final packaged quantity so downstream teams know exactly what is ready.
+                    Enter the final packaged quantity so downstream teams know exactly what is
+                    ready.
                   </p>
                 </div>
                 <div className="grid gap-4 sm:max-w-xs">
@@ -418,7 +433,10 @@ export default function PackagingBatchDetail() {
                         step="1"
                         value={form.parchmentPaperQuantity}
                         onChange={(event) =>
-                          setForm((prev) => ({ ...prev, parchmentPaperQuantity: event.target.value }))
+                          setForm((prev) => ({
+                            ...prev,
+                            parchmentPaperQuantity: event.target.value,
+                          }))
                         }
                         required
                         disabled={isCompleted && !isReopening}
@@ -451,7 +469,9 @@ export default function PackagingBatchDetail() {
             )}
           </>
         ) : (
-          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Packaging batch not found.</div>
+          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
+            Packaging batch not found.
+          </div>
         )}
       </div>
     </div>

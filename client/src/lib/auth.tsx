@@ -25,7 +25,10 @@ function normalizeUser(data: unknown): User | null {
   }
 
   const record = data as Record<string, unknown>;
-  const normalizedUserId = toOptionalString(record.userId) ?? toOptionalString(record.user_id) ?? toOptionalString(record.username);
+  const normalizedUserId =
+    toOptionalString(record.userId) ??
+    toOptionalString(record.user_id) ??
+    toOptionalString(record.username);
   if (!normalizedUserId) {
     throw new Error("Invalid user payload: missing userId");
   }
@@ -42,7 +45,8 @@ function normalizeUser(data: unknown): User | null {
     userId,
     name: toOptionalString(record.name) ?? null,
     role: toOptionalString(record.role) ?? null,
-    profileImage: toOptionalString(record.profileImage) ?? toOptionalString(record.profile_image) ?? null,
+    profileImage:
+      toOptionalString(record.profileImage) ?? toOptionalString(record.profile_image) ?? null,
   };
 }
 
@@ -139,8 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (next: User | null) => {
       setUser(next);
       if (next && (token || localStorage.getItem("auth"))) {
-        const authToken =
-          token ?? JSON.parse(localStorage.getItem("auth") || "{}")?.token ?? null;
+        const authToken = token ?? JSON.parse(localStorage.getItem("auth") || "{}")?.token ?? null;
         if (authToken) {
           localStorage.setItem("auth", JSON.stringify({ user: next, token: authToken }));
         }
@@ -148,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("auth");
       }
     },
-    [token]
+    [token],
   );
 
   function logout() {
@@ -174,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthContext>(
     () => ({ user, token, login, logout, updateUser, hydrated }),
-    [user, token, updateUser, hydrated]
+    [user, token, updateUser, hydrated],
   );
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

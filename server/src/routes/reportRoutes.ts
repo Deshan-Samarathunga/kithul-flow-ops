@@ -8,7 +8,7 @@ router.get(
   "/daily",
   auth,
   requireRole("Field Collection", "Processing", "Packaging", "Labeling", "Administrator"),
-  dailyReport as any
+  dailyReport as any,
 );
 
 export default router;

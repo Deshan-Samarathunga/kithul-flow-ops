@@ -1,13 +1,13 @@
-import { apiClient } from './apiClient';
+import { apiClient } from "./apiClient";
 
 // Data service to replace mock data with real API calls
 export class DataService {
   // Drafts
-  static async getDrafts(productType?: 'sap' | 'treacle', status?: string) {
+  static async getDrafts(productType?: "sap" | "treacle", status?: string) {
     try {
       return await apiClient.getDrafts({ productType, status });
     } catch (error) {
-      console.error('Error fetching drafts:', error);
+      console.error("Error fetching drafts:", error);
       throw error;
     }
   }
@@ -16,7 +16,7 @@ export class DataService {
     try {
       return await apiClient.getDraft(draftId);
     } catch (error) {
-      console.error('Error fetching draft:', error);
+      console.error("Error fetching draft:", error);
       throw error;
     }
   }
@@ -29,16 +29,16 @@ export class DataService {
       }
       return await apiClient.createDraft(payload);
     } catch (error) {
-      console.error('Error creating draft:', error);
+      console.error("Error creating draft:", error);
       throw error;
     }
   }
 
-  static async updateDraft(draftId: string, status: 'draft' | 'submitted' | 'completed') {
+  static async updateDraft(draftId: string, status: "draft" | "submitted" | "completed") {
     try {
       return await apiClient.updateDraft(draftId, { status });
     } catch (error) {
-      console.error('Error updating draft:', error);
+      console.error("Error updating draft:", error);
       throw error;
     }
   }
@@ -47,7 +47,7 @@ export class DataService {
     try {
       return await apiClient.deleteDraft(draftId);
     } catch (error) {
-      console.error('Error deleting draft:', error);
+      console.error("Error deleting draft:", error);
       throw error;
     }
   }
@@ -56,7 +56,7 @@ export class DataService {
     try {
       return await apiClient.submitDraft(draftId);
     } catch (error) {
-      console.error('Error submitting draft:', error);
+      console.error("Error submitting draft:", error);
       throw error;
     }
   }
@@ -65,7 +65,7 @@ export class DataService {
     try {
       return await apiClient.reopenDraft(draftId);
     } catch (error) {
-      console.error('Error reopening draft:', error);
+      console.error("Error reopening draft:", error);
       throw error;
     }
   }
@@ -74,7 +74,7 @@ export class DataService {
     try {
       return await apiClient.submitCenter(draftId, centerId);
     } catch (error) {
-      console.error('Error submitting center:', error);
+      console.error("Error submitting center:", error);
       throw error;
     }
   }
@@ -83,7 +83,7 @@ export class DataService {
     try {
       return await apiClient.reopenCenter(draftId, centerId);
     } catch (error) {
-      console.error('Error reopening center:', error);
+      console.error("Error reopening center:", error);
       throw error;
     }
   }
@@ -92,7 +92,7 @@ export class DataService {
     try {
       return await apiClient.getCompletedCenters(draftId);
     } catch (error) {
-      console.error('Error fetching completed centers:', error);
+      console.error("Error fetching completed centers:", error);
       throw error;
     }
   }
@@ -102,7 +102,7 @@ export class DataService {
     try {
       return await apiClient.getCans(draftId, centerId);
     } catch (error) {
-      console.error('Error fetching cans:', error);
+      console.error("Error fetching cans:", error);
       throw error;
     }
   }
@@ -110,7 +110,7 @@ export class DataService {
   static async createCan(data: {
     draftId: string;
     collectionCenterId: string;
-    productType: 'sap' | 'treacle';
+    productType: "sap" | "treacle";
     brixValue?: number;
     phValue?: number;
     quantity: number;
@@ -122,24 +122,27 @@ export class DataService {
     try {
       return await apiClient.createCan(data);
     } catch (error) {
-      console.error('Error creating can:', error);
+      console.error("Error creating can:", error);
       throw error;
     }
   }
 
-  static async updateCan(canId: string, data: {
-    brixValue?: number;
-    phValue?: number;
-    quantity?: number;
-    qrCode?: string;
-    farmerId?: string;
-    farmerName?: string;
-    collectionTime?: string;
-  }) {
+  static async updateCan(
+    canId: string,
+    data: {
+      brixValue?: number;
+      phValue?: number;
+      quantity?: number;
+      qrCode?: string;
+      farmerId?: string;
+      farmerName?: string;
+      collectionTime?: string;
+    },
+  ) {
     try {
       return await apiClient.updateCan(canId, data);
     } catch (error) {
-      console.error('Error updating can:', error);
+      console.error("Error updating can:", error);
       throw error;
     }
   }
@@ -148,7 +151,7 @@ export class DataService {
     try {
       return await apiClient.deleteCan(canId);
     } catch (error) {
-      console.error('Error deleting can:', error);
+      console.error("Error deleting can:", error);
       throw error;
     }
   }
@@ -158,17 +161,17 @@ export class DataService {
     try {
       return await apiClient.getCollectionCenters();
     } catch (error) {
-      console.error('Error fetching collection centers:', error);
+      console.error("Error fetching collection centers:", error);
       throw error;
     }
   }
 
-  static async getProcessingCans(status: string = 'active', batchId?: string) {
+  static async getProcessingCans(status: string = "active", batchId?: string) {
     try {
       const response = await apiClient.getProcessingCans({ status, forBatch: batchId });
       return response.cans;
     } catch (error) {
-      console.error('Error fetching processing cans:', error);
+      console.error("Error fetching processing cans:", error);
       throw error;
     }
   }
@@ -178,16 +181,20 @@ export class DataService {
       const response = await apiClient.getProcessingBatches();
       return response.batches;
     } catch (error) {
-      console.error('Error fetching processing batches:', error);
+      console.error("Error fetching processing batches:", error);
       throw error;
     }
   }
 
-  static async createProcessingBatch(data?: { scheduledDate?: string; productType?: string; notes?: string }) {
+  static async createProcessingBatch(data?: {
+    scheduledDate?: string;
+    productType?: string;
+    notes?: string;
+  }) {
     try {
       return await apiClient.createProcessingBatch(data);
     } catch (error) {
-      console.error('Error creating processing batch:', error);
+      console.error("Error creating processing batch:", error);
       throw error;
     }
   }
@@ -196,7 +203,7 @@ export class DataService {
     try {
       return await apiClient.getProcessingBatch(batchId);
     } catch (error) {
-      console.error('Error fetching processing batch:', error);
+      console.error("Error fetching processing batch:", error);
       throw error;
     }
   }
@@ -210,12 +217,12 @@ export class DataService {
       notes?: string;
       totalSapOutput?: number | null;
       gasUsedKg?: number | null;
-    }
+    },
   ) {
     try {
       return await apiClient.updateProcessingBatch(batchId, data);
     } catch (error) {
-      console.error('Error updating processing batch:', error);
+      console.error("Error updating processing batch:", error);
       throw error;
     }
   }
@@ -224,7 +231,7 @@ export class DataService {
     try {
       return await apiClient.updateProcessingBatchCans(batchId, canIds);
     } catch (error) {
-      console.error('Error updating processing batch cans:', error);
+      console.error("Error updating processing batch cans:", error);
       throw error;
     }
   }
@@ -233,7 +240,7 @@ export class DataService {
     try {
       return await apiClient.submitProcessingBatch(batchId);
     } catch (error) {
-      console.error('Error submitting processing batch:', error);
+      console.error("Error submitting processing batch:", error);
       throw error;
     }
   }
@@ -242,7 +249,7 @@ export class DataService {
     try {
       return await apiClient.reopenProcessingBatch(batchId);
     } catch (error) {
-      console.error('Error reopening processing batch:', error);
+      console.error("Error reopening processing batch:", error);
       throw error;
     }
   }
@@ -251,7 +258,7 @@ export class DataService {
     try {
       await apiClient.deleteProcessingBatch(batchId);
     } catch (error) {
-      console.error('Error deleting processing batch:', error);
+      console.error("Error deleting processing batch:", error);
       throw error;
     }
   }
@@ -261,7 +268,7 @@ export class DataService {
       const response = await apiClient.getPackagingBatches();
       return response.batches;
     } catch (error) {
-      console.error('Error fetching packaging batches:', error);
+      console.error("Error fetching packaging batches:", error);
       throw error;
     }
   }
@@ -270,7 +277,7 @@ export class DataService {
     try {
       return await apiClient.getPackagingBatch(packagingId);
     } catch (error) {
-      console.error('Error fetching packaging batch:', error);
+      console.error("Error fetching packaging batch:", error);
       throw error;
     }
   }
@@ -280,7 +287,7 @@ export class DataService {
       const response = await apiClient.getEligibleProcessingBatchesForPackaging({ productType });
       return response.batches;
     } catch (error) {
-      console.error('Error fetching eligible processing batches for packaging:', error);
+      console.error("Error fetching eligible processing batches for packaging:", error);
       throw error;
     }
   }
@@ -289,7 +296,7 @@ export class DataService {
     try {
       return await apiClient.createPackagingBatch({ processingBatchId });
     } catch (error) {
-      console.error('Error creating packaging batch:', error);
+      console.error("Error creating packaging batch:", error);
       throw error;
     }
   }
@@ -298,7 +305,7 @@ export class DataService {
     try {
       await apiClient.deletePackagingBatch(packagingId);
     } catch (error) {
-      console.error('Error deleting packaging batch:', error);
+      console.error("Error deleting packaging batch:", error);
       throw error;
     }
   }
@@ -314,12 +321,12 @@ export class DataService {
       alufoilQuantity?: number | null;
       vacuumBagQuantity?: number | null;
       parchmentPaperQuantity?: number | null;
-    }
+    },
   ) {
     try {
       return await apiClient.updatePackagingBatch(packagingId, data);
     } catch (error) {
-      console.error('Error updating packaging batch:', error);
+      console.error("Error updating packaging batch:", error);
       throw error;
     }
   }
@@ -329,7 +336,7 @@ export class DataService {
       const response = await apiClient.getLabelingBatches();
       return response.batches;
     } catch (error) {
-      console.error('Error fetching labeling batches:', error);
+      console.error("Error fetching labeling batches:", error);
       throw error;
     }
   }
@@ -338,7 +345,7 @@ export class DataService {
     try {
       return await apiClient.getLabelingBatch(packagingId);
     } catch (error) {
-      console.error('Error fetching labeling batch:', error);
+      console.error("Error fetching labeling batch:", error);
       throw error;
     }
   }
@@ -348,7 +355,7 @@ export class DataService {
       const response = await apiClient.getEligiblePackagingBatchesForLabeling({ productType });
       return response.batches;
     } catch (error) {
-      console.error('Error fetching eligible packaging batches for labeling:', error);
+      console.error("Error fetching eligible packaging batches for labeling:", error);
       throw error;
     }
   }
@@ -357,7 +364,7 @@ export class DataService {
     try {
       return await apiClient.createLabelingBatch({ packagingId });
     } catch (error) {
-      console.error('Error creating labeling batch:', error);
+      console.error("Error creating labeling batch:", error);
       throw error;
     }
   }
@@ -366,7 +373,7 @@ export class DataService {
     try {
       await apiClient.deleteLabelingBatch(packagingId);
     } catch (error) {
-      console.error('Error deleting labeling batch:', error);
+      console.error("Error deleting labeling batch:", error);
       throw error;
     }
   }
@@ -380,12 +387,12 @@ export class DataService {
       shrinkSleeveQuantity?: number | null;
       neckTagQuantity?: number | null;
       corrugatedCartonQuantity?: number | null;
-    }
+    },
   ) {
     try {
       return await apiClient.updateLabelingBatch(packagingId, data);
     } catch (error) {
-      console.error('Error updating labeling batch:', error);
+      console.error("Error updating labeling batch:", error);
       throw error;
     }
   }
@@ -394,7 +401,7 @@ export class DataService {
     try {
       return await apiClient.getDailyProductionReport({ date });
     } catch (error) {
-      console.error('Error generating daily production report:', error);
+      console.error("Error generating daily production report:", error);
       throw error;
     }
   }
@@ -404,7 +411,7 @@ export class DataService {
     try {
       return await apiClient.healthCheck();
     } catch (error) {
-      console.error('Error checking API health:', error);
+      console.error("Error checking API health:", error);
       throw error;
     }
   }

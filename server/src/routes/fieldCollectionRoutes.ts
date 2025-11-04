@@ -28,7 +28,7 @@ const router = express.Router();
 const DRAFTS_TABLE = "field_collection_drafts";
 const CENTER_COMPLETIONS_TABLE = "field_collection_center_completions";
 const CAN_TOTALS_SOURCE = SUPPORTED_PRODUCTS.map(
-  (product) => `SELECT draft_id, quantity FROM ${getTableName("cans", product)}`
+  (product) => `SELECT draft_id, quantity FROM ${getTableName("cans", product)}`,
 ).join(" UNION ALL ");
 const CANS_SOURCE = SUPPORTED_PRODUCTS.map(
   (product) =>
@@ -177,7 +177,9 @@ async function fetchDraftSummaries(
   }
 
   if (productFilter) {
-    whereClauses.push(`EXISTS (SELECT 1 FROM ${getTableName("cans", productFilter)} b WHERE b.draft_id = d.id)`);
+    whereClauses.push(
+      `EXISTS (SELECT 1 FROM ${getTableName("cans", productFilter)} b WHERE b.draft_id = d.id)`,
+    );
   }
 
   if (createdByFilter) {
@@ -244,90 +246,129 @@ async function resolveCanContext(canId: string): Promise<CanContext | null> {
   return null;
 }
 
-router.get("/drafts", auth, requireRole("Field Collection", "Administrator"), listFieldDrafts as any);
+router.get(
+  "/drafts",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  listFieldDrafts as any,
+);
 
-router.get("/drafts/:draftId", auth, requireRole("Field Collection", "Administrator"), getFieldDraft as any);
+router.get(
+  "/drafts/:draftId",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  getFieldDraft as any,
+);
 
-router.post("/drafts", auth, requireRole("Field Collection", "Administrator"), createFieldDraft as any);
+router.post(
+  "/drafts",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  createFieldDraft as any,
+);
 
-router.put("/drafts/:draftId", auth, requireRole("Field Collection", "Administrator"), updateFieldDraft as any);
+router.put(
+  "/drafts/:draftId",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  updateFieldDraft as any,
+);
 
-router.delete("/drafts/:draftId", auth, requireRole("Field Collection", "Administrator"), deleteFieldDraft as any);
+router.delete(
+  "/drafts/:draftId",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  deleteFieldDraft as any,
+);
 
-router.post("/drafts/:draftId/submit", auth, requireRole("Field Collection", "Administrator"), async (req, res) => {
-  try {
-    const { draftId } = req.params;
-    const context = await resolveDraftContext(draftId);
-    if (!context) {
-      return res.status(404).json({ error: "Draft not found" });
-    }
+router.post(
+  "/drafts/:draftId/submit",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  async (req, res) => {
+    try {
+      const { draftId } = req.params;
+      const context = await resolveDraftContext(draftId);
+      if (!context) {
+        return res.status(404).json({ error: "Draft not found" });
+      }
 
-    if (!canAccessDraft((req as any).user, context.row)) {
-      return res.status(403).json({ error: "Forbidden" });
-    }
+      if (!canAccessDraft((req as any).user, context.row)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
 
       const { rows: completionRows } = await pool.query(
-      `SELECT center_id FROM ${CENTER_COMPLETIONS_TABLE} WHERE draft_id = $1`,
-      [draftId],
-    );
+        `SELECT center_id FROM ${CENTER_COMPLETIONS_TABLE} WHERE draft_id = $1`,
+        [draftId],
+      );
 
-    const completedCount = (completionRows ?? []).filter(
-      (row) => typeof row?.center_id === "string" && row.center_id.trim().length > 0,
-    ).length;
+      const completedCount = (completionRows ?? []).filter(
+        (row) => typeof row?.center_id === "string" && row.center_id.trim().length > 0,
+      ).length;
 
-    if (completedCount < 1) {
-      return res.status(400).json({
-        error: "At least one center must be submitted before submitting the draft",
-      });
+      if (completedCount < 1) {
+        return res.status(400).json({
+          error: "At least one center must be submitted before submitting the draft",
+        });
+      }
+
+      const { rows } = await pool.query(
+        `UPDATE ${DRAFTS_TABLE} SET status = 'submitted', updated_at = CURRENT_TIMESTAMP WHERE draft_id = $1 RETURNING *`,
+        [draftId],
+      );
+      res.json({ message: "Draft submitted successfully", draft: rows[0] });
+    } catch (error) {
+      console.error("Error submitting draft:", error);
+      res.status(500).json({ error: "Failed to submit draft" });
     }
+  },
+);
 
-    const { rows } = await pool.query(
-      `UPDATE ${DRAFTS_TABLE} SET status = 'submitted', updated_at = CURRENT_TIMESTAMP WHERE draft_id = $1 RETURNING *`,
-      [draftId]
-    );
-    res.json({ message: "Draft submitted successfully", draft: rows[0] });
-  } catch (error) {
-    console.error("Error submitting draft:", error);
-    res.status(500).json({ error: "Failed to submit draft" });
-  }
-});
+router.post(
+  "/drafts/:draftId/reopen",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  async (req, res) => {
+    try {
+      const { draftId } = req.params;
+      const context = await resolveDraftContext(draftId);
+      if (!context) {
+        return res.status(404).json({ error: "Draft not found" });
+      }
 
-router.post("/drafts/:draftId/reopen", auth, requireRole("Field Collection", "Administrator"), async (req, res) => {
-  try {
-    const { draftId } = req.params;
-    const context = await resolveDraftContext(draftId);
-    if (!context) {
-      return res.status(404).json({ error: "Draft not found" });
+      if (!canAccessDraft((req as any).user, context.row)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const { rows } = await pool.query(
+        `UPDATE ${DRAFTS_TABLE} SET status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE draft_id = $1 RETURNING *`,
+        [draftId],
+      );
+      res.json({ message: "Draft reopened successfully", draft: rows[0] });
+    } catch (error) {
+      console.error("Error reopening draft:", error);
+      res.status(500).json({ error: "Failed to reopen draft" });
     }
+  },
+);
 
-    if (!canAccessDraft((req as any).user, context.row)) {
-      return res.status(403).json({ error: "Forbidden" });
-    }
+router.get(
+  "/drafts/:draftId/centers/:centerId/cans",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  async (req, res) => {
+    try {
+      const { draftId, centerId } = req.params;
+      const context = await resolveDraftContext(draftId);
+      if (!context) {
+        return res.status(404).json({ error: "Draft not found" });
+      }
 
-    const { rows } = await pool.query(
-      `UPDATE ${DRAFTS_TABLE} SET status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE draft_id = $1 RETURNING *`,
-      [draftId]
-    );
-    res.json({ message: "Draft reopened successfully", draft: rows[0] });
-  } catch (error) {
-    console.error("Error reopening draft:", error);
-    res.status(500).json({ error: "Failed to reopen draft" });
-  }
-});
+      if (!canAccessDraft((req as any).user, context.row)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
 
-router.get("/drafts/:draftId/centers/:centerId/cans", auth, requireRole("Field Collection", "Administrator"), async (req, res) => {
-  try {
-    const { draftId, centerId } = req.params;
-    const context = await resolveDraftContext(draftId);
-    if (!context) {
-      return res.status(404).json({ error: "Draft not found" });
-    }
-
-    if (!canAccessDraft((req as any).user, context.row)) {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-
-    const query = `
+      const query = `
       SELECT
         b.id,
         b.can_id,
@@ -345,26 +386,57 @@ router.get("/drafts/:draftId/centers/:centerId/cans", auth, requireRole("Field C
       ORDER BY b.can_id
     `;
 
-    const { rows } = await pool.query(query, [draftId, centerId]);
-    res.json(rows);
-  } catch (error) {
-    console.error("Error fetching cans:", error);
-    res.status(500).json({ error: "Failed to fetch cans" });
-  }
-});
+      const { rows } = await pool.query(query, [draftId, centerId]);
+      res.json(rows);
+    } catch (error) {
+      console.error("Error fetching cans:", error);
+      res.status(500).json({ error: "Failed to fetch cans" });
+    }
+  },
+);
 
 router.post("/cans", auth, requireRole("Field Collection", "Administrator"), createFieldCan as any);
 
-router.put("/cans/:canId", auth, requireRole("Field Collection", "Administrator"), updateFieldCan as any);
+router.put(
+  "/cans/:canId",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  updateFieldCan as any,
+);
 
-router.delete("/cans/:canId", auth, requireRole("Field Collection", "Administrator"), deleteFieldCan as any);
+router.delete(
+  "/cans/:canId",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  deleteFieldCan as any,
+);
 
-router.get("/centers", auth, requireRole("Field Collection", "Administrator"), listFieldCenters as any);
+router.get(
+  "/centers",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  listFieldCenters as any,
+);
 
-router.post("/drafts/:draftId/centers/:centerId/submit", auth, requireRole("Field Collection", "Administrator"), submitFieldCenter as any);
+router.post(
+  "/drafts/:draftId/centers/:centerId/submit",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  submitFieldCenter as any,
+);
 
-router.post("/drafts/:draftId/centers/:centerId/reopen", auth, requireRole("Field Collection", "Administrator"), reopenFieldCenter as any);
+router.post(
+  "/drafts/:draftId/centers/:centerId/reopen",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  reopenFieldCenter as any,
+);
 
-router.get("/drafts/:draftId/completed-centers", auth, requireRole("Field Collection", "Administrator"), getFieldCompletedCenters as any);
+router.get(
+  "/drafts/:draftId/completed-centers",
+  auth,
+  requireRole("Field Collection", "Administrator"),
+  getFieldCompletedCenters as any,
+);
 
 export default router;

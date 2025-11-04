@@ -51,7 +51,7 @@ async function main() {
              name = EXCLUDED.name,
              role = EXCLUDED.role
        RETURNING id, user_id, role`,
-      [user.userId, hash, user.name, user.role]
+      [user.userId, hash, user.name, user.role],
     );
 
     console.log(`${user.role} ready:`, rows[0]);

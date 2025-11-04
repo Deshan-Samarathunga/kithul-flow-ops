@@ -113,40 +113,43 @@ export type EligiblePackagingBatchDto = {
 export type DailyProductionReport = {
   date: string;
   generatedAt: string;
-  perProduct: Record<"treacle" | "jaggery", {
-    product: "treacle" | "jaggery";
-    fieldCollection: {
-      drafts: number;
-      cans: number;
-      quantity: number;
-      draftIds: string[];
-    };
-    processing: {
-      totalBatches: number;
-      completedBatches: number;
-      totalOutput: number;
-      totalInput: number;
-      totalGasUsedKg: number;
-    };
-    packaging: {
-      totalBatches: number;
-      completedBatches: number;
-      finishedQuantity: number;
-      totalBottleQuantity: number;
-      totalLidQuantity: number;
-      totalAlufoilQuantity: number;
-      totalVacuumBagQuantity: number;
-      totalParchmentPaperQuantity: number;
-    };
-    labeling: {
-      totalBatches: number;
-      completedBatches: number;
-      totalStickerQuantity: number;
-      totalShrinkSleeveQuantity: number;
-      totalNeckTagQuantity: number;
-      totalCorrugatedCartonQuantity: number;
-    };
-  }>;
+  perProduct: Record<
+    "treacle" | "jaggery",
+    {
+      product: "treacle" | "jaggery";
+      fieldCollection: {
+        drafts: number;
+        cans: number;
+        quantity: number;
+        draftIds: string[];
+      };
+      processing: {
+        totalBatches: number;
+        completedBatches: number;
+        totalOutput: number;
+        totalInput: number;
+        totalGasUsedKg: number;
+      };
+      packaging: {
+        totalBatches: number;
+        completedBatches: number;
+        finishedQuantity: number;
+        totalBottleQuantity: number;
+        totalLidQuantity: number;
+        totalAlufoilQuantity: number;
+        totalVacuumBagQuantity: number;
+        totalParchmentPaperQuantity: number;
+      };
+      labeling: {
+        totalBatches: number;
+        completedBatches: number;
+        totalStickerQuantity: number;
+        totalShrinkSleeveQuantity: number;
+        totalNeckTagQuantity: number;
+        totalCorrugatedCartonQuantity: number;
+      };
+    }
+  >;
   totals: {
     fieldCollection: {
       drafts: number;
@@ -192,7 +195,7 @@ class ApiClient {
   }
 
   private loadToken() {
-    const auth = localStorage.getItem('auth');
+    const auth = localStorage.getItem("auth");
     if (auth) {
       try {
         const parsed = JSON.parse(auth);
@@ -210,23 +213,19 @@ class ApiClient {
     // The auth system handles localStorage, we just update our internal state
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     // Refresh token from localStorage on each request
     this.loadToken();
-    
+
     const url = `${this.baseURL}${endpoint}`;
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(options.headers as Record<string, string>),
     };
 
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`;
     }
-
 
     const response = await fetch(url, {
       ...options,
@@ -237,11 +236,11 @@ class ApiClient {
       let message = `HTTP ${response.status}`;
       try {
         const errorJson = await response.json();
-        if (errorJson && typeof errorJson === 'object') {
+        if (errorJson && typeof errorJson === "object") {
           message = errorJson.error || message;
         }
       } catch {
-        const errorText = await response.text().catch(() => '');
+        const errorText = await response.text().catch(() => "");
         if (errorText) {
           message = errorText;
         }
@@ -253,8 +252,8 @@ class ApiClient {
       return undefined as T;
     }
 
-    const contentType = response.headers.get('content-type') ?? '';
-    if (!contentType.includes('application/json')) {
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json")) {
       return undefined as T;
     }
 
@@ -263,8 +262,8 @@ class ApiClient {
 
   // Authentication
   async login(credentials: { userId: string; password: string }) {
-    const response = await this.request<{ token: string; user: JsonRecord }>('/auth/login', {
-      method: 'POST',
+    const response = await this.request<{ token: string; user: JsonRecord }>("/auth/login", {
+      method: "POST",
       body: JSON.stringify(credentials),
     });
     this.setToken(response.token);
@@ -276,18 +275,18 @@ class ApiClient {
   }
 
   async getCurrentUser() {
-    return this.request<JsonRecord>('/auth/me');
+    return this.request<JsonRecord>("/auth/me");
   }
 
   // Field Collection API
   async getDrafts(params?: { productType?: string; status?: string }) {
     const searchParams = new URLSearchParams();
-    if (params?.productType) searchParams.append('productType', params.productType);
-    if (params?.status) searchParams.append('status', params.status);
-    
+    if (params?.productType) searchParams.append("productType", params.productType);
+    if (params?.status) searchParams.append("status", params.status);
+
     const queryString = searchParams.toString();
-    const endpoint = `/field-collection/drafts${queryString ? `?${queryString}` : ''}`;
-    
+    const endpoint = `/field-collection/drafts${queryString ? `?${queryString}` : ""}`;
+
     return this.request<JsonRecord[]>(endpoint);
   }
 
@@ -296,47 +295,53 @@ class ApiClient {
   }
 
   async createDraft(data: { date?: string } = {}) {
-    return this.request<JsonRecord>('/field-collection/drafts', {
-      method: 'POST',
+    return this.request<JsonRecord>("/field-collection/drafts", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
-  async updateDraft(draftId: string, data: { status?: 'draft' | 'submitted' | 'completed' }) {
+  async updateDraft(draftId: string, data: { status?: "draft" | "submitted" | "completed" }) {
     return this.request<JsonRecord>(`/field-collection/drafts/${draftId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
   async deleteDraft(draftId: string) {
     return this.request<undefined>(`/field-collection/drafts/${draftId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
   async submitDraft(draftId: string) {
     return this.request<JsonRecord>(`/field-collection/drafts/${draftId}/submit`, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
   async reopenDraft(draftId: string) {
     return this.request<JsonRecord>(`/field-collection/drafts/${draftId}/reopen`, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
   async submitCenter(draftId: string, centerId: string) {
-    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}/centers/${centerId}/submit`, {
-      method: 'POST',
-    });
+    return this.request<JsonRecord>(
+      `/field-collection/drafts/${draftId}/centers/${centerId}/submit`,
+      {
+        method: "POST",
+      },
+    );
   }
 
   async reopenCenter(draftId: string, centerId: string) {
-    return this.request<JsonRecord>(`/field-collection/drafts/${draftId}/centers/${centerId}/reopen`, {
-      method: 'POST',
-    });
+    return this.request<JsonRecord>(
+      `/field-collection/drafts/${draftId}/centers/${centerId}/reopen`,
+      {
+        method: "POST",
+      },
+    );
   }
 
   async getCompletedCenters(draftId: string) {
@@ -344,13 +349,15 @@ class ApiClient {
   }
 
   async getCans(draftId: string, centerId: string) {
-    return this.request<JsonRecord[]>(`/field-collection/drafts/${draftId}/centers/${centerId}/cans`);
+    return this.request<JsonRecord[]>(
+      `/field-collection/drafts/${draftId}/centers/${centerId}/cans`,
+    );
   }
 
   async createCan(data: {
     draftId: string;
     collectionCenterId: string;
-    productType: 'sap' | 'treacle';
+    productType: "sap" | "treacle";
     canId?: string;
     serialNumber?: string; // 8 digits
     brixValue?: number;
@@ -361,44 +368,47 @@ class ApiClient {
     farmerName?: string;
     collectionTime?: string;
   }) {
-    return this.request<JsonRecord>('/field-collection/cans', {
-      method: 'POST',
+    return this.request<JsonRecord>("/field-collection/cans", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
-  async updateCan(canId: string, data: {
-    brixValue?: number;
-    phValue?: number;
-    quantity?: number;
-    qrCode?: string;
-    farmerId?: string;
-    farmerName?: string;
-    collectionTime?: string;
-  }) {
+  async updateCan(
+    canId: string,
+    data: {
+      brixValue?: number;
+      phValue?: number;
+      quantity?: number;
+      qrCode?: string;
+      farmerId?: string;
+      farmerName?: string;
+      collectionTime?: string;
+    },
+  ) {
     return this.request<JsonRecord>(`/field-collection/cans/${canId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
   async deleteCan(canId: string) {
     return this.request<undefined>(`/field-collection/cans/${canId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
   async getCollectionCenters() {
-    return this.request<JsonRecord[]>('/field-collection/centers');
+    return this.request<JsonRecord[]>("/field-collection/centers");
   }
 
   // Processing API
   async getProcessingCans(params?: { status?: string; forBatch?: string }) {
     const searchParams = new URLSearchParams();
-    if (params?.status) searchParams.append('status', params.status);
-    if (params?.forBatch) searchParams.append('forBatch', params.forBatch);
+    if (params?.status) searchParams.append("status", params.status);
+    if (params?.forBatch) searchParams.append("forBatch", params.forBatch);
     const query = searchParams.toString();
-    const endpoint = `/processing/cans${query ? `?${query}` : ''}`;
+    const endpoint = `/processing/cans${query ? `?${query}` : ""}`;
     return this.request<{ cans: ProcessingCanDto[] }>(endpoint);
   }
 
@@ -406,9 +416,13 @@ class ApiClient {
     return this.request<{ batches: ProcessingBatchDto[] }>(`/processing/batches`);
   }
 
-  async createProcessingBatch(payload?: { scheduledDate?: string; productType?: string; notes?: string }) {
+  async createProcessingBatch(payload?: {
+    scheduledDate?: string;
+    productType?: string;
+    notes?: string;
+  }) {
     return this.request<ProcessingBatchDto>(`/processing/batches`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(payload ?? {}),
     });
   }
@@ -426,36 +440,36 @@ class ApiClient {
       notes?: string;
       totalSapOutput?: number | null;
       gasUsedKg?: number | null;
-    }
+    },
   ) {
     return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(payload),
     });
   }
 
   async updateProcessingBatchCans(batchId: string, canIds: string[]) {
     return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/cans`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify({ canIds }),
     });
   }
 
   async submitProcessingBatch(batchId: string) {
     return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/submit`, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
   async reopenProcessingBatch(batchId: string) {
     return this.request<ProcessingBatchDto>(`/processing/batches/${batchId}/reopen`, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
   async deleteProcessingBatch(batchId: string) {
     return this.request<void>(`/processing/batches/${batchId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
@@ -502,10 +516,10 @@ class ApiClient {
       alufoilQuantity?: number | null;
       vacuumBagQuantity?: number | null;
       parchmentPaperQuantity?: number | null;
-    }
+    },
   ) {
     return this.request<PackagingBatchDto>(`/packaging/batches/${packagingId}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(payload),
     });
   }
@@ -561,17 +575,17 @@ class ApiClient {
       shrinkSleeveQuantity?: number | null;
       neckTagQuantity?: number | null;
       corrugatedCartonQuantity?: number | null;
-    }
+    },
   ) {
     return this.request<LabelingBatchDto>(`/labeling/batches/${packagingId}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(payload),
     });
   }
 
   // Health check
   async healthCheck() {
-    return this.request<{ ok: boolean; service: string; time: string }>('/health');
+    return this.request<{ ok: boolean; service: string; time: string }>("/health");
   }
 }
 

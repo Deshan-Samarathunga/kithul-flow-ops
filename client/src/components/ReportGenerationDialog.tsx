@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, RefreshCcw, Download, CalendarDays } from "lucide-react";
 import { utils, writeFileXLSX, type CellObject, type WorkSheet } from "xlsx";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -47,7 +54,7 @@ const todayString = () => new Date().toISOString().slice(0, 10);
 
 const formatNumber = (
   value: number,
-  options?: { minimumFractionDigits?: number; maximumFractionDigits?: number }
+  options?: { minimumFractionDigits?: number; maximumFractionDigits?: number },
 ) => {
   return value.toLocaleString(undefined, {
     minimumFractionDigits: options?.minimumFractionDigits ?? 0,
@@ -139,20 +146,24 @@ const getLabelingAccessoriesTotal = (metrics: LabelingAccessorySource) =>
   metrics.totalNeckTagQuantity +
   metrics.totalCorrugatedCartonQuantity;
 
-function buildDetailSheet(payload: StageReportPayload, stageName: string): DetailSheetConfig | null {
+function buildDetailSheet(
+  payload: StageReportPayload,
+  stageName: string,
+): DetailSheetConfig | null {
   const detailName = `${stageName} Detail`;
 
   switch (payload.stage) {
     case "field": {
-      const entries = (Object.entries(payload.perProduct) as Array<[
-        ProductKey,
-        FieldMetrics | undefined
-      ]>).filter((entry): entry is [ProductKey, FieldMetrics] => entry[1] !== undefined);
+      const entries = (
+        Object.entries(payload.perProduct) as Array<[ProductKey, FieldMetrics | undefined]>
+      ).filter((entry): entry is [ProductKey, FieldMetrics] => entry[1] !== undefined);
 
       const header = ["Product", "Draft IDs", "Drafts", "Cans", "Quantity (L)"];
       const rows = entries.map(([product, metrics]) => [
         productLabels[product],
-  metrics.draftIds && metrics.draftIds.length > 0 ? metrics.draftIds.join(", ") : noValueDisplay,
+        metrics.draftIds && metrics.draftIds.length > 0
+          ? metrics.draftIds.join(", ")
+          : noValueDisplay,
         formatNumber(metrics.drafts),
         formatNumber(metrics.cans),
         formatNumber(metrics.quantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
@@ -165,7 +176,10 @@ function buildDetailSheet(payload: StageReportPayload, stageName: string): Detai
           : noValueDisplay,
         formatNumber(payload.totals.drafts),
         formatNumber(payload.totals.cans),
-        formatNumber(payload.totals.quantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        formatNumber(payload.totals.quantity, {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        }),
       ]);
 
       return {
@@ -175,10 +189,9 @@ function buildDetailSheet(payload: StageReportPayload, stageName: string): Detai
       };
     }
     case "processing": {
-      const entries = (Object.entries(payload.perProduct) as Array<[
-        ProductKey,
-        ProcessingMetrics | undefined
-      ]>).filter((entry): entry is [ProductKey, ProcessingMetrics] => entry[1] !== undefined);
+      const entries = (
+        Object.entries(payload.perProduct) as Array<[ProductKey, ProcessingMetrics | undefined]>
+      ).filter((entry): entry is [ProductKey, ProcessingMetrics] => entry[1] !== undefined);
 
       const header = [
         "Product",
@@ -195,7 +208,10 @@ function buildDetailSheet(payload: StageReportPayload, stageName: string): Detai
         formatNumber(metrics.completedBatches),
         formatNumber(metrics.totalInput, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
         formatNumber(metrics.totalOutput, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-        formatNumber(metrics.totalGasUsedKg, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        formatNumber(metrics.totalGasUsedKg, {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        }),
       ]);
 
       return {
@@ -205,10 +221,9 @@ function buildDetailSheet(payload: StageReportPayload, stageName: string): Detai
       };
     }
     case "packaging": {
-      const entries = (Object.entries(payload.perProduct) as Array<[
-        ProductKey,
-        PackagingMetrics | undefined
-      ]>).filter((entry): entry is [ProductKey, PackagingMetrics] => entry[1] !== undefined);
+      const entries = (
+        Object.entries(payload.perProduct) as Array<[ProductKey, PackagingMetrics | undefined]>
+      ).filter((entry): entry is [ProductKey, PackagingMetrics] => entry[1] !== undefined);
 
       const header = [
         "Product",
@@ -227,7 +242,10 @@ function buildDetailSheet(payload: StageReportPayload, stageName: string): Detai
         productLabels[product],
         formatNumber(metrics.totalBatches),
         formatNumber(metrics.completedBatches),
-        formatNumber(metrics.finishedQuantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        formatNumber(metrics.finishedQuantity, {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        }),
         formatNumber(metrics.totalBottleQuantity),
         formatNumber(metrics.totalLidQuantity),
         formatNumber(metrics.totalAlufoilQuantity),
@@ -240,7 +258,10 @@ function buildDetailSheet(payload: StageReportPayload, stageName: string): Detai
         "Totals",
         formatNumber(payload.totals.totalBatches),
         formatNumber(payload.totals.completedBatches),
-        formatNumber(payload.totals.finishedQuantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        formatNumber(payload.totals.finishedQuantity, {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        }),
         formatNumber(payload.totals.totalBottleQuantity),
         formatNumber(payload.totals.totalLidQuantity),
         formatNumber(payload.totals.totalAlufoilQuantity),
@@ -256,10 +277,9 @@ function buildDetailSheet(payload: StageReportPayload, stageName: string): Detai
       };
     }
     case "labeling": {
-      const entries = (Object.entries(payload.perProduct) as Array<[
-        ProductKey,
-        LabelingMetrics | undefined
-      ]>).filter((entry): entry is [ProductKey, LabelingMetrics] => entry[1] !== undefined);
+      const entries = (
+        Object.entries(payload.perProduct) as Array<[ProductKey, LabelingMetrics | undefined]>
+      ).filter((entry): entry is [ProductKey, LabelingMetrics] => entry[1] !== undefined);
 
       const header = [
         "Product",
@@ -519,7 +539,11 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
     // Summary section
     const summaryCards = topCards
       .filter((card) => card.key !== "date" && card.key !== "generatedAt")
-      .map<ExcelMetric>((card) => ({ label: card.label, value: card.value, note: card.helper ?? "" }));
+      .map<ExcelMetric>((card) => ({
+        label: card.label,
+        value: card.value,
+        note: card.helper ?? "",
+      }));
 
     if (summaryCards.length > 0) {
       addSectionHeader("Summary");
@@ -534,10 +558,15 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
 
     switch (stagePayload.stage) {
       case "field": {
-        const entries = Object.entries(stagePayload.perProduct) as Array<[ProductKey, FieldMetrics]>;
+        const entries = Object.entries(stagePayload.perProduct) as Array<
+          [ProductKey, FieldMetrics]
+        >;
         entries.forEach(([product, metrics]) => {
           const unit = "L";
-          const draftIdDisplay = metrics.draftIds && metrics.draftIds.length > 0 ? metrics.draftIds.join(", ") : noValueDisplay;
+          const draftIdDisplay =
+            metrics.draftIds && metrics.draftIds.length > 0
+              ? metrics.draftIds.join(", ")
+              : noValueDisplay;
           productSections.push({
             title: productLabels[product],
             metrics: [
@@ -558,9 +587,10 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
         totalsMetrics = [
           {
             label: "Draft ID",
-            value: stagePayload.totals.draftIds && stagePayload.totals.draftIds.length > 0
-              ? stagePayload.totals.draftIds.join(", ")
-              : noValueDisplay,
+            value:
+              stagePayload.totals.draftIds && stagePayload.totals.draftIds.length > 0
+                ? stagePayload.totals.draftIds.join(", ")
+                : noValueDisplay,
           },
           { label: "Drafts", value: formatNumber(stagePayload.totals.drafts) },
           { label: "Cans", value: formatNumber(stagePayload.totals.cans) },
@@ -576,7 +606,9 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
         break;
       }
       case "processing": {
-        const entries = Object.entries(stagePayload.perProduct) as Array<[ProductKey, ProcessingMetrics]>;
+        const entries = Object.entries(stagePayload.perProduct) as Array<
+          [ProductKey, ProcessingMetrics]
+        >;
         entries.forEach(([product, metrics]) => {
           const unit = productUnits[product];
           productSections.push({
@@ -659,7 +691,10 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
               { label: "Lid quantity", value: formatNumber(metrics.totalLidQuantity) },
               { label: "Alufoil quantity", value: formatNumber(metrics.totalAlufoilQuantity) },
               { label: "Vacuum bag quantity", value: formatNumber(metrics.totalVacuumBagQuantity) },
-              { label: "Parchment paper quantity", value: formatNumber(metrics.totalParchmentPaperQuantity) },
+              {
+                label: "Parchment paper quantity",
+                value: formatNumber(metrics.totalParchmentPaperQuantity),
+              },
               { label: "Materials total", value: formatNumber(materialsTotal) },
             ],
           });
@@ -675,12 +710,27 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
               maximumFractionDigits: 1,
             }),
           },
-          { label: "Bottle quantity", value: formatNumber(stagePayload.totals.totalBottleQuantity) },
+          {
+            label: "Bottle quantity",
+            value: formatNumber(stagePayload.totals.totalBottleQuantity),
+          },
           { label: "Lid quantity", value: formatNumber(stagePayload.totals.totalLidQuantity) },
-          { label: "Alufoil quantity", value: formatNumber(stagePayload.totals.totalAlufoilQuantity) },
-          { label: "Vacuum bag quantity", value: formatNumber(stagePayload.totals.totalVacuumBagQuantity) },
-          { label: "Parchment paper quantity", value: formatNumber(stagePayload.totals.totalParchmentPaperQuantity) },
-          { label: "Materials total", value: formatNumber(getPackagingMaterialsTotal(stagePayload.totals)) },
+          {
+            label: "Alufoil quantity",
+            value: formatNumber(stagePayload.totals.totalAlufoilQuantity),
+          },
+          {
+            label: "Vacuum bag quantity",
+            value: formatNumber(stagePayload.totals.totalVacuumBagQuantity),
+          },
+          {
+            label: "Parchment paper quantity",
+            value: formatNumber(stagePayload.totals.totalParchmentPaperQuantity),
+          },
+          {
+            label: "Materials total",
+            value: formatNumber(getPackagingMaterialsTotal(stagePayload.totals)),
+          },
         ];
         break;
       }
@@ -696,9 +746,15 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
               { label: "Batches", value: formatNumber(metrics.totalBatches) },
               { label: "Completed", value: formatNumber(metrics.completedBatches) },
               { label: "Sticker quantity", value: formatNumber(metrics.totalStickerQuantity) },
-              { label: "Shrink sleeve quantity", value: formatNumber(metrics.totalShrinkSleeveQuantity) },
+              {
+                label: "Shrink sleeve quantity",
+                value: formatNumber(metrics.totalShrinkSleeveQuantity),
+              },
               { label: "Neck tag quantity", value: formatNumber(metrics.totalNeckTagQuantity) },
-              { label: "Corrugated carton quantity", value: formatNumber(metrics.totalCorrugatedCartonQuantity) },
+              {
+                label: "Corrugated carton quantity",
+                value: formatNumber(metrics.totalCorrugatedCartonQuantity),
+              },
               { label: "Accessories total", value: formatNumber(accessoryTotal) },
             ],
           });
@@ -707,11 +763,26 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
         totalsMetrics = [
           { label: "Batches", value: formatNumber(stagePayload.totals.totalBatches) },
           { label: "Completed", value: formatNumber(stagePayload.totals.completedBatches) },
-          { label: "Sticker quantity", value: formatNumber(stagePayload.totals.totalStickerQuantity) },
-          { label: "Shrink sleeve quantity", value: formatNumber(stagePayload.totals.totalShrinkSleeveQuantity) },
-          { label: "Neck tag quantity", value: formatNumber(stagePayload.totals.totalNeckTagQuantity) },
-          { label: "Corrugated carton quantity", value: formatNumber(stagePayload.totals.totalCorrugatedCartonQuantity) },
-          { label: "Accessories total", value: formatNumber(getLabelingAccessoriesTotal(stagePayload.totals)) },
+          {
+            label: "Sticker quantity",
+            value: formatNumber(stagePayload.totals.totalStickerQuantity),
+          },
+          {
+            label: "Shrink sleeve quantity",
+            value: formatNumber(stagePayload.totals.totalShrinkSleeveQuantity),
+          },
+          {
+            label: "Neck tag quantity",
+            value: formatNumber(stagePayload.totals.totalNeckTagQuantity),
+          },
+          {
+            label: "Corrugated carton quantity",
+            value: formatNumber(stagePayload.totals.totalCorrugatedCartonQuantity),
+          },
+          {
+            label: "Accessories total",
+            value: formatNumber(getLabelingAccessoriesTotal(stagePayload.totals)),
+          },
         ];
         break;
       }
@@ -741,7 +812,12 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
     worksheet["!merges"] = merges;
 
     type ExcelCellStyle = NonNullable<CellObject["s"]>;
-    const applyStyle = (sheet: WorkSheet, rowIndex: number, colIndex: number, style: Partial<ExcelCellStyle>) => {
+    const applyStyle = (
+      sheet: WorkSheet,
+      rowIndex: number,
+      colIndex: number,
+      style: Partial<ExcelCellStyle>,
+    ) => {
       const address = utils.encode_cell({ r: rowIndex, c: colIndex });
       const cell = sheet[address] as CellObject | undefined;
       if (!cell) {
@@ -816,7 +892,10 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
       }
       if (data.length > 1) {
         detailSheet["!autofilter"] = {
-          ref: utils.encode_range({ s: { r: 0, c: 0 }, e: { r: data.length - 1, c: data[0].length - 1 } }),
+          ref: utils.encode_range({
+            s: { r: 0, c: 0 },
+            e: { r: data.length - 1, c: data[0].length - 1 },
+          }),
         };
       }
       for (let col = 0; col < (data[0]?.length ?? 0); col += 1) {
@@ -861,18 +940,16 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
             key: "cans",
             label: "Total cans",
             value: formatNumber(stagePayload.totals.cans),
-          }
+          },
         );
         break;
       }
       case "processing":
-        cards.push(
-          {
-            key: "completedBatches",
-            label: "Complete batches",
-            value: formatNumber(stagePayload.totals.completedBatches),
-          }
-        );
+        cards.push({
+          key: "completedBatches",
+          label: "Complete batches",
+          value: formatNumber(stagePayload.totals.completedBatches),
+        });
         break;
       case "packaging":
         cards.push(
@@ -890,7 +967,7 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
               maximumFractionDigits: 1,
             }),
             helper: `Materials used: ${formatNumber(getPackagingMaterialsTotal(stagePayload.totals))}`,
-          }
+          },
         );
         break;
       case "labeling":
@@ -906,7 +983,7 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
             label: "Accessories used",
             value: formatNumber(getLabelingAccessoriesTotal(stagePayload.totals)),
             helper: `Stickers: ${formatNumber(stagePayload.totals.totalStickerQuantity)}`,
-          }
+          },
         );
         break;
     }
@@ -936,14 +1013,25 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
                   onChange={(event) => setSelectedDate(event.target.value)}
                   max={todayString()}
                 />
-                <Button type="button" variant="outline" onClick={() => setSelectedDate(todayString())}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSelectedDate(todayString())}
+                >
                   <CalendarDays className="mr-2 h-4 w-4" /> Today
                 </Button>
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => void handleGenerate()} disabled={isGenerating}>
-                <RefreshCcw className={isGenerating ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleGenerate()}
+                disabled={isGenerating}
+              >
+                <RefreshCcw
+                  className={isGenerating ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"}
+                />
                 {isGenerating ? "Generating" : "Generate"}
               </Button>
               <Button type="button" onClick={handleDownload} disabled={!stagePayload}>
@@ -962,7 +1050,12 @@ export function ReportGenerationDialog({ open, onOpenChange, stage }: ReportGene
             <div className="max-h-[60vh] space-y-6 overflow-y-auto pr-1 sm:pr-2">
               <section className="grid gap-3 sm:grid-cols-4">
                 {topCards.map((card) => (
-                  <SummaryStat key={card.key} label={card.label} value={card.value} helper={card.helper} />
+                  <SummaryStat
+                    key={card.key}
+                    label={card.label}
+                    value={card.value}
+                    helper={card.helper}
+                  />
                 ))}
               </section>
 
@@ -997,17 +1090,32 @@ function renderStageSections(payload: StageReportPayload) {
                 </tr>
               </thead>
               <tbody>
-                {(Object.entries(payload.perProduct) as Array<[ProductKey, FieldMetrics | undefined]>)
+                {(
+                  Object.entries(payload.perProduct) as Array<
+                    [ProductKey, FieldMetrics | undefined]
+                  >
+                )
                   .filter((entry): entry is [ProductKey, FieldMetrics] => entry[1] !== undefined)
                   .map(([product, metrics], index) => {
                     const unit = "L";
                     const rowClass = index % 2 === 0 ? "bg-card" : "bg-muted/30";
                     return (
-                      <tr key={product} className={`${rowClass} border-b last:border-b-0 border-border/70`}>
-                        <td className="px-4 py-3 font-medium text-foreground">{productLabels[product]}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{formatNumber(metrics.cans)}</td>
+                      <tr
+                        key={product}
+                        className={`${rowClass} border-b last:border-b-0 border-border/70`}
+                      >
+                        <td className="px-4 py-3 font-medium text-foreground">
+                          {productLabels[product]}
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground">
-                          {formatNumber(metrics.quantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} {unit}
+                          {formatNumber(metrics.cans)}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {formatNumber(metrics.quantity, {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 1,
+                          })}{" "}
+                          {unit}
                         </td>
                       </tr>
                     );
@@ -1022,7 +1130,11 @@ function renderStageSections(payload: StageReportPayload) {
         <section className="space-y-4">
           <h3 className="text-base font-semibold">Per product metrics</h3>
           <div className="space-y-4">
-            {(Object.entries(payload.perProduct) as Array<[ProductKey, ProcessingMetrics | undefined]>)
+            {(
+              Object.entries(payload.perProduct) as Array<
+                [ProductKey, ProcessingMetrics | undefined]
+              >
+            )
               .filter((entry): entry is [ProductKey, ProcessingMetrics] => entry[1] !== undefined)
               .map(([product, metrics]) => {
                 const unit = productUnits[product];
@@ -1031,17 +1143,25 @@ function renderStageSections(payload: StageReportPayload) {
                     <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">Product lane</p>
-                        <p className="text-lg font-semibold text-foreground">{productLabels[product]}</p>
+                        <p className="text-lg font-semibold text-foreground">
+                          {productLabels[product]}
+                        </p>
                       </div>
                     </div>
                     <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                       <Metric
                         label={`Input (${unit})`}
-                        value={formatNumber(metrics.totalInput, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                        value={formatNumber(metrics.totalInput, {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1,
+                        })}
                       />
                       <Metric
                         label={`Output (${unit})`}
-                        value={formatNumber(metrics.totalOutput, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                        value={formatNumber(metrics.totalOutput, {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1,
+                        })}
                       />
                       <Metric
                         label="Used gas (kg)"
@@ -1062,9 +1182,11 @@ function renderStageSections(payload: StageReportPayload) {
         <section className="space-y-4">
           <h3 className="text-base font-semibold">Per product metrics</h3>
           <div className="space-y-4">
-            {(Object.entries(payload.perProduct) as Array<
-              [ProductKey, PackagingMetrics | undefined]
-            >)
+            {(
+              Object.entries(payload.perProduct) as Array<
+                [ProductKey, PackagingMetrics | undefined]
+              >
+            )
               .filter((entry): entry is [ProductKey, PackagingMetrics] => entry[1] !== undefined)
               .map(([product, metrics]) => {
                 const unit = productUnits[product];
@@ -1074,13 +1196,20 @@ function renderStageSections(payload: StageReportPayload) {
                     <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">Product lane</p>
-                        <p className="text-lg font-semibold text-foreground">{productLabels[product]}</p>
+                        <p className="text-lg font-semibold text-foreground">
+                          {productLabels[product]}
+                        </p>
                       </div>
                       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground sm:text-sm">
                         <span>Batches: {formatNumber(metrics.totalBatches)}</span>
                         <span>Completed: {formatNumber(metrics.completedBatches)}</span>
                         <span>
-                          Finished: {formatNumber(metrics.finishedQuantity, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} {unit}
+                          Finished:{" "}
+                          {formatNumber(metrics.finishedQuantity, {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 1,
+                          })}{" "}
+                          {unit}
                         </span>
                         <span>Materials: {formatNumber(materialsTotal)}</span>
                       </div>
@@ -1093,10 +1222,19 @@ function renderStageSections(payload: StageReportPayload) {
                           maximumFractionDigits: 1,
                         })}
                       />
-                      <Metric label="Bottle quantity" value={formatNumber(metrics.totalBottleQuantity)} />
+                      <Metric
+                        label="Bottle quantity"
+                        value={formatNumber(metrics.totalBottleQuantity)}
+                      />
                       <Metric label="Lid quantity" value={formatNumber(metrics.totalLidQuantity)} />
-                      <Metric label="Alufoil quantity" value={formatNumber(metrics.totalAlufoilQuantity)} />
-                      <Metric label="Vacuum bag quantity" value={formatNumber(metrics.totalVacuumBagQuantity)} />
+                      <Metric
+                        label="Alufoil quantity"
+                        value={formatNumber(metrics.totalAlufoilQuantity)}
+                      />
+                      <Metric
+                        label="Vacuum bag quantity"
+                        value={formatNumber(metrics.totalVacuumBagQuantity)}
+                      />
                       <Metric
                         label="Parchment paper quantity"
                         value={formatNumber(metrics.totalParchmentPaperQuantity)}
@@ -1114,9 +1252,9 @@ function renderStageSections(payload: StageReportPayload) {
         <section className="space-y-4">
           <h3 className="text-base font-semibold">Per product metrics</h3>
           <div className="space-y-4">
-            {(Object.entries(payload.perProduct) as Array<
-              [ProductKey, LabelingMetrics | undefined]
-            >)
+            {(
+              Object.entries(payload.perProduct) as Array<[ProductKey, LabelingMetrics | undefined]>
+            )
               .filter((entry): entry is [ProductKey, LabelingMetrics] => entry[1] !== undefined)
               .map(([product, metrics]) => {
                 const accessoryTotal = getLabelingAccessoriesTotal(metrics);
@@ -1125,7 +1263,9 @@ function renderStageSections(payload: StageReportPayload) {
                     <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">Product lane</p>
-                        <p className="text-lg font-semibold text-foreground">{productLabels[product]}</p>
+                        <p className="text-lg font-semibold text-foreground">
+                          {productLabels[product]}
+                        </p>
                       </div>
                       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground sm:text-sm">
                         <span>Batches: {formatNumber(metrics.totalBatches)}</span>
@@ -1134,9 +1274,18 @@ function renderStageSections(payload: StageReportPayload) {
                       </div>
                     </div>
                     <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      <Metric label="Sticker quantity" value={formatNumber(metrics.totalStickerQuantity)} />
-                      <Metric label="Shrink sleeve quantity" value={formatNumber(metrics.totalShrinkSleeveQuantity)} />
-                      <Metric label="Neck tag quantity" value={formatNumber(metrics.totalNeckTagQuantity)} />
+                      <Metric
+                        label="Sticker quantity"
+                        value={formatNumber(metrics.totalStickerQuantity)}
+                      />
+                      <Metric
+                        label="Shrink sleeve quantity"
+                        value={formatNumber(metrics.totalShrinkSleeveQuantity)}
+                      />
+                      <Metric
+                        label="Neck tag quantity"
+                        value={formatNumber(metrics.totalNeckTagQuantity)}
+                      />
                       <Metric
                         label="Corrugated carton quantity"
                         value={formatNumber(metrics.totalCorrugatedCartonQuantity)}

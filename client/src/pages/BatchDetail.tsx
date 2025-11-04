@@ -52,7 +52,9 @@ export default function BatchDetail() {
     const raw = import.meta.env.VITE_API_URL || "";
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
-  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
+  const userAvatar = user?.profileImage
+    ? new URL(user.profileImage, apiBase).toString()
+    : undefined;
 
   const handleLogout = () => {
     logout();
@@ -106,14 +108,12 @@ export default function BatchDetail() {
     if (availableCans.length === 0) {
       return;
     }
-    setSelectedCans((prev) =>
-      prev.filter((id) => availableCans.some((can) => can.id === id))
-    );
+    setSelectedCans((prev) => prev.filter((id) => availableCans.some((can) => can.id === id)));
   }, [availableCans]);
 
   useEffect(() => {
     if (!batch) {
-  setProductionForm({ totalSapOutput: "", usedGasKg: "" });
+      setProductionForm({ totalSapOutput: "", usedGasKg: "" });
       return;
     }
 
@@ -192,7 +192,7 @@ export default function BatchDetail() {
     }
 
     const parsedOutput = parseFloat(productionForm.totalSapOutput);
-  const parsedGas = parseFloat(productionForm.usedGasKg);
+    const parsedGas = parseFloat(productionForm.usedGasKg);
 
     if (
       Number.isNaN(parsedOutput) ||
@@ -316,7 +316,7 @@ export default function BatchDetail() {
           totalQuantity: acc.totalQuantity + (can.quantity ?? 0),
         };
       },
-      { count: 0, totalQuantity: 0 }
+      { count: 0, totalQuantity: 0 },
     );
   }, [availableCans, selectedCans]);
 
@@ -327,9 +327,7 @@ export default function BatchDetail() {
 
   const cansToRender = isEditable
     ? filteredCans
-    : filteredCans
-        .filter((can) => selectedCans.includes(can.id))
-        .slice(0, MAX_CAN_SELECTION);
+    : filteredCans.filter((can) => selectedCans.includes(can.id)).slice(0, MAX_CAN_SELECTION);
   const noSelectedCans = !isEditable && cansToRender.length === 0;
 
   const selectAllState = useMemo(() => {
@@ -361,7 +359,7 @@ export default function BatchDetail() {
       const toAdd = visibleCanIds.filter((id) => !selectedCans.includes(id));
       const currentCount = selectedCans.length;
       const canAdd = MAX_CAN_SELECTION - currentCount;
-      
+
       if (canAdd <= 0) {
         toast.error(`You can select up to ${MAX_CAN_SELECTION} cans per batch.`);
         return;
@@ -369,14 +367,17 @@ export default function BatchDetail() {
 
       const addCount = Math.min(toAdd.length, canAdd);
       setSelectedCans((prev) => [...prev, ...toAdd.slice(0, addCount)]);
-      
+
       if (toAdd.length > canAdd) {
-        toast.error(`Only ${addCount} more can(s) could be selected due to the ${MAX_CAN_SELECTION}-can limit.`);
+        toast.error(
+          `Only ${addCount} more can(s) could be selected due to the ${MAX_CAN_SELECTION}-can limit.`,
+        );
       }
     }
   };
 
-  const productionOutputLabel = batch?.productType === "treacle" ? "Treacle output (L)" : "Jaggery output (kg)";
+  const productionOutputLabel =
+    batch?.productType === "treacle" ? "Treacle output (L)" : "Jaggery output (kg)";
   const productionOutputStep = batch?.productType === "treacle" ? "0.1" : "0.01";
 
   if (!batchId) {
@@ -405,7 +406,9 @@ export default function BatchDetail() {
 
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {isBatchLoading ? (
-          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Loading batch…</div>
+          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
+            Loading batch…
+          </div>
         ) : batchError ? (
           <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive">
             {batchError}
@@ -419,7 +422,9 @@ export default function BatchDetail() {
                   <span>Scheduled for {formatDate(batch.scheduledDate)}</span>
                   <span className="px-2 text-muted-foreground/40">|</span>
                   {batch.status === "completed" ? (
-                    <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">Submitted</span>
+                    <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">
+                      Submitted
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">Status {batch.status}</span>
                   )}
@@ -452,13 +457,17 @@ export default function BatchDetail() {
               <div className="rounded-xl border bg-white shadow-sm p-6 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <span className="text-xs font-medium text-muted-foreground tracking-wide">Output Quantity</span>
+                    <span className="text-xs font-medium text-muted-foreground tracking-wide">
+                      Output Quantity
+                    </span>
                     <p className="text-sm font-semibold text-foreground">
                       {formatOutputQuantity(batch.totalSapOutput)}
                     </p>
                   </div>
                   <div>
-                    <span className="text-xs font-medium text-muted-foreground tracking-wide">Used Gas Amount</span>
+                    <span className="text-xs font-medium text-muted-foreground tracking-wide">
+                      Used Gas Amount
+                    </span>
                     <p className="text-sm font-semibold text-foreground">
                       {formatGasAmount(batch.gasUsedKg)}
                     </p>
@@ -466,7 +475,7 @@ export default function BatchDetail() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {isEditable
-                    ? "Select \"Add production data\" to record melting output and gas usage for this batch."
+                    ? 'Select "Add production data" to record melting output and gas usage for this batch.'
                     : "Reopen the batch if you need to update production data."}
                 </p>
               </div>
@@ -542,7 +551,7 @@ export default function BatchDetail() {
                   >
                     Select all visible cans ({cansToRender.length})
                     {visibleSelectedQuantity > 0 && (
-                        <span className="ml-2 font-medium text-foreground">
+                      <span className="ml-2 font-medium text-foreground">
                         · Total: {visibleSelectedQuantity.toFixed(1)} kg
                       </span>
                     )}
@@ -550,7 +559,8 @@ export default function BatchDetail() {
                 </div>
               )}
 
-              {!isCanLoading && !canError &&
+              {!isCanLoading &&
+                !canError &&
                 cansToRender.map((can) => {
                   const isChecked = selectedCans.includes(can.id);
                   const disableSelection = !isEditable || (selectionLimitReached && !isChecked);
@@ -558,15 +568,14 @@ export default function BatchDetail() {
                   const info = (
                     <>
                       <div className="flex items-center flex-wrap gap-3 text-sm text-muted-foreground">
-                        <Badge variant="secondary" className="font-mono text-xs uppercase tracking-wide">
+                        <Badge
+                          variant="secondary"
+                          className="font-mono text-xs uppercase tracking-wide"
+                        >
                           Can ID · {can.id}
                         </Badge>
-                        <span>
-                          Draft {can.draft.id}
-                        </span>
-                        <span>
-                          Created: {formatDate(can.createdAt)}
-                        </span>
+                        <span>Draft {can.draft.id}</span>
+                        <span>Created: {formatDate(can.createdAt)}</span>
                       </div>
                       <div className="mt-3 flex items-center flex-wrap gap-3 text-sm text-gray-600">
                         <span className="font-medium text-foreground">
@@ -580,7 +589,6 @@ export default function BatchDetail() {
                         <span>Brix: {formatNumber(can.brixValue, 1)}</span>
                         <span className="px-2 text-muted-foreground/40">|</span>
                         <span>pH: {formatNumber(can.phValue, 2)}</span>
-                        
                       </div>
                     </>
                   );
@@ -623,11 +631,10 @@ export default function BatchDetail() {
             <div className="mt-8 space-y-4">
               {isEditable && selectionLimitReached && (
                 <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-warning-foreground">
-                  You have reached the {MAX_CAN_SELECTION}-can limit for this batch. Deselect one to pick
-                  another.
+                  You have reached the {MAX_CAN_SELECTION}-can limit for this batch. Deselect one to
+                  pick another.
                 </div>
               )}
-
             </div>
 
             <Dialog
@@ -712,16 +719,28 @@ export default function BatchDetail() {
                   <div className="space-y-4 text-sm">
                     <div className="grid gap-3">
                       <div>
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Output quantity</p>
-                        <p className="font-medium text-foreground">{formatOutputQuantity(batch.totalSapOutput)}</p>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground/80">
+                          Output quantity
+                        </p>
+                        <p className="font-medium text-foreground">
+                          {formatOutputQuantity(batch.totalSapOutput)}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Used gas amount</p>
-                        <p className="font-medium text-foreground">{formatGasAmount(batch.gasUsedKg)}</p>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground/80">
+                          Used gas amount
+                        </p>
+                        <p className="font-medium text-foreground">
+                          {formatGasAmount(batch.gasUsedKg)}
+                        </p>
                       </div>
                     </div>
                     <DialogFooter className="flex justify-end">
-                      <Button type="button" variant="outline" onClick={() => setProductionDialogOpen(false)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setProductionDialogOpen(false)}
+                      >
                         Close
                       </Button>
                     </DialogFooter>
@@ -752,7 +771,9 @@ export default function BatchDetail() {
             )}
           </>
         ) : (
-          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Batch not found.</div>
+          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
+            Batch not found.
+          </div>
         )}
       </div>
     </div>

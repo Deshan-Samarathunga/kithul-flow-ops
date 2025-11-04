@@ -27,7 +27,9 @@ export default function DraftDetail() {
     const raw = import.meta.env.VITE_API_URL || "";
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
-  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
+  const userAvatar = user?.profileImage
+    ? new URL(user.profileImage, apiBase).toString()
+    : undefined;
 
   const [draft, setDraft] = useState<DraftDetailData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,7 @@ export default function DraftDetail() {
 
   const centerCanCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-  const entries = Array.isArray(draft?.cans) ? draft.cans : [];
+    const entries = Array.isArray(draft?.cans) ? draft.cans : [];
 
     entries.forEach((entry) => {
       if (!entry || typeof entry !== "object") {
@@ -87,7 +89,7 @@ export default function DraftDetail() {
         const fetchedDraft = await DataService.getDraft(draftId);
         setDraft(fetchedDraft);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Failed to load draft';
+        const message = err instanceof Error ? err.message : "Failed to load draft";
         setError(message);
         toast.error(message);
       } finally {
@@ -116,7 +118,7 @@ export default function DraftDetail() {
           .filter((id): id is string => id !== null);
         setCompletedCenters(new Set(completedIds));
       } catch (err: unknown) {
-        console.error('Failed to load completed centers:', err);
+        console.error("Failed to load completed centers:", err);
         // Don't show error toast for this, just log it
       }
     };
@@ -132,21 +134,20 @@ export default function DraftDetail() {
     if (!draftId) return;
     // Require at least one submitted center before allowing save
     if (!completedCenters || completedCenters.size === 0) {
-      toast.error('Submit at least one center before saving the draft');
+      toast.error("Submit at least one center before saving the draft");
       return;
     }
-    
+
     try {
       setLoading(true);
       await DataService.updateDraft(draftId, "draft");
 
-      toast.success('Draft saved successfully');
+      toast.success("Draft saved successfully");
 
-      navigate('/field-collection');
-      
+      navigate("/field-collection");
     } catch (error: unknown) {
-      console.error('Error saving draft:', error);
-      const message = error instanceof Error ? error.message : 'Failed to save draft';
+      console.error("Error saving draft:", error);
+      const message = error instanceof Error ? error.message : "Failed to save draft";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -156,18 +157,17 @@ export default function DraftDetail() {
   const handleSubmitCenter = async (centerId: string) => {
     try {
       setLoading(true);
-      
+
       // Call API to submit center
       await DataService.submitCenter(draftId!, centerId);
-      
+
       // Add center to completed set
-      setCompletedCenters(prev => new Set([...prev, centerId]));
-      
-      toast.success('Center submitted successfully');
-      
+      setCompletedCenters((prev) => new Set([...prev, centerId]));
+
+      toast.success("Center submitted successfully");
     } catch (error: unknown) {
-      console.error('Error submitting center:', error);
-      const message = error instanceof Error ? error.message : 'Failed to submit center';
+      console.error("Error submitting center:", error);
+      const message = error instanceof Error ? error.message : "Failed to submit center";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -177,22 +177,21 @@ export default function DraftDetail() {
   const handleReopenCenter = async (centerId: string) => {
     try {
       setLoading(true);
-      
+
       // Call API to reopen center
       await DataService.reopenCenter(draftId!, centerId);
-      
+
       // Remove center from completed set
-      setCompletedCenters(prev => {
+      setCompletedCenters((prev) => {
         const newSet = new Set(prev);
         newSet.delete(centerId);
         return newSet;
       });
-      
-      toast.success('Center reopened successfully');
-      
+
+      toast.success("Center reopened successfully");
     } catch (error: unknown) {
-      console.error('Error reopening center:', error);
-      const message = error instanceof Error ? error.message : 'Failed to reopen center';
+      console.error("Error reopening center:", error);
+      const message = error instanceof Error ? error.message : "Failed to reopen center";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -221,7 +220,12 @@ export default function DraftDetail() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+        <Navbar
+          userRole={userRole}
+          userName={userName}
+          userAvatar={userAvatar}
+          onLogout={handleLogout}
+        />
         <div className="container mx-auto px-4 sm:px-6 py-10">
           <p className="text-sm text-muted-foreground">Loading draft...</p>
         </div>
@@ -232,7 +236,12 @@ export default function DraftDetail() {
   if (error) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+        <Navbar
+          userRole={userRole}
+          userName={userName}
+          userAvatar={userAvatar}
+          onLogout={handleLogout}
+        />
         <div className="container mx-auto px-4 sm:px-6 py-10">
           <p className="text-sm text-destructive">Error: {error}</p>
         </div>
@@ -243,7 +252,12 @@ export default function DraftDetail() {
   if (!draft) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+        <Navbar
+          userRole={userRole}
+          userName={userName}
+          userAvatar={userAvatar}
+          onLogout={handleLogout}
+        />
         <div className="container mx-auto px-4 sm:px-6 py-10">
           <p className="text-sm text-muted-foreground">Draft not found.</p>
         </div>
@@ -258,44 +272,41 @@ export default function DraftDetail() {
       name: "Galle Collection Center",
       location: "Galle, Southern Province",
       centerAgent: "John Silva",
-      phone: "+94-91-2345678"
+      phone: "+94-91-2345678",
     },
     {
-      id: "center002", 
+      id: "center002",
       name: "Kurunegala Collection Center",
       location: "Kurunegala, North Western Province",
       centerAgent: "Mary Perera",
-      phone: "+94-37-2345678"
+      phone: "+94-37-2345678",
     },
     {
       id: "center003",
-      name: "Hikkaduwa Collection Center", 
+      name: "Hikkaduwa Collection Center",
       location: "Hikkaduwa, Southern Province",
       centerAgent: "David Fernando",
-      phone: "+94-91-3456789"
+      phone: "+94-91-3456789",
     },
     {
       id: "center004",
       name: "Matara Collection Center",
-      location: "Matara, Southern Province", 
+      location: "Matara, Southern Province",
       centerAgent: "Sarah Jayawardena",
-      phone: "+94-41-2345678"
-    }
+      phone: "+94-41-2345678",
+    },
   ];
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar 
-        userRole={userRole} 
-        userName={userName} 
-        userAvatar={userAvatar} 
+      <Navbar
+        userRole={userRole}
+        userName={userName}
+        userAvatar={userAvatar}
         onLogout={handleLogout}
         breadcrumb={
           <div className="flex items-center space-x-2 text-sm text-white">
-            <Link 
-              to={`/field-collection`}
-              className="hover:text-orange-200"
-            >
+            <Link to={`/field-collection`} className="hover:text-orange-200">
               Field Collection
             </Link>
             <span className="mx-2">&gt;</span>
@@ -307,8 +318,12 @@ export default function DraftDetail() {
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold">Draft {new Date(draft.date).toISOString().split('T')[0]}</h1>
-            <p className="text-sm text-muted-foreground">Cans: {draft.canCount ?? draft.can_count ?? 0}</p>
+            <h1 className="text-xl sm:text-2xl font-semibold">
+              Draft {new Date(draft.date).toISOString().split("T")[0]}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Cans: {draft.canCount ?? draft.can_count ?? 0}
+            </p>
           </div>
           {draft.status === "draft" && (
             <div className="flex gap-2">
@@ -334,7 +349,7 @@ export default function DraftDetail() {
           )}
         </div>
 
-  <div className="space-y-6">
+        <div className="space-y-6">
           {/* Always show both Active and Completed Centers for draft status */}
           {draft.status === "draft" && (
             <>
@@ -343,26 +358,37 @@ export default function DraftDetail() {
                 <h2 className="text-lg sm:text-xl font-semibold mb-4">Active Centers</h2>
                 <div className="space-y-4">
                   {collectionCenters
-                    .filter(center => !completedCenters.has(center.id))
+                    .filter((center) => !completedCenters.has(center.id))
                     .map((center) => {
                       // Find if this center has any cans
                       const canCount = centerCanCounts[center.id] ?? 0;
-                      
+
                       return (
-                        <div key={center.id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                        <div
+                          key={center.id}
+                          className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+                        >
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div className="space-y-1">
                               <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
-                              <p className="text-xs sm:text-sm text-muted-foreground">{center.location}</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">Center Agent: {center.centerAgent}</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">Active cans: {canCount}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">
+                                {center.location}
+                              </p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">
+                                Center Agent: {center.centerAgent}
+                              </p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">
+                                Active cans: {canCount}
+                              </p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  navigate(`/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`);
+                                  navigate(
+                                    `/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`,
+                                  );
                                 }}
                                 className="flex-1 sm:flex-none"
                               >
@@ -389,26 +415,37 @@ export default function DraftDetail() {
                 <h2 className="text-lg sm:text-xl font-semibold mb-4">Completed Centers</h2>
                 <div className="space-y-4">
                   {collectionCenters
-                    .filter(center => completedCenters.has(center.id))
+                    .filter((center) => completedCenters.has(center.id))
                     .map((center) => {
                       // Find if this center has any cans
                       const canCount = centerCanCounts[center.id] ?? 0;
-                      
+
                       return (
-                        <div key={`completed-${center.id}`} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                        <div
+                          key={`completed-${center.id}`}
+                          className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+                        >
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div className="space-y-1">
                               <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
-                              <p className="text-xs sm:text-sm text-muted-foreground">{center.location}</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">Center Agent: {center.centerAgent}</p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">Completed cans: {canCount}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">
+                                {center.location}
+                              </p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">
+                                Center Agent: {center.centerAgent}
+                              </p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">
+                                Completed cans: {canCount}
+                              </p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  navigate(`/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`);
+                                  navigate(
+                                    `/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`,
+                                  );
                                 }}
                                 className="flex-1 sm:flex-none"
                               >
@@ -428,7 +465,8 @@ export default function DraftDetail() {
                         </div>
                       );
                     })}
-                  {collectionCenters.filter(center => completedCenters.has(center.id)).length === 0 && (
+                  {collectionCenters.filter((center) => completedCenters.has(center.id)).length ===
+                    0 && (
                     <div className="text-center text-muted-foreground py-8">
                       No completed centers yet
                     </div>
@@ -444,26 +482,37 @@ export default function DraftDetail() {
               <h2 className="text-lg sm:text-xl font-semibold mb-4">Completed Centers</h2>
               <div className="space-y-4">
                 {collectionCenters
-                  .filter(center => completedCenters.has(center.id))
+                  .filter((center) => completedCenters.has(center.id))
                   .map((center) => {
                     // Find if this center has any cans
                     const canCount = centerCanCounts[center.id] ?? 0;
-                    
+
                     return (
-                      <div key={center.id} className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                      <div
+                        key={center.id}
+                        className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+                      >
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                           <div className="space-y-1">
                             <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
-                            <p className="text-xs sm:text-sm text-muted-foreground">{center.location}</p>
-                            <p className="text-xs sm:text-sm text-muted-foreground">Center Agent: {center.centerAgent}</p>
-                            <p className="text-xs sm:text-sm text-muted-foreground">Completed cans: {canCount}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">
+                              {center.location}
+                            </p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">
+                              Center Agent: {center.centerAgent}
+                            </p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">
+                              Completed cans: {canCount}
+                            </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                navigate(`/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`);
+                                navigate(
+                                  `/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`,
+                                );
                               }}
                               className="flex-1 sm:flex-none"
                             >
@@ -474,13 +523,14 @@ export default function DraftDetail() {
                       </div>
                     );
                   })}
-                {collectionCenters.filter(center => completedCenters.has(center.id)).length === 0 && (
+                {collectionCenters.filter((center) => completedCenters.has(center.id)).length ===
+                  0 && (
                   <div className="text-center text-muted-foreground py-8">
                     No completed centers yet
                   </div>
                 )}
               </div>
-              
+
               {/* Reopen Draft Button */}
               <div className="mt-6 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 <span>Submitted drafts are read-only. Reopen the draft to make adjustments.</span>

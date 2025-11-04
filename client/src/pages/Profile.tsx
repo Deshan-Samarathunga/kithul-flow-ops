@@ -35,11 +35,11 @@ export default function Profile() {
         return null;
       }
     },
-    [apiBase]
+    [apiBase],
   );
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(
-    toAbsolute(user?.profileImage ?? null)
+    toAbsolute(user?.profileImage ?? null),
   );
   const [saving, setSaving] = useState(false);
 
@@ -156,8 +156,13 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={displayName} userAvatar={avatarPreview || undefined} onLogout={handleLogout} />
-      
+      <Navbar
+        userRole={userRole}
+        userName={displayName}
+        userAvatar={avatarPreview || undefined}
+        onLogout={handleLogout}
+      />
+
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-2xl">
         <h1 className="text-xl sm:text-2xl font-semibold mb-6">Profile Settings</h1>
 
@@ -177,7 +182,10 @@ export default function Profile() {
                     {displayName.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <label htmlFor="profile-picture" className="absolute bottom-0 right-0 bg-cta hover:bg-cta-hover text-cta-foreground rounded-full p-2 cursor-pointer shadow-md">
+                <label
+                  htmlFor="profile-picture"
+                  className="absolute bottom-0 right-0 bg-cta hover:bg-cta-hover text-cta-foreground rounded-full p-2 cursor-pointer shadow-md"
+                >
                   <Camera className="h-4 w-4" />
                   <input
                     id="profile-picture"
@@ -193,23 +201,13 @@ export default function Profile() {
             {/* User ID (Read-only) */}
             <div className="space-y-2">
               <Label htmlFor="userId">User ID</Label>
-              <Input
-                id="userId"
-                value={userId}
-                disabled
-                className="bg-muted"
-              />
+              <Input id="userId" value={userId} disabled className="bg-muted" />
             </div>
 
             {/* Role (Read-only) */}
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
-              <Input
-                id="role"
-                value={userRole}
-                disabled
-                className="bg-muted"
-              />
+              <Input id="role" value={userRole} disabled className="bg-muted" />
             </div>
 
             {/* Name */}
@@ -226,7 +224,7 @@ export default function Profile() {
             {/* Password Change Section */}
             <div className="pt-4 border-t">
               <h3 className="text-lg font-semibold mb-4">Change Password</h3>
-              
+
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="currentPassword">Current Password</Label>
@@ -287,4 +285,3 @@ export default function Profile() {
     </div>
   );
 }
-

@@ -150,7 +150,8 @@ const normalizeDraftRecord = (input: unknown): DraftSummary | null => {
     status: normalizeStatus(statusValue) as DraftStatus,
     canCount: toFiniteNumber(record.can_count ?? record.canCount),
     totalQuantity: toFiniteNumber(record.total_quantity ?? record.totalQuantity),
-    createdByName: toOptionalString(record.created_by_name) ?? toOptionalString(record.createdByName),
+    createdByName:
+      toOptionalString(record.created_by_name) ?? toOptionalString(record.createdByName),
     createdAt: toOptionalString(record.created_at) ?? toOptionalString(record.createdAt),
     updatedAt: toOptionalString(record.updated_at) ?? toOptionalString(record.updatedAt),
   } satisfies DraftSummary;
@@ -184,9 +185,7 @@ export default function FieldCollection() {
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [submittingDraftId, setSubmittingDraftId] = useState<string | null>(
-    null,
-  );
+  const [submittingDraftId, setSubmittingDraftId] = useState<string | null>(null);
   const [reopeningDraftId, setReopeningDraftId] = useState<string | null>(null);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -222,7 +221,7 @@ export default function FieldCollection() {
           } catch {
             return [d.draftId, 0] as const;
           }
-        })
+        }),
       );
       setCompletedCounts(Object.fromEntries(entries));
     } catch (err: unknown) {
@@ -262,9 +261,10 @@ export default function FieldCollection() {
       navigate(`/field-collection/draft/${newDraftId}`);
     } catch (err: unknown) {
       console.error("Error creating draft", err);
-      const message = err instanceof Error && err.message.trim().length > 0
-        ? err.message
-        : "Failed to create draft";
+      const message =
+        err instanceof Error && err.message.trim().length > 0
+          ? err.message
+          : "Failed to create draft";
       toast.error(message);
     } finally {
       setIsCreating(false);
@@ -286,9 +286,10 @@ export default function FieldCollection() {
       await loadDrafts({ suppressLoader: true });
     } catch (err) {
       console.error("Error submitting draft", err);
-      const message = err instanceof Error && err.message.trim().length > 0
-        ? err.message
-        : "Failed to submit draft";
+      const message =
+        err instanceof Error && err.message.trim().length > 0
+          ? err.message
+          : "Failed to submit draft";
       toast.error(message);
     } finally {
       setSubmittingDraftId(null);
@@ -334,9 +335,7 @@ export default function FieldCollection() {
     });
   }, [drafts, searchQuery]);
 
-  const activeDrafts = filteredDrafts.filter(
-    (draft) => normalizeStatus(draft.status) === "draft",
-  );
+  const activeDrafts = filteredDrafts.filter((draft) => normalizeStatus(draft.status) === "draft");
   const submittedDrafts = filteredDrafts.filter((draft) =>
     ["submitted", "completed"].includes(normalizeStatus(draft.status)),
   );
@@ -361,10 +360,11 @@ export default function FieldCollection() {
   }, [drafts]);
 
   const hasSubmittedDrafts = useMemo(
-    () => drafts.some((draft) => {
-      const status = normalizeStatus(draft.status);
-      return status === "submitted" || status === "completed";
-    }),
+    () =>
+      drafts.some((draft) => {
+        const status = normalizeStatus(draft.status);
+        return status === "submitted" || status === "completed";
+      }),
     [drafts],
   );
 
@@ -392,8 +392,8 @@ export default function FieldCollection() {
               Field Collection Drafts
             </h1>
             <p className="text-sm text-muted-foreground">
-              Field collectors create a single daily draft and record can
-              details per center from there.
+              Field collectors create a single daily draft and record can details per center from
+              there.
             </p>
           </div>
 
@@ -450,11 +450,7 @@ export default function FieldCollection() {
                 disabled={isLoading || isRefreshing}
               >
                 <RefreshCcw
-                  className={
-                    isLoading || isRefreshing
-                      ? "h-4 w-4 animate-spin"
-                      : "h-4 w-4"
-                  }
+                  className={isLoading || isRefreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"}
                 />
                 <span className="ml-2">Refresh</span>
               </Button>
@@ -464,13 +460,9 @@ export default function FieldCollection() {
                 disabled={isCreating}
                 className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto sm:ml-auto"
               >
-                {isCreating ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : null}
+                {isCreating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                 {isCreating ? "Creating…" : "Add New"}
               </Button>
-
-              
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Overview</span>
@@ -478,12 +470,11 @@ export default function FieldCollection() {
                 <span className="h-2 w-2 rounded-full bg-red-600" /> Active: {activeDrafts.length}
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-green-600" /> Completed: {submittedDrafts.length}
+                <span className="h-2 w-2 rounded-full bg-green-600" /> Completed:{" "}
+                {submittedDrafts.length}
               </span>
             </div>
           </div>
-
-          
 
           {isLoading && (
             <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
@@ -512,173 +503,190 @@ export default function FieldCollection() {
               ) : (
                 <>
                   {(listTab === "all" || listTab === "active") && (
-                  <section className="space-y-3">
-                    <h2 className="text-lg sm:text-xl font-semibold">Active drafts</h2>
-                    {activeDrafts.length === 0 ? (
-                      <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
-                        No active batches right now.
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {activeDrafts.map((draft) => (
-                          <div
-                            key={draft.draftId}
-                            className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
-                          >
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
-                                <span>
-                                  Draft ID: <span className="text-foreground font-medium">{draft.id}</span>
-                                </span>
-                                <span className="px-2 text-muted-foreground/40">|</span>
-                                <span className="font-medium">Collected on {formatDateLabel(draft.date)}</span>
-                                <span className="px-2 text-muted-foreground/40">|</span>
-                                <span>Cans: {formatNumeric(draft.canCount)}</span>
-                                <span className="px-2 text-muted-foreground/40">|</span>
-                                <span>Total quantity: {formatNumeric(draft.totalQuantity)}</span>
-                              </div>
-                              <div className="flex flex-wrap sm:items-center gap-2 sm:justify-end">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => navigate(`/field-collection/draft/${draft.draftId}`)}
+                    <section className="space-y-3">
+                      <h2 className="text-lg sm:text-xl font-semibold">Active drafts</h2>
+                      {activeDrafts.length === 0 ? (
+                        <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
+                          No active batches right now.
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {activeDrafts.map((draft) => (
+                            <div
+                              key={draft.draftId}
+                              className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
+                                  <span>
+                                    Draft ID:{" "}
+                                    <span className="text-foreground font-medium">{draft.id}</span>
+                                  </span>
+                                  <span className="px-2 text-muted-foreground/40">|</span>
+                                  <span className="font-medium">
+                                    Collected on {formatDateLabel(draft.date)}
+                                  </span>
+                                  <span className="px-2 text-muted-foreground/40">|</span>
+                                  <span>Cans: {formatNumeric(draft.canCount)}</span>
+                                  <span className="px-2 text-muted-foreground/40">|</span>
+                                  <span>Total quantity: {formatNumeric(draft.totalQuantity)}</span>
+                                </div>
+                                <div className="flex flex-wrap sm:items-center gap-2 sm:justify-end">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      navigate(`/field-collection/draft/${draft.draftId}`)
+                                    }
                                   >
-                                  Continue
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleSubmitDraft(draft.draftId)}
-                                  disabled={
-                                    submittingDraftId === draft.draftId ||
-                                    (completedCounts[draft.draftId] ?? 0) < 1
-                                  }
-                                  className="bg-cta hover:bg-cta-hover text-cta-foreground"
-                                >
-                                  {submittingDraftId === draft.draftId ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : null}
-                                  Submit
-                                </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button
-                                      variant="destructive"
-                                      size="sm"
-                                      className="flex-1 sm:flex-none"
-                                      disabled={deletingDraftId === draft.draftId}
-                                    >
-                                      {deletingDraftId === draft.draftId ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <span className="inline-flex items-center gap-1"><Trash2 className="h-4 w-4" /> Delete</span>
-                                      )}
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete draft?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Deleting this draft will remove all field collection data captured for {formatDateLabel(draft.date)}.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => handleDeleteDraft(draft.draftId)}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    Continue
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSubmitDraft(draft.draftId)}
+                                    disabled={
+                                      submittingDraftId === draft.draftId ||
+                                      (completedCounts[draft.draftId] ?? 0) < 1
+                                    }
+                                    className="bg-cta hover:bg-cta-hover text-cta-foreground"
+                                  >
+                                    {submittingDraftId === draft.draftId ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : null}
+                                    Submit
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        className="flex-1 sm:flex-none"
+                                        disabled={deletingDraftId === draft.draftId}
                                       >
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
+                                        {deletingDraftId === draft.draftId ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1">
+                                            <Trash2 className="h-4 w-4" /> Delete
+                                          </span>
+                                        )}
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete draft?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Deleting this draft will remove all field collection data
+                                          captured for {formatDateLabel(draft.date)}.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => handleDeleteDraft(draft.draftId)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </section>
+                          ))}
+                        </div>
+                      )}
+                    </section>
                   )}
 
                   {(listTab === "all" || listTab === "submitted") && (
-                  <section className="space-y-3">
-                    <h2 className="text-lg sm:text-xl font-semibold">Submitted drafts</h2>
-                    {submittedDrafts.length === 0 ? (
-                      <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
-                        No submitted drafts yet.
+                    <section className="space-y-3">
+                      <h2 className="text-lg sm:text-xl font-semibold">Submitted drafts</h2>
+                      {submittedDrafts.length === 0 ? (
+                        <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
+                          No submitted drafts yet.
                         </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {submittedDrafts.map((draft) => (
-                          <div
-                            key={draft.draftId}
-                            className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
-                          >
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                              <div className="flex items-center gap-4 text-sm">
-                                <span>
-                                  Draft ID: <span className="text-foreground font-medium">{draft.id}</span>
-                                </span>
-                                <span className="px-2 text-muted-foreground/40">|</span>
-                                <span className="font-medium">Collected on {formatDateLabel(draft.date)}</span>
-                                <span className="px-2 text-muted-foreground/40">|</span>
-                                <span>Cans: {formatNumeric(draft.canCount)}</span>
-                                <span className="px-2 text-muted-foreground/40">|</span>
-                                <span>Total quantity: {formatNumeric(draft.totalQuantity)}</span>
-                                <span className="px-2 text-muted-foreground/40">|</span>
-                                <span className="text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">
-                                  {normalizeStatus(draft.status) === "completed" ? "Completed" : "Submitted"}
-                                </span>
-                              </div>
-                              <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:justify-end">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => navigate(`/field-collection/draft/${draft.draftId}`)}
+                      ) : (
+                        <div className="space-y-4">
+                          {submittedDrafts.map((draft) => (
+                            <div
+                              key={draft.draftId}
+                              className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <div className="flex items-center gap-4 text-sm">
+                                  <span>
+                                    Draft ID:{" "}
+                                    <span className="text-foreground font-medium">{draft.id}</span>
+                                  </span>
+                                  <span className="px-2 text-muted-foreground/40">|</span>
+                                  <span className="font-medium">
+                                    Collected on {formatDateLabel(draft.date)}
+                                  </span>
+                                  <span className="px-2 text-muted-foreground/40">|</span>
+                                  <span>Cans: {formatNumeric(draft.canCount)}</span>
+                                  <span className="px-2 text-muted-foreground/40">|</span>
+                                  <span>Total quantity: {formatNumeric(draft.totalQuantity)}</span>
+                                  <span className="px-2 text-muted-foreground/40">|</span>
+                                  <span className="text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">
+                                    {normalizeStatus(draft.status) === "completed"
+                                      ? "Completed"
+                                      : "Submitted"}
+                                  </span>
+                                </div>
+                                <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:justify-end">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      navigate(`/field-collection/draft/${draft.draftId}`)
+                                    }
                                   >
-                                  View
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReopenDraft(draft.draftId)}
-                                  disabled={reopeningDraftId === draft.draftId}
-                                >
-                                  {reopeningDraftId === draft.draftId ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : null}
-                                  Reopen
-                                </Button>
-                              </div>
-                              <div className="flex sm:hidden flex-wrap items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => navigate(`/field-collection/draft/${draft.draftId}`)}
-                                  className="flex-1"
-                                >
-                                  View
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReopenDraft(draft.draftId)}
-                                  disabled={reopeningDraftId === draft.draftId}
-                                  className="flex-1"
-                                >
-                                  {reopeningDraftId === draft.draftId ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : null}
-                                  Reopen
-                                </Button>
+                                    View
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleReopenDraft(draft.draftId)}
+                                    disabled={reopeningDraftId === draft.draftId}
+                                  >
+                                    {reopeningDraftId === draft.draftId ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : null}
+                                    Reopen
+                                  </Button>
+                                </div>
+                                <div className="flex sm:hidden flex-wrap items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      navigate(`/field-collection/draft/${draft.draftId}`)
+                                    }
+                                    className="flex-1"
+                                  >
+                                    View
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleReopenDraft(draft.draftId)}
+                                    disabled={reopeningDraftId === draft.draftId}
+                                    className="flex-1"
+                                  >
+                                    {reopeningDraftId === draft.draftId ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : null}
+                                    Reopen
+                                  </Button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </section>
+                          ))}
+                        </div>
+                      )}
+                    </section>
                   )}
                 </>
               )}
@@ -686,7 +694,11 @@ export default function FieldCollection() {
           )}
         </div>
       </div>
-  <ReportGenerationDialog stage="field" open={reportDialogOpen} onOpenChange={setReportDialogOpen} />
+      <ReportGenerationDialog
+        stage="field"
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+      />
     </div>
   );
 }

@@ -19,19 +19,24 @@ export function ToggleSelector<T extends string | number>({
   value,
   onChange,
   className,
-  size = "md"
+  size = "md",
 }: ToggleSelectorProps<T>) {
   const sizeClasses = {
     sm: "px-3 py-1.5 text-xs",
     md: "px-4 py-2 text-sm",
-    lg: "px-6 py-3 text-base"
+    lg: "px-6 py-3 text-base",
   };
 
   return (
-    <div className={cn("flex items-center gap-1 bg-muted/60 rounded-full p-1 w-full sm:w-auto", className)}>
+    <div
+      className={cn(
+        "flex items-center gap-1 bg-muted/60 rounded-full p-1 w-full sm:w-auto",
+        className,
+      )}
+    >
       {options.map((option) => {
         const isActive = option.value === value;
-        
+
         return (
           <button
             key={String(option.value)}
@@ -43,7 +48,7 @@ export function ToggleSelector<T extends string | number>({
               sizeClasses[size],
               isActive
                 ? "bg-cta text-cta-foreground shadow"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             <span>{option.label}</span>

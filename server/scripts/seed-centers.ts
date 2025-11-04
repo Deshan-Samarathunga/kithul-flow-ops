@@ -47,7 +47,13 @@ async function main() {
              is_active = EXCLUDED.is_active,
              updated_at = CURRENT_TIMESTAMP
        RETURNING id, center_id, center_name, location`,
-      [center.centerId, center.centerName, center.location, center.centerAgent, center.contactPhone]
+      [
+        center.centerId,
+        center.centerName,
+        center.location,
+        center.centerAgent,
+        center.contactPhone,
+      ],
     );
 
     console.log(`✓ ${center.centerName} (${center.centerId}):`, rows[0]);
@@ -63,4 +69,3 @@ main().catch((e) => {
   console.error("Error seeding collection centers:", e);
   process.exit(1);
 });
-

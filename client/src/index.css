@@ -21,7 +21,7 @@ All colors MUST be HSL.
     --primary: 32 89% 60%;
     --primary-foreground: 0 0% 100%;
     --primary-hover: 32 89% 55%;
-    
+
     /* Blue CTA */
     --cta: 207 81% 52%;
     --cta-foreground: 0 0% 100%;
@@ -80,7 +80,7 @@ All colors MUST be HSL.
     --primary: 32 89% 60%;
     --primary-foreground: 0 0% 100%;
     --primary-hover: 32 89% 55%;
-    
+
     --cta: 207 81% 52%;
     --cta-foreground: 0 0% 100%;
     --cta-hover: 207 81% 45%;
@@ -129,10 +129,20 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family:
+      "Inter",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-semibold;
   }
 }
@@ -142,7 +152,7 @@ All colors MUST be HSL.
   .login-logo-wrapper {
     padding-top: 1.25rem;
   }
-  
+
   .login-logo-wrapper img {
     box-shadow: none;
   }

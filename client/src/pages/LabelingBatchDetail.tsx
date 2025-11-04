@@ -11,7 +11,9 @@ import DataService from "@/lib/dataService";
 import type { LabelingBatchDto } from "@/lib/apiClient";
 
 function normalizeStatus(status: string | null | undefined) {
-  return String(status ?? "").trim().toLowerCase();
+  return String(status ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 function formatStatusLabelText(status: string | null | undefined) {
@@ -47,7 +49,9 @@ export default function LabelingBatchDetail() {
     const raw = import.meta.env.VITE_API_URL || "";
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
-  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
+  const userAvatar = user?.profileImage
+    ? new URL(user.profileImage, apiBase).toString()
+    : undefined;
 
   const productType = normalizeStatus(batch?.productType);
   const isTreacle = productType === "treacle";
@@ -94,13 +98,17 @@ export default function LabelingBatchDetail() {
 
     setForm({
       stickerQuantity:
-        batch.stickerQuantity !== null && batch.stickerQuantity !== undefined ? String(batch.stickerQuantity) : "",
+        batch.stickerQuantity !== null && batch.stickerQuantity !== undefined
+          ? String(batch.stickerQuantity)
+          : "",
       shrinkSleeveQuantity:
         batch.shrinkSleeveQuantity !== null && batch.shrinkSleeveQuantity !== undefined
           ? String(batch.shrinkSleeveQuantity)
           : "",
       neckTagQuantity:
-        batch.neckTagQuantity !== null && batch.neckTagQuantity !== undefined ? String(batch.neckTagQuantity) : "",
+        batch.neckTagQuantity !== null && batch.neckTagQuantity !== undefined
+          ? String(batch.neckTagQuantity)
+          : "",
       corrugatedCartonQuantity:
         batch.corrugatedCartonQuantity !== null && batch.corrugatedCartonQuantity !== undefined
           ? String(batch.corrugatedCartonQuantity)
@@ -257,7 +265,9 @@ export default function LabelingBatchDetail() {
 
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {isLoading ? (
-          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Loading labeling batch…</div>
+          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
+            Loading labeling batch…
+          </div>
         ) : error ? (
           <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive">
             {error}
@@ -266,7 +276,9 @@ export default function LabelingBatchDetail() {
           <>
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Batch {batch.batchNumber}</h1>
+                <h1 className="text-xl sm:text-2xl font-semibold text-foreground">
+                  Batch {batch.batchNumber}
+                </h1>
                 <p className="text-sm text-muted-foreground mt-1 flex items-center gap-4">
                   <span>Batch ID: {batch.batchNumber}</span>
                   <span className="text-muted-foreground/40">|</span>
@@ -277,9 +289,13 @@ export default function LabelingBatchDetail() {
                   <span>Cans: {canCountDisplay}</span>
                   <span className="text-muted-foreground/40">|</span>
                   {isCompleted ? (
-                    <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">Submitted</span>
+                    <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">
+                      Submitted
+                    </span>
                   ) : (
-                    <span className="inline-block text-xs uppercase bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">In Progress</span>
+                    <span className="inline-block text-xs uppercase bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
+                      In Progress
+                    </span>
                   )}
                 </p>
               </div>
@@ -314,8 +330,12 @@ export default function LabelingBatchDetail() {
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase">Finished Quantity</p>
-                    <p className="text-sm font-semibold text-foreground mt-1">{finishedQuantityDisplay}</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase">
+                      Finished Quantity
+                    </p>
+                    <p className="text-sm font-semibold text-foreground mt-1">
+                      {finishedQuantityDisplay}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs font-medium text-muted-foreground uppercase">Can Count</p>
@@ -358,7 +378,10 @@ export default function LabelingBatchDetail() {
                       step="1"
                       value={form.corrugatedCartonQuantity}
                       onChange={(event) =>
-                        setForm((prev) => ({ ...prev, corrugatedCartonQuantity: event.target.value }))
+                        setForm((prev) => ({
+                          ...prev,
+                          corrugatedCartonQuantity: event.target.value,
+                        }))
                       }
                       required
                       disabled={isCompleted && !isReopening}
@@ -428,10 +451,11 @@ export default function LabelingBatchDetail() {
             )}
           </>
         ) : (
-          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Labeling batch not found.</div>
+          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
+            Labeling batch not found.
+          </div>
         )}
       </div>
     </div>
   );
 }
-

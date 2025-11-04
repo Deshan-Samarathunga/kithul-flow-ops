@@ -1,5 +1,9 @@
 import { pool } from "../db.js";
-import { SUPPORTED_PRODUCTS, getTableName, type ProductSlug } from "../routes/utils/productTables.js";
+import {
+  SUPPORTED_PRODUCTS,
+  getTableName,
+  type ProductSlug,
+} from "../routes/utils/productTables.js";
 
 export const mapCanRow = (row: any) => ({
   id: row.can_id as string,
@@ -7,12 +11,21 @@ export const mapCanRow = (row: any) => ({
   productType: row.product_type as string,
   brixValue: row.brix_value !== null ? Number(row.brix_value) : null,
   phValue: row.ph_value !== null ? Number(row.ph_value) : null,
-  createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : (row.created_at as string | null),
-  updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : (row.updated_at as string | null),
+  createdAt:
+    row.created_at instanceof Date
+      ? row.created_at.toISOString()
+      : (row.created_at as string | null),
+  updatedAt:
+    row.updated_at instanceof Date
+      ? row.updated_at.toISOString()
+      : (row.updated_at as string | null),
   assignedBatchId: row.assigned_batch_id as string | null,
   draft: {
     id: row.draft_id as string,
-    date: row.draft_date instanceof Date ? row.draft_date.toISOString() : (row.draft_date as string | null),
+    date:
+      row.draft_date instanceof Date
+        ? row.draft_date.toISOString()
+        : (row.draft_date as string | null),
     status: row.draft_status as string,
   },
   collectionCenter: {
@@ -32,7 +45,9 @@ export type ProcessingBatchContext = {
   row: any;
 };
 
-export async function resolveProcessingBatchContext(batchId: string): Promise<ProcessingBatchContext | null> {
+export async function resolveProcessingBatchContext(
+  batchId: string,
+): Promise<ProcessingBatchContext | null> {
   for (const productType of SUPPORTED_PRODUCTS) {
     const batchTable = getTableName("processingBatches", productType);
     const { rows } = await pool.query(`SELECT * FROM ${batchTable} WHERE batch_id = $1`, [batchId]);
@@ -51,7 +66,11 @@ export async function resolveProcessingBatchContext(batchId: string): Promise<Pr
   return null;
 }
 
-export async function fetchCansForProduct(productType: ProductSlug, statusFilter?: string, forBatch?: string) {
+export async function fetchCansForProduct(
+  productType: ProductSlug,
+  statusFilter?: string,
+  forBatch?: string,
+) {
   const canTable = getTableName("cans", productType);
   const draftTable = getTableName("drafts", productType);
   const batchCanTable = getTableName("processingBatchCans", productType);
@@ -199,14 +218,23 @@ export async function fetchProcessingBatch(batchId: string) {
   return {
     id: batchRow.batch_id as string,
     batchNumber: batchRow.batch_number as string,
-    scheduledDate: batchRow.scheduled_date instanceof Date ? batchRow.scheduled_date.toISOString() : (batchRow.scheduled_date as string | null),
+    scheduledDate:
+      batchRow.scheduled_date instanceof Date
+        ? batchRow.scheduled_date.toISOString()
+        : (batchRow.scheduled_date as string | null),
     productType: batchRow.product_type as string,
     status: batchRow.status as string,
     totalSapOutput: batchRow.total_sap_output !== null ? Number(batchRow.total_sap_output) : null,
     gasUsedKg: batchRow.used_gas_kg !== null ? Number(batchRow.used_gas_kg) : null,
     createdBy: batchRow.created_by as string,
-    createdAt: batchRow.created_at instanceof Date ? batchRow.created_at.toISOString() : (batchRow.created_at as string | null),
-    updatedAt: batchRow.updated_at instanceof Date ? batchRow.updated_at.toISOString() : (batchRow.updated_at as string | null),
+    createdAt:
+      batchRow.created_at instanceof Date
+        ? batchRow.created_at.toISOString()
+        : (batchRow.created_at as string | null),
+    updatedAt:
+      batchRow.updated_at instanceof Date
+        ? batchRow.updated_at.toISOString()
+        : (batchRow.updated_at as string | null),
     canCount: Number(batchRow.can_count ?? 0),
     totalQuantity: Number(batchRow.total_quantity ?? 0),
     canIds: canRows.map((can) => can.can_id as string),

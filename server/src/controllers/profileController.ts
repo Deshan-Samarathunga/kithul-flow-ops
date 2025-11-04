@@ -34,7 +34,7 @@ export async function patchProfile(req: Request, res: Response) {
       `SELECT id, user_id, name, role, password_hash, profile_image
          FROM public.users
         WHERE id = $1`,
-      [userId]
+      [userId],
     );
     const existing = rows[0];
     if (!existing) {
@@ -61,7 +61,9 @@ export async function patchProfile(req: Request, res: Response) {
         return res.status(400).json({ error: "New password must be at least 8 characters long" });
       }
       if (!currentPassword) {
-        return res.status(400).json({ error: "Current password is required to set a new password" });
+        return res
+          .status(400)
+          .json({ error: "Current password is required to set a new password" });
       }
       const ok = await bcrypt.compare(currentPassword, existing.password_hash);
       if (!ok) {
@@ -91,7 +93,7 @@ export async function patchProfile(req: Request, res: Response) {
         `UPDATE public.users
             SET ${updateFragments.join(", ")}
           WHERE id = $${params.length}`,
-        params
+        params,
       );
 
       if (newProfilePath) {

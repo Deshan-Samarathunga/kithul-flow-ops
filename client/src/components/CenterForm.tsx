@@ -73,7 +73,7 @@ export function CenterForm({ center, onSuccess, onCancel }: CenterFormProps) {
   };
 
   const handleChange = (field: string, value: string | boolean) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
@@ -173,14 +173,20 @@ export function CenterForm({ center, onSuccess, onCancel }: CenterFormProps) {
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="bg-cta hover:bg-cta-hover text-cta-foreground">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-cta hover:bg-cta-hover text-cta-foreground"
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   {center ? "Updating..." : "Creating..."}
                 </>
+              ) : center ? (
+                "Update Center"
               ) : (
-                center ? "Update Center" : "Create Center"
+                "Create Center"
               )}
             </Button>
           </div>
