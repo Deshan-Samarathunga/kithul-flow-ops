@@ -1,0 +1,1079 @@
+{
+  "info": {
+    "name": "Kithul Flow Ops API",
+    "description": "Complete API collection for Kithul Flow Ops - a full-stack project with Express TypeScript backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string",
+      "description": "JWT token obtained from login"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔑 Quick Role Login",
+      "description": "Quick login for testing different user roles",
+      "item": [
+        {
+          "name": "Login as Administrator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.token) {",
+                  "        pm.collectionVariables.set('authToken', response.token);",
+                  "        pm.globals.set('currentRole', 'Administrator');",
+                  "        console.log('Logged in as Administrator');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{adminUsername}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Login as admin01 (Administrator role)"
+          }
+        },
+        {
+          "name": "Login as Field Collection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.token) {",
+                  "        pm.collectionVariables.set('authToken', response.token);",
+                  "        pm.globals.set('currentRole', 'Field Collection');",
+                  "        console.log('Logged in as Field Collection');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{fieldUsername}}\",\n  \"password\": \"{{fieldPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Login as field01 (Field Collection role)"
+          }
+        },
+        {
+          "name": "Login as Processing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.token) {",
+                  "        pm.collectionVariables.set('authToken', response.token);",
+                  "        pm.globals.set('currentRole', 'Processing');",
+                  "        console.log('Logged in as Processing');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{processUsername}}\",\n  \"password\": \"{{processPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Login as process01 (Processing role)"
+          }
+        },
+        {
+          "name": "Login as Packaging",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.token) {",
+                  "        pm.collectionVariables.set('authToken', response.token);",
+                  "        pm.globals.set('currentRole', 'Packaging');",
+                  "        console.log('Logged in as Packaging');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{packageUsername}}\",\n  \"password\": \"{{packagePassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Login as package01 (Packaging role)"
+          }
+        },
+        {
+          "name": "Login as Labeling",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.token) {",
+                  "        pm.collectionVariables.set('authToken', response.token);",
+                  "        pm.globals.set('currentRole', 'Labeling');",
+                  "        console.log('Logged in as Labeling');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{labelUsername}}\",\n  \"password\": \"{{labelPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Login as label01 (Labeling role)"
+          }
+        },
+        {
+          "name": "Get Current User Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me",
+            "description": "Check which user is currently logged in"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Health Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": "Check if the API service is running"
+          }
+        },
+        {
+          "name": "Database Ping",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/db-ping",
+            "description": "Check database connectivity"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"testuser\",\n  \"password\": \"12345678\",\n  \"name\": \"Test User\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register",
+            "description": "Register a new user account"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.token) {",
+                  "        pm.collectionVariables.set('authToken', response.token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"testuser\",\n  \"password\": \"12345678\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Login and obtain JWT token"
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me",
+            "description": "Get current authenticated user details"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get Roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/roles",
+            "description": "Get all available roles (Admin only)"
+          }
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/users",
+            "description": "List all users (Admin only)"
+          }
+        },
+        {
+          "name": "Get User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/users/:userId",
+            "description": "Get specific user details (Admin only)"
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"newuser\",\n  \"password\": \"12345678\",\n  \"name\": \"New User\",\n  \"role\": \"Field Collection\"\n}"
+            },
+            "url": "{{baseUrl}}/admin/users",
+            "description": "Create a new user (Admin only)"
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"role\": \"Processing\"\n}"
+            },
+            "url": "{{baseUrl}}/admin/users/:userId",
+            "description": "Update user details (Admin only)"
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/users/:userId",
+            "description": "Delete a user (Admin only)"
+          }
+        },
+        {
+          "name": "List Centers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/centers",
+            "description": "List all collection centers (Admin only)"
+          }
+        },
+        {
+          "name": "Get Center",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/centers/:centerId",
+            "description": "Get specific center details (Admin only)"
+          }
+        },
+        {
+          "name": "Create Center",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"centerName\": \"New Collection Center\",\n  \"location\": \"Location Address\",\n  \"contactPerson\": \"John Doe\",\n  \"contactNumber\": \"0771234567\"\n}"
+            },
+            "url": "{{baseUrl}}/admin/centers",
+            "description": "Create a new collection center (Admin only)"
+          }
+        },
+        {
+          "name": "Update Center",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"centerName\": \"Updated Center Name\",\n  \"contactPerson\": \"Jane Doe\"\n}"
+            },
+            "url": "{{baseUrl}}/admin/centers/:centerId",
+            "description": "Update center details (Admin only)"
+          }
+        },
+        {
+          "name": "Delete Center",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/centers/:centerId",
+            "description": "Delete a collection center (Admin only)"
+          }
+        },
+        {
+          "name": "Admin Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/stats",
+            "description": "Get admin statistics (Admin only)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Updated Name",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "newemail@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "avatar",
+                  "type": "file",
+                  "description": "Profile image file"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/profile",
+            "description": "Update user profile with optional avatar upload"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Field Collection",
+      "item": [
+        {
+          "name": "List Drafts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/field-collection/drafts",
+              "host": ["{{baseUrl}}"],
+              "path": ["field-collection", "drafts"],
+              "query": [
+                {
+                  "key": "product",
+                  "value": "sap",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "draft",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List field collection drafts"
+          }
+        },
+        {
+          "name": "Get Draft",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/field-collection/drafts/:draftId",
+            "description": "Get specific draft details"
+          }
+        },
+        {
+          "name": "Create Draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2024-01-15\"\n}"
+            },
+            "url": "{{baseUrl}}/field-collection/drafts",
+            "description": "Create a new field collection draft"
+          }
+        },
+        {
+          "name": "Update Draft",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"draft\"\n}"
+            },
+            "url": "{{baseUrl}}/field-collection/drafts/:draftId",
+            "description": "Update draft status"
+          }
+        },
+        {
+          "name": "Delete Draft",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/field-collection/drafts/:draftId",
+            "description": "Delete a draft"
+          }
+        },
+        {
+          "name": "Submit Draft",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/field-collection/drafts/:draftId/submit",
+            "description": "Submit a draft for processing"
+          }
+        },
+        {
+          "name": "Reopen Draft",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/field-collection/drafts/:draftId/reopen",
+            "description": "Reopen a submitted draft"
+          }
+        },
+        {
+          "name": "Get Draft Center Cans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/field-collection/drafts/:draftId/centers/:centerId/cans",
+            "description": "Get cans for a specific draft and center"
+          }
+        },
+        {
+          "name": "Create Can",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"draftId\": \"draft123\",\n  \"collectionCenterId\": \"center123\",\n  \"productType\": \"sap\",\n  \"brixValue\": 65.5,\n  \"phValue\": 6.8,\n  \"quantity\": 25.5\n}"
+            },
+            "url": "{{baseUrl}}/field-collection/cans",
+            "description": "Create a new can record"
+          }
+        },
+        {
+          "name": "Update Can",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brixValue\": 66.0,\n  \"phValue\": 6.9,\n  \"quantity\": 26.0\n}"
+            },
+            "url": "{{baseUrl}}/field-collection/cans/:canId",
+            "description": "Update can details"
+          }
+        },
+        {
+          "name": "Delete Can",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/field-collection/cans/:canId",
+            "description": "Delete a can record"
+          }
+        },
+        {
+          "name": "List Centers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/field-collection/centers",
+            "description": "List all collection centers"
+          }
+        },
+        {
+          "name": "Submit Center",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/field-collection/drafts/:draftId/centers/:centerId/submit",
+            "description": "Submit a center for a draft"
+          }
+        },
+        {
+          "name": "Reopen Center",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/field-collection/drafts/:draftId/centers/:centerId/reopen",
+            "description": "Reopen a submitted center"
+          }
+        },
+        {
+          "name": "Get Completed Centers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/field-collection/drafts/:draftId/completed-centers",
+            "description": "Get completed centers for a draft"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Processing",
+      "item": [
+        {
+          "name": "List Processing Cans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/processing/cans",
+              "host": ["{{baseUrl}}"],
+              "path": ["processing", "cans"],
+              "query": [
+                {
+                  "key": "product",
+                  "value": "sap",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "active",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List available cans for processing"
+          }
+        },
+        {
+          "name": "List Processing Batches",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/processing/batches",
+              "host": ["{{baseUrl}}"],
+              "path": ["processing", "batches"],
+              "query": [
+                {
+                  "key": "product",
+                  "value": "sap",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List all processing batches"
+          }
+        },
+        {
+          "name": "Create Processing Batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scheduledDate\": \"2024-01-20\",\n  \"productType\": \"sap\"\n}"
+            },
+            "url": "{{baseUrl}}/processing/batches",
+            "description": "Create a new processing batch"
+          }
+        },
+        {
+          "name": "Get Processing Batch",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/processing/batches/:batchId",
+            "description": "Get specific processing batch details"
+          }
+        },
+        {
+          "name": "Update Processing Batch",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in-progress\",\n  \"totalSapOutput\": 150.5,\n  \"gasUsedKg\": 12.5,\n  \"notes\": \"Processing notes\"\n}"
+            },
+            "url": "{{baseUrl}}/processing/batches/:batchId",
+            "description": "Update processing batch details"
+          }
+        },
+        {
+          "name": "Set Batch Cans",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"canIds\": [\"can1\", \"can2\", \"can3\"]\n}"
+            },
+            "url": "{{baseUrl}}/processing/batches/:batchId/cans",
+            "description": "Assign cans to a processing batch (max 15)"
+          }
+        },
+        {
+          "name": "Submit Processing Batch",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/processing/batches/:batchId/submit",
+            "description": "Submit/complete a processing batch"
+          }
+        },
+        {
+          "name": "Reopen Processing Batch",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/processing/batches/:batchId/reopen",
+            "description": "Reopen a completed processing batch"
+          }
+        },
+        {
+          "name": "Delete Processing Batch",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/processing/batches/:batchId",
+            "description": "Delete a processing batch"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Packaging",
+      "item": [
+        {
+          "name": "Available Processing Batches",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/packaging/batches/available-processing",
+              "host": ["{{baseUrl}}"],
+              "path": ["packaging", "batches", "available-processing"],
+              "query": [
+                {
+                  "key": "product",
+                  "value": "sap",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get completed processing batches available for packaging"
+          }
+        },
+        {
+          "name": "List Packaging Batches",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/packaging/batches",
+              "host": ["{{baseUrl}}"],
+              "path": ["packaging", "batches"],
+              "query": [
+                {
+                  "key": "product",
+                  "value": "sap",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List all packaging batches"
+          }
+        },
+        {
+          "name": "Create Packaging Batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processingBatchId\": \"batch123\"\n}"
+            },
+            "url": "{{baseUrl}}/packaging/batches",
+            "description": "Create a new packaging batch from a processing batch"
+          }
+        },
+        {
+          "name": "Get Packaging Batch",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/packaging/batches/:packagingId",
+            "description": "Get specific packaging batch details"
+          }
+        },
+        {
+          "name": "Update Packaging Batch",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in-progress\",\n  \"finishedQuantity\": 145.0,\n  \"bottleQuantity\": 290,\n  \"lidQuantity\": 290,\n  \"alufoilQuantity\": 290,\n  \"vacuumBagQuantity\": 50,\n  \"parchmentPaperQuantity\": 50,\n  \"notes\": \"Packaging notes\"\n}"
+            },
+            "url": "{{baseUrl}}/packaging/batches/:packagingId",
+            "description": "Update packaging batch details"
+          }
+        },
+        {
+          "name": "Delete Packaging Batch",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/packaging/batches/:packagingId",
+            "description": "Delete a packaging batch"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Labeling",
+      "item": [
+        {
+          "name": "Available Packaging Batches",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/labeling/available-packaging",
+              "host": ["{{baseUrl}}"],
+              "path": ["labeling", "available-packaging"],
+              "query": [
+                {
+                  "key": "product",
+                  "value": "sap",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get packaging batches available for labeling"
+          }
+        },
+        {
+          "name": "List Labeling Batches",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/labeling/batches",
+              "host": ["{{baseUrl}}"],
+              "path": ["labeling", "batches"],
+              "query": [
+                {
+                  "key": "product",
+                  "value": "sap",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List all labeling batches"
+          }
+        },
+        {
+          "name": "Get Labeling Batch",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/labeling/batches/:packagingId",
+            "description": "Get specific labeling batch details"
+          }
+        },
+        {
+          "name": "Create Labeling Batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"packagingId\": \"pkg123\"\n}"
+            },
+            "url": "{{baseUrl}}/labeling/batches",
+            "description": "Create a new labeling batch from a packaging batch"
+          }
+        },
+        {
+          "name": "Update Labeling Batch",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in-progress\",\n  \"stickerQuantity\": 290,\n  \"shrinkSleeveQuantity\": 290,\n  \"neckTagQuantity\": 290,\n  \"corrugatedCartonQuantity\": 25,\n  \"notes\": \"Labeling notes\"\n}"
+            },
+            "url": "{{baseUrl}}/labeling/batches/:packagingId",
+            "description": "Update labeling batch details"
+          }
+        },
+        {
+          "name": "Delete Labeling Batch",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/labeling/batches/:packagingId",
+            "description": "Delete a labeling batch"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Daily Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reports/daily",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "daily"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2024-01-15",
+                  "disabled": true
+                },
+                {
+                  "key": "product",
+                  "value": "sap",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get daily production report"
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
+}
