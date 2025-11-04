@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { DataService } from "@/lib/dataService";
 
+// Form for adding cans into a field collection draft.
 export default function CanForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -16,19 +17,22 @@ export default function CanForm() {
   const productTypeParam = searchParams.get("productType");
   const centerId = searchParams.get("centerId");
   const { user, logout } = useAuth();
-  
+
   const [draftStatus, setDraftStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Define the 4 collection centers mapping
   const collectionCenters = {
-    "center001": { name: "Galle Collection Center", agent: "John Silva" },
-    "center002": { name: "Kurunegala Collection Center", agent: "Mary Perera" }, 
-    "center003": { name: "Hikkaduwa Collection Center", agent: "David Fernando" },
-    "center004": { name: "Matara Collection Center", agent: "Sarah Jayawardena" }
+    center001: { name: "Galle Collection Center", agent: "John Silva" },
+    center002: { name: "Kurunegala Collection Center", agent: "Mary Perera" },
+    center003: { name: "Hikkaduwa Collection Center", agent: "David Fernando" },
+    center004: { name: "Matara Collection Center", agent: "Sarah Jayawardena" },
   };
 
-  const centerInfo = collectionCenters[centerId as keyof typeof collectionCenters] || { name: "Galle Collection Center", agent: "John Silva" };
+  const centerInfo = collectionCenters[centerId as keyof typeof collectionCenters] || {
+    name: "Galle Collection Center",
+    agent: "John Silva",
+  };
   const centerName = centerInfo.name;
 
   const userRole = user?.role || "Guest";
@@ -37,7 +41,9 @@ export default function CanForm() {
     const raw = import.meta.env.VITE_API_URL || "";
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
-  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
+  const userAvatar = user?.profileImage
+    ? new URL(user.profileImage, apiBase).toString()
+    : undefined;
 
   const productType = productTypeParam === "treacle" ? "Treacle" : "Sap";
   const productTypeLower = productTypeParam === "treacle" ? "treacle" : "sap";
@@ -60,19 +66,21 @@ export default function CanForm() {
       try {
         setLoading(true);
         const draftData = await DataService.getDraft(draftId);
-        const draftRecord = draftData && typeof draftData === "object"
-          ? (draftData as Record<string, unknown>)
-          : null;
-        const status = draftRecord && typeof draftRecord.status === "string" 
-          ? draftRecord.status 
-          : "draft";
+        const draftRecord =
+          draftData && typeof draftData === "object"
+            ? (draftData as Record<string, unknown>)
+            : null;
+        const status =
+          draftRecord && typeof draftRecord.status === "string" ? draftRecord.status : "draft";
         setDraftStatus(status);
-        
+
         // Redirect if draft is not in draft status
         if (status !== "draft") {
           toast.error("Cannot edit cans in a submitted or completed draft");
           const productType = productTypeParam === "treacle" ? "treacle" : "sap";
-          navigate(`/field-collection/draft/${draftId}/center/${centerId || 'center001'}?productType=${productType}`);
+          navigate(
+            `/field-collection/draft/${draftId}/center/${centerId || "center001"}?productType=${productType}`,
+          );
         }
       } catch (error) {
         console.error("Error loading draft status:", error);
@@ -130,8 +138,8 @@ export default function CanForm() {
       // Create can data
       const canData = {
         draftId: draftId,
-        collectionCenterId: centerId || 'center001',
-        productType: productTypeLower as 'sap' | 'treacle',
+        collectionCenterId: centerId || "center001",
+        productType: productTypeLower as "sap" | "treacle",
         serialNumber: serial,
         brixValue: brix,
         phValue: ph,
@@ -139,49 +147,51 @@ export default function CanForm() {
       };
 
       await DataService.createCan(canData);
-      
+
       toast.success("Can added successfully");
-      navigate(`/field-collection/draft/${draftId}/center/${centerId || 'center001'}?productType=${productTypeLower}`);
+      navigate(
+        `/field-collection/draft/${draftId}/center/${centerId || "center001"}?productType=${productTypeLower}`,
+      );
     } catch (error) {
-      console.error('Error creating can:', error);
-      const fullId = (productTypeLower === 'sap' ? 'SAP-' : 'TCL-') + String(serial).padStart(8, '0');
-      const msg = error instanceof Error ? error.message : '';
-      if (typeof msg === 'string' && /already exists/i.test(msg)) {
+      console.error("Error creating can:", error);
+      const fullId =
+        (productTypeLower === "sap" ? "SAP-" : "TCL-") + String(serial).padStart(8, "0");
+      const msg = error instanceof Error ? error.message : "";
+      if (typeof msg === "string" && /already exists/i.test(msg)) {
         toast.error(`Can ID ${fullId} already exists`);
       } else if (msg) {
         toast.error(msg);
       } else {
-        toast.error('Failed to add can');
+        toast.error("Failed to add can");
       }
     }
   };
 
-
   return (
     <div className="min-h-screen bg-background">
-      <Navbar 
-        userRole={userRole} 
-        userName={userName} 
-        userAvatar={userAvatar} 
+      <Navbar
+        userRole={userRole}
+        userName={userName}
+        userAvatar={userAvatar}
         onLogout={handleLogout}
         breadcrumb={
           <div className="flex items-center space-x-2 text-sm text-white">
-            <Link 
+            <Link
               to={`/field-collection?productType=${productTypeLower}`}
               className="hover:text-orange-200"
             >
               Field Collection
             </Link>
             <span className="mx-2">&gt;</span>
-            <Link 
+            <Link
               to={`/field-collection/draft/${draftId}?productType=${productTypeLower}`}
               className="hover:text-orange-200"
             >
               {productType} collection draft
             </Link>
             <span className="mx-2">&gt;</span>
-            <Link 
-              to={`/field-collection/draft/${draftId}/center/${encodeURIComponent(centerId || 'center001')}?productType=${productTypeLower}`}
+            <Link
+              to={`/field-collection/draft/${draftId}/center/${encodeURIComponent(centerId || "center001")}?productType=${productTypeLower}`}
               className="hover:text-orange-200"
             >
               {centerName} cans
@@ -199,8 +209,8 @@ export default function CanForm() {
               {draftStatus !== "draft" ? "View Can" : "New Can"}
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              {draftStatus !== "draft" 
-                ? "This draft has been submitted or completed. Editing is not allowed." 
+              {draftStatus !== "draft"
+                ? "This draft has been submitted or completed. Editing is not allowed."
                 : "Enter details for the new can below."}
             </p>
             <div className="mt-5" />
@@ -222,11 +232,18 @@ export default function CanForm() {
                     maxLength={8}
                     placeholder="Enter 8-digit number"
                     value={formData.serialNumber}
-                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value.replace(/[^0-9]/g, '') })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        serialNumber: e.target.value.replace(/[^0-9]/g, ""),
+                      })
+                    }
                     disabled={loading || draftStatus !== "draft"}
                   />
                   <div className="text-xs text-muted-foreground">
-                    Full Can ID: {(productTypeLower === 'sap' ? 'SAP-' : 'TCL-') + ((formData.serialNumber || '').padStart(8,'0') || '________')}
+                    Full Can ID:{" "}
+                    {(productTypeLower === "sap" ? "SAP-" : "TCL-") +
+                      ((formData.serialNumber || "").padStart(8, "0") || "________")}
                   </div>
                 </div>
 
@@ -275,10 +292,9 @@ export default function CanForm() {
                 </div>
               </div>
 
-
               <div className="flex justify-end col-span-1 sm:col-span-2">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="bg-cta hover:bg-cta-hover text-cta-foreground"
                   disabled={loading || draftStatus !== "draft"}
                 >

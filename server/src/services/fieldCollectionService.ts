@@ -11,7 +11,7 @@ export const CENTER_COMPLETIONS_TABLE = "field_collection_center_completions";
 export async function resolveDraftContext(draftId: string) {
   const { rows } = await pool.query(
     `SELECT d.*, u.name AS created_by_name FROM ${DRAFTS_TABLE} d LEFT JOIN users u ON d.created_by = u.user_id WHERE d.draft_id = $1`,
-    [draftId]
+    [draftId],
   );
   if (rows.length === 0) return null;
   return { row: rows[0] };
@@ -37,10 +37,10 @@ export async function resolveCanContext(canId: string) {
 export async function fetchDraftSummaries(
   productFilter?: ProductSlug | null,
   statusFilter?: string,
-  createdByFilter?: string | null
+  createdByFilter?: string | null,
 ) {
   const CAN_TOTALS_SOURCE = SUPPORTED_PRODUCTS.map(
-    (product) => `SELECT draft_id, quantity FROM ${getTableName("cans", product)}`
+    (product) => `SELECT draft_id, quantity FROM ${getTableName("cans", product)}`,
   ).join(" UNION ALL ");
 
   const params: unknown[] = [];
@@ -51,7 +51,9 @@ export async function fetchDraftSummaries(
     params.push(statusFilter);
   }
   if (productFilter) {
-    whereClauses.push(`EXISTS (SELECT 1 FROM ${getTableName("cans", productFilter)} b WHERE b.draft_id = d.id)`);
+    whereClauses.push(
+      `EXISTS (SELECT 1 FROM ${getTableName("cans", productFilter)} b WHERE b.draft_id = d.id)`,
+    );
   }
   if (createdByFilter) {
     whereClauses.push(`d.created_by = $${params.length + 1}`);

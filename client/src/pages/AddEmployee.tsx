@@ -4,7 +4,13 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +29,7 @@ const initialState: FormState = {
   password: "",
 };
 
+// Page for administrators to create new employee user accounts.
 export default function AddEmployee() {
   const navigate = useNavigate();
   const { user, token, logout } = useAuth();
@@ -38,7 +45,9 @@ export default function AddEmployee() {
     const raw = import.meta.env.VITE_API_URL || "";
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
-  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
+  const userAvatar = user?.profileImage
+    ? new URL(user.profileImage, apiBase).toString()
+    : undefined;
 
   useEffect(() => {
     let cancelled = false;
@@ -157,7 +166,12 @@ export default function AddEmployee() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+      <Navbar
+        userRole={userRole}
+        userName={userName}
+        userAvatar={userAvatar}
+        onLogout={handleLogout}
+      />
 
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-2xl">
         <h1 className="text-xl sm:text-2xl font-semibold mb-6">Add New Employee</h1>
@@ -240,5 +254,3 @@ export default function AddEmployee() {
     </div>
   );
 }
-
-

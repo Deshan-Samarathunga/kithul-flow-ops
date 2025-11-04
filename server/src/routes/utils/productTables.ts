@@ -28,14 +28,18 @@ const TABLES = {
   },
 } as const satisfies Record<string, Record<ProductSlug, string>>;
 
-export const getTableName = <K extends keyof typeof TABLES>(key: K, product: ProductSlug) => TABLES[key][product];
+export const getTableName = <K extends keyof typeof TABLES>(key: K, product: ProductSlug) =>
+  TABLES[key][product];
 
 export const normalizeProduct = (value: unknown): ProductSlug | null => {
   if (!value || typeof value !== "string") {
     return null;
   }
   const normalized = value.toLowerCase();
-  return (SUPPORTED_PRODUCTS as readonly string[]).includes(normalized) ? (normalized as ProductSlug) : null;
+  return (SUPPORTED_PRODUCTS as readonly string[]).includes(normalized)
+    ? (normalized as ProductSlug)
+    : null;
 };
 
-export const isSupportedProduct = (value: unknown): value is ProductSlug => normalizeProduct(value) !== null;
+export const isSupportedProduct = (value: unknown): value is ProductSlug =>
+  normalizeProduct(value) !== null;

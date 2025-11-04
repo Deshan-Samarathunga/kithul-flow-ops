@@ -8,7 +8,12 @@ interface BatchSearchBarProps {
   className?: string;
 }
 
-export function BatchSearchBar({ value, onChange, placeholder = "Search Batches", className }: BatchSearchBarProps) {
+export function BatchSearchBar({
+  value,
+  onChange,
+  placeholder = "Search Batches",
+  className,
+}: BatchSearchBarProps) {
   return (
     <div className={`relative flex-1 w-full ${className ?? ""}`}>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -21,4 +26,3 @@ export function BatchSearchBar({ value, onChange, placeholder = "Search Batches"
     </div>
   );
 }
-

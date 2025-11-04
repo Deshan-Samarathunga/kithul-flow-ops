@@ -9,7 +9,7 @@ export const pool = new Pool({
 async function columnExists(client: pg.PoolClient, table: string, column: string) {
   const { rows } = await client.query(
     `SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
-    [table, column]
+    [table, column],
   );
   return rows.length > 0;
 }
@@ -43,4 +43,3 @@ export async function initializeDatabase() {
     client.release();
   }
 }
-

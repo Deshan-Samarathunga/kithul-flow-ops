@@ -27,7 +27,10 @@ const createUserSchema = z
       .string()
       .min(3)
       .max(40)
-      .regex(userIdRegex, "User ID may only contain letters, numbers, dots, hyphens, and underscores")
+      .regex(
+        userIdRegex,
+        "User ID may only contain letters, numbers, dots, hyphens, and underscores",
+      )
       .transform((s) => s.trim()),
     password: z.string().min(8),
     name: z
@@ -61,7 +64,10 @@ const createCenterSchema = z.object({
     .string()
     .min(2)
     .max(20)
-    .regex(/^[a-zA-Z0-9_-]+$/, "Center ID may only contain letters, numbers, hyphens, and underscores")
+    .regex(
+      /^[a-zA-Z0-9_-]+$/,
+      "Center ID may only contain letters, numbers, hyphens, and underscores",
+    )
     .transform((s) => s.trim()),
   centerName: z
     .string()
@@ -370,7 +376,13 @@ export async function createCenter(req: Request, res: Response) {
   const { centerId, centerName, location, centerAgent, contactPhone } = parsed.data as any;
 
   try {
-    const created = await svcInsertCenter(centerId, centerName, location, centerAgent, contactPhone);
+    const created = await svcInsertCenter(
+      centerId,
+      centerName,
+      location,
+      centerAgent,
+      contactPhone,
+    );
     res.status(201).json(toClientCenter(created));
   } catch (error: any) {
     if (error?.code === "23505" && error.constraint?.includes("center_id")) {
@@ -455,7 +467,7 @@ export async function deleteCenter(req: Request, res: Response) {
     const hasCans = await svcCenterHasCans(centerId);
     if (hasCans) {
       return res.status(400).json({
-        error: "Cannot delete center with associated cans. Deactivate instead."
+        error: "Cannot delete center with associated cans. Deactivate instead.",
       });
     }
 

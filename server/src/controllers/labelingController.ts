@@ -1,7 +1,12 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { pool } from "../db.js";
-import { SUPPORTED_PRODUCTS, getTableName, normalizeProduct, type ProductSlug } from "../routes/utils/productTables.js";
+import {
+  SUPPORTED_PRODUCTS,
+  getTableName,
+  normalizeProduct,
+  type ProductSlug,
+} from "../routes/utils/productTables.js";
 import {
   resolveLabelingContext as svcResolveLabelingContext,
   fetchLabelingRow as svcFetchLabelingRow,
@@ -18,7 +23,9 @@ function mapLabelingRow(row: any) {
     batchNumber: row.batch_number as string,
     productType: row.product_type as string,
     scheduledDate:
-      row.scheduled_date instanceof Date ? row.scheduled_date.toISOString() : (row.scheduled_date as string | null),
+      row.scheduled_date instanceof Date
+        ? row.scheduled_date.toISOString()
+        : (row.scheduled_date as string | null),
     startedAt:
       row.packaging_started_at instanceof Date
         ? row.packaging_started_at.toISOString()
@@ -38,15 +45,24 @@ function mapLabelingRow(row: any) {
     stickerQuantity:
       row.labeling_sticker_quantity !== null ? Number(row.labeling_sticker_quantity) : null,
     shrinkSleeveQuantity:
-      row.labeling_shrink_sleeve_quantity !== null ? Number(row.labeling_shrink_sleeve_quantity) : null,
-    neckTagQuantity: row.labeling_neck_tag_quantity !== null ? Number(row.labeling_neck_tag_quantity) : null,
+      row.labeling_shrink_sleeve_quantity !== null
+        ? Number(row.labeling_shrink_sleeve_quantity)
+        : null,
+    neckTagQuantity:
+      row.labeling_neck_tag_quantity !== null ? Number(row.labeling_neck_tag_quantity) : null,
     corrugatedCartonQuantity:
-      row.labeling_corrugated_carton_quantity !== null ? Number(row.labeling_corrugated_carton_quantity) : null,
+      row.labeling_corrugated_carton_quantity !== null
+        ? Number(row.labeling_corrugated_carton_quantity)
+        : null,
   };
 }
 
 const LABELING_STATUSES = ["pending", "in-progress", "completed", "on-hold"] as const;
-const numericQuantity = z.number().min(0, "Quantity must be greater than or equal to 0").nullable().optional();
+const numericQuantity = z
+  .number()
+  .min(0, "Quantity must be greater than or equal to 0")
+  .nullable()
+  .optional();
 
 const updateLabelingSchema = z.object({
   status: z.enum(LABELING_STATUSES).optional(),
@@ -85,7 +101,7 @@ async function fetchLabelingRow(packagingId: string) {
 }
 
 async function fetchLabelingBatchByPackagingId(packagingId: string) {
-  const { context, row } = await svcFetchLabelingBatchByPackagingId(packagingId) as any;
+  const { context, row } = (await svcFetchLabelingBatchByPackagingId(packagingId)) as any;
   if (!context || !row) return null;
   const mapped = mapLabelingRow(row);
   return {
@@ -97,7 +113,9 @@ async function fetchLabelingBatchByPackagingId(packagingId: string) {
 
 export async function listBatches(_req: Request, res: Response) {
   try {
-    const summaries = await Promise.all(SUPPORTED_PRODUCTS.map((product) => fetchLabelingSummaries(product)));
+    const summaries = await Promise.all(
+      SUPPORTED_PRODUCTS.map((product) => fetchLabelingSummaries(product)),
+    );
     const batches = summaries.flat();
     res.json({ batches });
   } catch (error) {
@@ -113,7 +131,8 @@ async function fetchLabelingSummaries(productType: ProductSlug) {
 
 export async function availablePackaging(req: Request, res: Response) {
   try {
-    const productParam = typeof req.query.productType === "string" ? normalizeProduct(req.query.productType) : null;
+    const productParam =
+      typeof req.query.productType === "string" ? normalizeProduct(req.query.productType) : null;
     const rows = await fetchEligiblePackagingBatches(productParam ?? undefined);
     const batches = (Array.isArray(rows) ? rows : []).map((row: any) => ({
       packagingId: String(row.packaging_id ?? row.packagingId ?? ""),
@@ -124,8 +143,14 @@ export async function availablePackaging(req: Request, res: Response) {
         row.scheduled_date instanceof Date
           ? row.scheduled_date.toISOString()
           : (row.scheduled_date ?? null),
-      finishedQuantity: row.finished_quantity !== null && row.finished_quantity !== undefined ? Number(row.finished_quantity) : null,
-      totalSapOutput: row.total_sap_output !== null && row.total_sap_output !== undefined ? Number(row.total_sap_output) : null,
+      finishedQuantity:
+        row.finished_quantity !== null && row.finished_quantity !== undefined
+          ? Number(row.finished_quantity)
+          : null,
+      totalSapOutput:
+        row.total_sap_output !== null && row.total_sap_output !== undefined
+          ? Number(row.total_sap_output)
+          : null,
       totalQuantity: Number(row.total_quantity ?? 0),
       canCount: Number(row.can_count ?? 0),
     }));
@@ -164,7 +189,7 @@ export async function createBatch(req: Request, res: Response) {
     await pool.query(
       `INSERT INTO ${context.labelingTable} (labeling_id, packaging_batch_id, status)
        VALUES ($1, $2, 'pending')`,
-      [labelingId, context.packagingPk]
+      [labelingId, context.packagingPk],
     );
 
     const created = await fetchLabelingBatchByPackagingId(packagingId);
@@ -191,13 +216,23 @@ export async function updateBatch(req: Request, res: Response) {
     const productType = (existing.productType || "").toLowerCase();
     const sanitized: typeof validated = { ...validated };
 
-    if (sanitized.stickerQuantity === undefined || sanitized.corrugatedCartonQuantity === undefined) {
-      return res.status(400).json({ error: "Sticker and corrugated carton quantities are required." });
+    if (
+      sanitized.stickerQuantity === undefined ||
+      sanitized.corrugatedCartonQuantity === undefined
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Sticker and corrugated carton quantities are required." });
     }
 
     if (productType === "treacle") {
       if (sanitized.shrinkSleeveQuantity === undefined || sanitized.neckTagQuantity === undefined) {
-        return res.status(400).json({ error: "Shrink sleeve and neck tag quantities are required for treacle (in-house) labeling." });
+        return res
+          .status(400)
+          .json({
+            error:
+              "Shrink sleeve and neck tag quantities are required for treacle (in-house) labeling.",
+          });
       }
     } else if (productType === "jaggery") {
       sanitized.shrinkSleeveQuantity = null;
@@ -212,10 +247,20 @@ export async function updateBatch(req: Request, res: Response) {
     const cartonQuantityValue = sanitized.corrugatedCartonQuantity ?? null;
     const allQuantitiesCaptured =
       productType === "treacle"
-        ? stickerQuantityValue !== null && shrinkQuantityValue !== null && neckTagQuantityValue !== null && cartonQuantityValue !== null
+        ? stickerQuantityValue !== null &&
+          shrinkQuantityValue !== null &&
+          neckTagQuantityValue !== null &&
+          cartonQuantityValue !== null
         : stickerQuantityValue !== null && cartonQuantityValue !== null;
     const statusValue =
-      sanitized.status ?? (existing.labelingId ? (allQuantitiesCaptured ? "completed" : existing.labelingStatus) : allQuantitiesCaptured ? "completed" : "pending");
+      sanitized.status ??
+      (existing.labelingId
+        ? allQuantitiesCaptured
+          ? "completed"
+          : existing.labelingStatus
+        : allQuantitiesCaptured
+          ? "completed"
+          : "pending");
     const notesValue = sanitized.notes ?? existing.labelingNotes ?? null;
 
     const context = await resolveLabelingContext(packagingId);

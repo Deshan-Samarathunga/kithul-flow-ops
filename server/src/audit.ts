@@ -90,6 +90,6 @@ export async function recordRoleAudit(entry: RoleAuditEvent) {
       previousRole,
       newRole,
       metadata ? JSON.stringify(metadata) : null,
-    ]
+    ],
   );
 }

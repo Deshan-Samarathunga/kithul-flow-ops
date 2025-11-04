@@ -42,7 +42,7 @@ const formatStatusLabel = (status: string) =>
 
 const formatVolumeByProduct = (
   value: number | null | undefined,
-  productType: LabelingBatchDto["productType"]
+  productType: LabelingBatchDto["productType"],
 ) => {
   if (value === null || value === undefined) {
     return "—";
@@ -51,7 +51,7 @@ const formatVolumeByProduct = (
   return `${Number(value).toFixed(1)} ${unit}`;
 };
 
-
+// Labeling workflow dashboard for active and completed packaging batches.
 export default function Labeling() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,15 +61,25 @@ export default function Labeling() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = usePersistentState<string>("labeling.search", "");
   const [productTypeFilter, setProductTypeFilter] = useState<"treacle" | "jaggery">(() => {
-    const saved = typeof window !== "undefined" ? window.localStorage.getItem("labeling.productType") : null;
+    const saved =
+      typeof window !== "undefined" ? window.localStorage.getItem("labeling.productType") : null;
     return saved === "jaggery" || saved === "treacle" ? saved : "treacle";
   });
-  const [deleteTarget, setDeleteTarget] = useState<{ packagingId: string; batchNumber: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    packagingId: string;
+    batchNumber: string;
+  } | null>(null);
   const [isDeletingLabeling, setIsDeletingLabeling] = useState<boolean>(false);
   const [submittingLabelingId, setSubmittingLabelingId] = useState<string | null>(null);
   const [reopeningLabelingId, setReopeningLabelingId] = useState<string | null>(null);
-  const [reportDialogOpen, setReportDialogOpen] = usePersistentState<boolean>("labeling.reportDialogOpen", false);
-  const [createDialog, setCreateDialog] = usePersistentState<{ open: boolean }>("labeling.createDialogOpen", { open: false });
+  const [reportDialogOpen, setReportDialogOpen] = usePersistentState<boolean>(
+    "labeling.reportDialogOpen",
+    false,
+  );
+  const [createDialog, setCreateDialog] = usePersistentState<{ open: boolean }>(
+    "labeling.createDialogOpen",
+    { open: false },
+  );
   const [eligiblePackaging, setEligiblePackaging] = useState<EligiblePackagingBatchDto[]>([]);
   const [eligibleSearch, setEligibleSearch] = useState("");
   const [isEligibleLoading, setIsEligibleLoading] = useState(false);
@@ -82,7 +92,9 @@ export default function Labeling() {
     const raw = import.meta.env.VITE_API_URL || "";
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
-  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
+  const userAvatar = user?.profileImage
+    ? new URL(user.profileImage, apiBase).toString()
+    : undefined;
 
   const handleLogout = () => {
     logout();
@@ -135,17 +147,17 @@ export default function Labeling() {
     }
   }, [productTypeFilter]);
 
-useEffect(() => {
-  const state = (location.state ?? {}) as { packagingId?: string; batchNumber?: string };
-  if (state.packagingId) {
-    navigate(`/labeling/batch/${state.packagingId}`, { replace: true, state: undefined });
-    return;
-  }
+  useEffect(() => {
+    const state = (location.state ?? {}) as { packagingId?: string; batchNumber?: string };
+    if (state.packagingId) {
+      navigate(`/labeling/batch/${state.packagingId}`, { replace: true, state: undefined });
+      return;
+    }
 
-  if (state.batchNumber) {
-    setSearchQuery(state.batchNumber);
-  }
-}, [location.state, navigate, setSearchQuery]);
+    if (state.batchNumber) {
+      setSearchQuery(state.batchNumber);
+    }
+  }, [location.state, navigate, setSearchQuery]);
 
   const openCreateLabelingDialog = () => {
     setCreateDialog({ open: true });
@@ -353,7 +365,9 @@ useEffect(() => {
   });
 
   const normalizeLabelingStatus = (status: string | null | undefined) => {
-    return String(status ?? "").trim().toLowerCase();
+    return String(status ?? "")
+      .trim()
+      .toLowerCase();
   };
 
   const isLabelingBatchComplete = (batch: LabelingBatchDto) => {
@@ -362,7 +376,9 @@ useEffect(() => {
   };
 
   const activeLabelingBatches = filteredBatches.filter((batch) => !isLabelingBatchComplete(batch));
-  const completedLabelingBatches = filteredBatches.filter((batch) => isLabelingBatchComplete(batch));
+  const completedLabelingBatches = filteredBatches.filter((batch) =>
+    isLabelingBatchComplete(batch),
+  );
 
   const labelingMetrics = useMemo(() => {
     type Metrics = { total: number; completed: number; active: number };
@@ -393,8 +409,7 @@ useEffect(() => {
   const selectedMetrics = labelingMetrics[productTypeFilter];
 
   const hasCompletedLabeling = useMemo(
-    () =>
-      (labelingMetrics.treacle.completed ?? 0) + (labelingMetrics.jaggery.completed ?? 0) > 0,
+    () => (labelingMetrics.treacle.completed ?? 0) + (labelingMetrics.jaggery.completed ?? 0) > 0,
     [labelingMetrics],
   );
 
@@ -421,7 +436,8 @@ useEffect(() => {
             <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
             <span className="px-2 text-muted-foreground/40">|</span>
             <span>
-              Finished Qty: {formatVolumeByProduct(batch.finishedQuantity ?? null, batch.productType)}
+              Finished Qty:{" "}
+              {formatVolumeByProduct(batch.finishedQuantity ?? null, batch.productType)}
             </span>
             <span className="px-2 text-muted-foreground/40">|</span>
             <span>Cans: {batch.canCount}</span>
@@ -461,11 +477,15 @@ useEffect(() => {
                 onClick={() =>
                   packagingId && setDeleteTarget({ packagingId, batchNumber: batch.batchNumber })
                 }
-                disabled={!packagingId || (isDeletingLabeling && deleteTarget?.packagingId === packagingId)}
+                disabled={
+                  !packagingId || (isDeletingLabeling && deleteTarget?.packagingId === packagingId)
+                }
                 aria-label={`Delete batch ${batch.batchNumber}`}
                 title={`Delete batch ${batch.batchNumber}`}
               >
-                <span className="inline-flex items-center gap-1"><Trash2 className="h-4 w-4" /> Delete</span>
+                <span className="inline-flex items-center gap-1">
+                  <Trash2 className="h-4 w-4" /> Delete
+                </span>
               </Button>
             )}
             {variant === "completed" && (
@@ -502,14 +522,20 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+      <Navbar
+        userRole={userRole}
+        userName={userName}
+        userAvatar={userAvatar}
+        onLogout={handleLogout}
+      />
 
       <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="space-y-6 sm:space-y-8">
           <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">Labeling</h1>
             <p className="text-sm text-muted-foreground">
-              Review packaged batches and capture labeling accessory quantities for treacle (in-house) and jaggery production.
+              Review packaged batches and capture labeling accessory quantities for treacle
+              (in-house) and jaggery production.
             </p>
           </div>
 
@@ -552,7 +578,11 @@ useEffect(() => {
               </div>
             </div>
 
-            <BatchOverview label={selectedProductLabel} active={selectedMetrics.active} completed={selectedMetrics.completed} />
+            <BatchOverview
+              label={selectedProductLabel}
+              active={selectedMetrics.active}
+              completed={selectedMetrics.completed}
+            />
           </div>
 
           {isLoading && (
@@ -601,7 +631,11 @@ useEffect(() => {
         </div>
       </main>
 
-      <ReportGenerationDialog stage="labeling" open={reportDialogOpen} onOpenChange={setReportDialogOpen} />
+      <ReportGenerationDialog
+        stage="labeling"
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+      />
 
       <Dialog
         open={createDialog.open}
@@ -666,7 +700,7 @@ useEffect(() => {
                         "w-full rounded-lg border p-4 text-left transition-colors",
                         isSelected
                           ? "border-cta bg-cta/10 text-foreground"
-                          : "hover:border-cta hover:bg-muted"
+                          : "hover:border-cta hover:bg-muted",
                       )}
                     >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -680,7 +714,11 @@ useEffect(() => {
                         <div className="text-sm text-muted-foreground sm:text-right">
                           <div>{(batch.productType ?? "").toUpperCase() || "—"}</div>
                           <div>
-                            Finished Qty: {typeof batch.finishedQuantity === "number" ? batch.finishedQuantity.toFixed(1) : "—"} {batch.productType?.toLowerCase() === "treacle" ? "L" : "kg"}
+                            Finished Qty:{" "}
+                            {typeof batch.finishedQuantity === "number"
+                              ? batch.finishedQuantity.toFixed(1)
+                              : "—"}{" "}
+                            {batch.productType?.toLowerCase() === "treacle" ? "L" : "kg"}
                           </div>
                         </div>
                       </div>
@@ -729,7 +767,8 @@ useEffect(() => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Labeling Batch?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes labeling data for batch {deleteTarget?.batchNumber}. You can recreate it from the packaging screen later.
+              This removes labeling data for batch {deleteTarget?.batchNumber}. You can recreate it
+              from the packaging screen later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -747,8 +786,3 @@ useEffect(() => {
     </div>
   );
 }
-
-
-
-
-

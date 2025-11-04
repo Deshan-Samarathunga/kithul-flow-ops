@@ -1,5 +1,9 @@
 import { pool } from "../db.js";
-import { SUPPORTED_PRODUCTS, getTableName, type ProductSlug } from "../routes/utils/productTables.js";
+import {
+  SUPPORTED_PRODUCTS,
+  getTableName,
+  type ProductSlug,
+} from "../routes/utils/productTables.js";
 
 export type PackagingContext = {
   productType: ProductSlug;
@@ -19,10 +23,14 @@ export type ProcessingContext = {
   row: any;
 };
 
-export async function resolvePackagingContext(packagingId: string): Promise<PackagingContext | null> {
+export async function resolvePackagingContext(
+  packagingId: string,
+): Promise<PackagingContext | null> {
   for (const productType of SUPPORTED_PRODUCTS) {
     const packagingTable = getTableName("packagingBatches", productType);
-    const { rows } = await pool.query(`SELECT * FROM ${packagingTable} WHERE packaging_id = $1`, [packagingId]);
+    const { rows } = await pool.query(`SELECT * FROM ${packagingTable} WHERE packaging_id = $1`, [
+      packagingId,
+    ]);
     if (rows.length > 0) {
       return {
         productType,
@@ -37,10 +45,14 @@ export async function resolvePackagingContext(packagingId: string): Promise<Pack
   return null;
 }
 
-export async function resolveProcessingContextByBatchId(batchId: string): Promise<ProcessingContext | null> {
+export async function resolveProcessingContextByBatchId(
+  batchId: string,
+): Promise<ProcessingContext | null> {
   for (const productType of SUPPORTED_PRODUCTS) {
     const processingTable = getTableName("processingBatches", productType);
-    const { rows } = await pool.query(`SELECT * FROM ${processingTable} WHERE batch_id = $1`, [batchId]);
+    const { rows } = await pool.query(`SELECT * FROM ${processingTable} WHERE batch_id = $1`, [
+      batchId,
+    ]);
     if (rows.length > 0) {
       return {
         productType,

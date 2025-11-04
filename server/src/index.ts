@@ -44,39 +44,39 @@ app.use(
         "http://127.0.0.1:5173",
         "http://[::1]:5173",
       ]);
-      
+
       // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return cb(null, true);
-      
+
       // Check if origin is in allowed list
       if (allow.has(origin)) return cb(null, true);
-      
+
       // In development, allow any localhost/local network origin
-      const isLocalDev = 
-        origin.startsWith("http://localhost:") || 
+      const isLocalDev =
+        origin.startsWith("http://localhost:") ||
         origin.startsWith("http://127.0.0.1:") ||
         origin.startsWith("http://[::1]:") ||
         origin.match(/^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/);
-      
+
       if (isLocalDev) {
         console.log(`[cors] allowing origin: ${origin}`);
         return cb(null, true);
       }
-      
+
       console.warn(`CORS blocked origin: ${origin}`);
       return cb(new Error("Not allowed by CORS"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 // ---- security headers
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 
 // ---- rate limiting (auth endpoints)

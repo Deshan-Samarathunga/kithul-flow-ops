@@ -16,11 +16,11 @@ import {
 const DRAFTS_TABLE = "field_collection_drafts";
 const CENTER_COMPLETIONS_TABLE = "field_collection_center_completions";
 const CAN_TOTALS_SOURCE = SUPPORTED_PRODUCTS.map(
-  (product) => `SELECT draft_id, quantity FROM ${getTableName("cans", product)}`
+  (product) => `SELECT draft_id, quantity FROM ${getTableName("cans", product)}`,
 ).join(" UNION ALL ");
 const CANS_SOURCE = SUPPORTED_PRODUCTS.map(
   (product) =>
-    `SELECT id, can_id, draft_id, collection_center_id, product_type, brix_value, ph_value, quantity, created_at, updated_at FROM ${getTableName("cans", product)}`
+    `SELECT id, can_id, draft_id, collection_center_id, product_type, brix_value, ph_value, quantity, created_at, updated_at FROM ${getTableName("cans", product)}`,
 ).join(" UNION ALL ");
 
 const createDraftSchema = z.object({
@@ -37,7 +37,10 @@ const createCanSchema = z.object({
   productType: z.enum(["sap", "treacle"]),
   // Either provide a full canId in the <PRD>-######## format (SAP-######## or TCL-########) or provide a numeric serialNumber (8 digits)
   canId: z.string().trim().min(1).optional(),
-  serialNumber: z.string().regex(/^\d{1,8}$/).optional(),
+  serialNumber: z
+    .string()
+    .regex(/^\d{1,8}$/)
+    .optional(),
   brixValue: z.number().min(0).max(100).optional(),
   phValue: z.number().min(0).max(14).optional(),
   quantity: z.number().positive(),
@@ -143,7 +146,7 @@ const sortDraftsDesc = (a: DraftSummaryRow, b: DraftSummaryRow) => {
 async function fetchDraftSummaries(
   productFilter?: ProductSlug | null,
   statusFilter?: string,
-  createdByFilter?: string | null
+  createdByFilter?: string | null,
 ) {
   const params: unknown[] = [];
   const whereClauses: string[] = [];
@@ -154,7 +157,9 @@ async function fetchDraftSummaries(
   }
 
   if (productFilter) {
-    whereClauses.push(`EXISTS (SELECT 1 FROM ${getTableName("cans", productFilter)} b WHERE b.draft_id = d.id)`);
+    whereClauses.push(
+      `EXISTS (SELECT 1 FROM ${getTableName("cans", productFilter)} b WHERE b.draft_id = d.id)`,
+    );
   }
 
   if (createdByFilter) {
@@ -202,9 +207,10 @@ async function resolveDraftContext(draftId: string) {
 export async function listDrafts(req: Request, res: Response) {
   try {
     const productFilter = normalizeProduct(req.query.productType);
-    const statusFilter = typeof req.query.status === "string" && (req.query.status as string).trim()
-      ? (req.query.status as string).trim().toLowerCase()
-      : undefined;
+    const statusFilter =
+      typeof req.query.status === "string" && (req.query.status as string).trim()
+        ? (req.query.status as string).trim().toLowerCase()
+        : undefined;
 
     const requestUser = (req as any).user;
     const isAdminUser = isAdminRole(requestUser?.role);
@@ -311,7 +317,7 @@ export async function createDraft(req: Request, res: Response) {
 
     const { rows: existingDrafts } = await pool.query(
       `SELECT 1 FROM ${DRAFTS_TABLE} WHERE created_by = $1 AND date = $2 LIMIT 1`,
-      [userId, dateValue]
+      [userId, dateValue],
     );
 
     if (existingDrafts.length > 0) {
@@ -361,7 +367,9 @@ export async function updateDraft(req: Request, res: Response) {
       );
       const completedCount = (completionRows?.[0]?.cnt ?? 0) as number;
       if (completedCount < 1) {
-        return res.status(400).json({ error: "At least one center must be submitted before saving the draft" });
+        return res
+          .status(400)
+          .json({ error: "At least one center must be submitted before saving the draft" });
       }
     }
 
@@ -396,10 +404,15 @@ export async function deleteDraft(req: Request, res: Response) {
     }
 
     for (const product of SUPPORTED_PRODUCTS) {
-      await pool.query(`DELETE FROM ${getTableName("cans", product)} WHERE draft_id = $1`, [context.row.id]);
+      await pool.query(`DELETE FROM ${getTableName("cans", product)} WHERE draft_id = $1`, [
+        context.row.id,
+      ]);
     }
     await pool.query(`DELETE FROM ${CENTER_COMPLETIONS_TABLE} WHERE draft_id = $1`, [draftId]);
-    const { rows } = await pool.query(`DELETE FROM ${DRAFTS_TABLE} WHERE draft_id = $1 RETURNING *`, [draftId]);
+    const { rows } = await pool.query(
+      `DELETE FROM ${DRAFTS_TABLE} WHERE draft_id = $1 RETURNING *`,
+      [draftId],
+    );
 
     res.json({ message: "Draft deleted successfully", draft: rows[0] });
   } catch (error) {
@@ -433,7 +446,8 @@ export async function submitCenter(req: Request, res: Response) {
     const { draftId, centerId } = req.params as { draftId: string; centerId: string };
     const context = await resolveDraftContext(draftId);
     if (!context) return res.status(404).json({ error: "Draft not found" });
-    if (!canAccessDraft((req as any).user, context.row)) return res.status(403).json({ error: "Forbidden" });
+    if (!canAccessDraft((req as any).user, context.row))
+      return res.status(403).json({ error: "Forbidden" });
 
     const insertQuery = `
       INSERT INTO ${CENTER_COMPLETIONS_TABLE} (draft_id, center_id, completed_at)
@@ -453,9 +467,18 @@ export async function submitCenter(req: Request, res: Response) {
 export async function reopenCenter(req: Request, res: Response) {
   try {
     const { draftId, centerId } = req.params as { draftId: string; centerId: string };
-    const context = await (async (id: string) => await (async function resolveDraftContext(draftId: string) { const { rows } = await pool.query(`SELECT d.*, u.name AS created_by_name FROM ${DRAFTS_TABLE} d LEFT JOIN users u ON d.created_by = u.user_id WHERE d.draft_id = $1`, [draftId]); if (rows.length === 0) return null; return { row: rows[0] }; })(id))(draftId);
+    const context = await (async (id: string) =>
+      await (async function resolveDraftContext(draftId: string) {
+        const { rows } = await pool.query(
+          `SELECT d.*, u.name AS created_by_name FROM ${DRAFTS_TABLE} d LEFT JOIN users u ON d.created_by = u.user_id WHERE d.draft_id = $1`,
+          [draftId],
+        );
+        if (rows.length === 0) return null;
+        return { row: rows[0] };
+      })(id))(draftId);
     if (!context) return res.status(404).json({ error: "Draft not found" });
-    if (!canAccessDraft((req as any).user, context.row)) return res.status(403).json({ error: "Forbidden" });
+    if (!canAccessDraft((req as any).user, context.row))
+      return res.status(403).json({ error: "Forbidden" });
 
     const deleteQuery = `
       DELETE FROM ${CENTER_COMPLETIONS_TABLE}
@@ -473,11 +496,23 @@ export async function reopenCenter(req: Request, res: Response) {
 export async function getCompletedCenters(req: Request, res: Response) {
   try {
     const { draftId } = req.params as { draftId: string };
-    const context = await (async (id: string) => await (async function resolveDraftContext(draftId: string) { const { rows } = await pool.query(`SELECT d.*, u.name AS created_by_name FROM ${DRAFTS_TABLE} d LEFT JOIN users u ON d.created_by = u.user_id WHERE d.draft_id = $1`, [draftId]); if (rows.length === 0) return null; return { row: rows[0] }; })(id))(draftId);
+    const context = await (async (id: string) =>
+      await (async function resolveDraftContext(draftId: string) {
+        const { rows } = await pool.query(
+          `SELECT d.*, u.name AS created_by_name FROM ${DRAFTS_TABLE} d LEFT JOIN users u ON d.created_by = u.user_id WHERE d.draft_id = $1`,
+          [draftId],
+        );
+        if (rows.length === 0) return null;
+        return { row: rows[0] };
+      })(id))(draftId);
     if (!context) return res.status(404).json({ error: "Draft not found" });
-    if (!canAccessDraft((req as any).user, context.row)) return res.status(403).json({ error: "Forbidden" });
+    if (!canAccessDraft((req as any).user, context.row))
+      return res.status(403).json({ error: "Forbidden" });
 
-    const { rows } = await pool.query(`SELECT center_id, completed_at FROM ${CENTER_COMPLETIONS_TABLE} WHERE draft_id = $1`, [draftId]);
+    const { rows } = await pool.query(
+      `SELECT center_id, completed_at FROM ${CENTER_COMPLETIONS_TABLE} WHERE draft_id = $1`,
+      [draftId],
+    );
     res.json(rows);
   } catch (error) {
     console.error("Error fetching completed centers:", error);
@@ -498,12 +533,15 @@ export async function createCan(req: Request, res: Response) {
     // "treacle" -> "jaggery" (treacle_cans are processed to jaggery)
     const processingProductType: ProductSlug = productType === "sap" ? "treacle" : "jaggery";
     canTable = getTableName("cans", processingProductType);
-    
-    console.log(`Creating can: productType=${productType}, processingProductType=${processingProductType}, canTable=${canTable}`);
+
+    console.log(
+      `Creating can: productType=${productType}, processingProductType=${processingProductType}, canTable=${canTable}`,
+    );
 
     const ctx = await resolveDraftContext(validated.draftId);
     if (!ctx) return res.status(404).json({ error: "Draft not found" });
-    if (!canAccessDraft((req as any).user, ctx.row)) return res.status(403).json({ error: "Forbidden" });
+    if (!canAccessDraft((req as any).user, ctx.row))
+      return res.status(403).json({ error: "Forbidden" });
 
     const draftRow = ctx.row;
     const draftInternalId = (draftRow as any)?.id;
@@ -528,11 +566,21 @@ export async function createCan(req: Request, res: Response) {
     if (!centerRow) {
       // Log available centers for debugging
       const { rows: allCenters } = await client.query(
-        `SELECT id, center_id, center_name, is_active FROM collection_centers LIMIT 10`
+        `SELECT id, center_id, center_name, is_active FROM collection_centers LIMIT 10`,
       );
       console.error(`Collection center not found for ID: ${validated.collectionCenterId}`);
-      console.error(`Available centers:`, allCenters.map(c => ({ id: c.id, center_id: c.center_id, name: c.center_name, active: c.is_active })));
-      return res.status(400).json({ error: `Invalid collection center ID: ${validated.collectionCenterId}` });
+      console.error(
+        `Available centers:`,
+        allCenters.map((c) => ({
+          id: c.id,
+          center_id: c.center_id,
+          name: c.center_name,
+          active: c.is_active,
+        })),
+      );
+      return res
+        .status(400)
+        .json({ error: `Invalid collection center ID: ${validated.collectionCenterId}` });
     }
 
     // Build/validate can id
@@ -541,9 +589,11 @@ export async function createCan(req: Request, res: Response) {
 
     if (!canId) {
       if (!validated.serialNumber) {
-        return res.status(400).json({ error: "Either canId or serialNumber (8 digits) is required" });
+        return res
+          .status(400)
+          .json({ error: "Either canId or serialNumber (8 digits) is required" });
       }
-      const padded = String(validated.serialNumber).padStart(8, '0');
+      const padded = String(validated.serialNumber).padStart(8, "0");
       canId = `${prefix}${padded}`;
     }
 
@@ -553,13 +603,18 @@ export async function createCan(req: Request, res: Response) {
     }
 
     // Enforce uniqueness
-    const { rows: existingCans } = await client.query(`SELECT 1 FROM ${canTable} WHERE can_id = $1 LIMIT 1`, [canId]);
+    const { rows: existingCans } = await client.query(
+      `SELECT 1 FROM ${canTable} WHERE can_id = $1 LIMIT 1`,
+      [canId],
+    );
     if (existingCans.length > 0) {
       return res.status(409).json({ error: "Can ID already exists" });
     }
 
     await client.query("BEGIN");
-    try { await client.query("SET LOCAL session_replication_role = replica"); } catch {}
+    try {
+      await client.query("SET LOCAL session_replication_role = replica");
+    } catch {}
 
     const insertQuery = `
       INSERT INTO ${canTable} (
@@ -588,23 +643,27 @@ export async function createCan(req: Request, res: Response) {
     await client.query("COMMIT");
     res.status(201).json(rows[0]);
   } catch (error) {
-    try { await client.query("ROLLBACK"); } catch {}
+    try {
+      await client.query("ROLLBACK");
+    } catch {}
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: "Validation error", details: error.issues });
     }
     console.error("Error creating can:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
-    console.error("Error details:", { 
-      errorMessage, 
-      errorStack, 
-      productType: productType || "unknown", 
+    console.error("Error details:", {
+      errorMessage,
+      errorStack,
+      productType: productType || "unknown",
       canTable: canTable || "unknown",
-      validatedData: validated ? { 
-        draftId: validated.draftId, 
-        collectionCenterId: validated.collectionCenterId,
-        productType: validated.productType 
-      } : "validation failed"
+      validatedData: validated
+        ? {
+            draftId: validated.draftId,
+            collectionCenterId: validated.collectionCenterId,
+            productType: validated.productType,
+          }
+        : "validation failed",
     });
     res.status(500).json({ error: "Failed to create can", details: errorMessage });
   } finally {
@@ -622,11 +681,16 @@ export async function updateCan(req: Request, res: Response) {
 
     const draftRow = await fetchDraftRowByInternalId((context.row as any).draft_id);
     if (!draftRow) return res.status(404).json({ error: "Draft not found" });
-    if (!canAccessDraft((req as any).user, draftRow)) return res.status(403).json({ error: "Forbidden" });
+    if (!canAccessDraft((req as any).user, draftRow))
+      return res.status(403).json({ error: "Forbidden" });
 
     const fields = Object.entries(validated)
       .filter((entry): entry is [keyof typeof validated, number] => entry[1] !== undefined)
-      .map(([key, value], index) => ({ column: CAN_UPDATE_FIELD_MAP[key as keyof typeof validated], value, index }));
+      .map(([key, value], index) => ({
+        column: CAN_UPDATE_FIELD_MAP[key as keyof typeof validated],
+        value,
+        index,
+      }));
     if (fields.length === 0) return res.status(400).json({ error: "No fields to update" });
 
     const setClause = fields.map(({ column, index }) => `${column} = $${index + 1}`).join(", ");
@@ -659,9 +723,13 @@ export async function deleteCan(req: Request, res: Response) {
 
     const draftRow = await fetchDraftRowByInternalId((context.row as any).draft_id);
     if (!draftRow) return res.status(404).json({ error: "Draft not found" });
-    if (!canAccessDraft((req as any).user, draftRow)) return res.status(403).json({ error: "Forbidden" });
+    if (!canAccessDraft((req as any).user, draftRow))
+      return res.status(403).json({ error: "Forbidden" });
 
-    const { rows } = await pool.query(`DELETE FROM ${context.table} WHERE can_id = $1 RETURNING *`, [canId]);
+    const { rows } = await pool.query(
+      `DELETE FROM ${context.table} WHERE can_id = $1 RETURNING *`,
+      [canId],
+    );
     res.json({ message: "Can deleted successfully", can: rows[0] });
   } catch (error) {
     console.error("Error deleting can:", error);

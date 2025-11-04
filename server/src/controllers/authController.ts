@@ -18,7 +18,10 @@ const registerSchema = z
       .string()
       .min(3)
       .max(40)
-      .regex(/^[a-zA-Z0-9_\-\.]+$/, "userId may only contain letters, numbers, dots, hyphens, and underscores")
+      .regex(
+        /^[a-zA-Z0-9_\-\.]+$/,
+        "userId may only contain letters, numbers, dots, hyphens, and underscores",
+      )
       .transform((s) => s.trim()),
     password: z.string().min(8),
     name: z.string().max(120).optional(),
@@ -43,9 +46,12 @@ export async function register(req: Request, res: Response) {
     };
 
     const requestedRole = normalizeRole(role);
-    const chosenRole = requestedRole && isSelfServiceRole(requestedRole) ? requestedRole : DEFAULT_ROLE;
+    const chosenRole =
+      requestedRole && isSelfServiceRole(requestedRole) ? requestedRole : DEFAULT_ROLE;
     if (requestedRole && !isSelfServiceRole(requestedRole)) {
-      console.warn(`[auth] blocked self-registration role selection "${requestedRole}" for ${userId}`);
+      console.warn(
+        `[auth] blocked self-registration role selection "${requestedRole}" for ${userId}`,
+      );
       recordRoleAudit({
         event: "blocked_self_register_role",
         actorUserId: userId,
@@ -60,7 +66,7 @@ export async function register(req: Request, res: Response) {
       `INSERT INTO public.users (user_id, password_hash, name, role)
        VALUES ($1, $2, $3, $4)
        RETURNING id, user_id, name, role, created_at, profile_image`,
-      [userId, hash, name ?? null, chosenRole]
+      [userId, hash, name ?? null, chosenRole],
     );
 
     const created = rows[0];
@@ -87,7 +93,11 @@ export async function register(req: Request, res: Response) {
 }
 
 const loginSchema = z.object({
-  userId: z.string().min(3).max(40).transform((s) => s.trim()),
+  userId: z
+    .string()
+    .min(3)
+    .max(40)
+    .transform((s) => s.trim()),
   password: z.string().min(8),
 });
 
@@ -100,7 +110,7 @@ export async function login(req: Request, res: Response) {
     const { rows } = await pool.query(
       `SELECT id, user_id, name, role, password_hash, profile_image
          FROM public.users WHERE user_id = $1`,
-      [userId]
+      [userId],
     );
     const user = rows[0];
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
@@ -108,11 +118,9 @@ export async function login(req: Request, res: Response) {
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-    const token = jwt.sign(
-      { id: user.id, userId: user.user_id, role: user.role },
-      getJwtSecret(),
-      { expiresIn: (process.env.JWT_EXPIRES as any) || ("7d" as any) }
-    );
+    const token = jwt.sign({ id: user.id, userId: user.user_id, role: user.role }, getJwtSecret(), {
+      expiresIn: (process.env.JWT_EXPIRES as any) || ("7d" as any),
+    });
 
     res.json({
       token,
@@ -140,7 +148,7 @@ export async function me(req: Request, res: Response) {
     const payload = jwt.verify(token, getJwtSecret()) as { id: number };
     const { rows } = await pool.query(
       "SELECT id, user_id, name, role, created_at, profile_image FROM public.users WHERE id = $1",
-      [payload.id]
+      [payload.id],
     );
     const user = rows[0];
     if (!user) return res.json(null);

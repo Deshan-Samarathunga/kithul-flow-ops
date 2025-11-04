@@ -11,79 +11,79 @@ import {
   deleteBatch as deletePackagingBatch,
 } from "../controllers/packagingController.js";
 import {
-	SUPPORTED_PRODUCTS,
-	getTableName,
-	normalizeProduct,
-	type ProductSlug,
+  SUPPORTED_PRODUCTS,
+  getTableName,
+  normalizeProduct,
+  type ProductSlug,
 } from "./utils/productTables.js";
 
+// Routes that expose packaging batch lifecycle operations.
 const router = express.Router();
 
+// Convert raw database rows to the typed DTO returned by the API.
 function mapPackagingRow(row: any) {
-	return {
-		id: row.packaging_id as string,
-		packagingId: row.packaging_id as string,
-		processingBatchId: row.batch_id as string,
-		batchNumber: row.batch_number as string,
-		productType: row.product_type as string,
-		scheduledDate:
-			row.scheduled_date instanceof Date
-				? row.scheduled_date.toISOString()
-				: (row.scheduled_date as string | null),
-		startedAt:
-			row.started_at instanceof Date
-				? row.started_at.toISOString()
-				: (row.started_at as string | null),
-		updatedAt:
-			row.packaging_updated_at instanceof Date
-				? row.packaging_updated_at.toISOString()
-				: (row.packaging_updated_at as string | null),
-		packagingStatus: row.packaging_status as string,
-		processingStatus: row.processing_status as string,
-		notes: row.packaging_notes as string | null,
-		canCount: Number(row.can_count ?? 0),
-		totalQuantity: Number(row.total_quantity ?? 0),
-		totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
-		finishedQuantity: row.finished_quantity !== null ? Number(row.finished_quantity) : null,
-		bottleQuantity: row.bottle_quantity !== null ? Number(row.bottle_quantity) : null,
-		lidQuantity: row.lid_quantity !== null ? Number(row.lid_quantity) : null,
-		alufoilQuantity: row.alufoil_quantity !== null ? Number(row.alufoil_quantity) : null,
-		vacuumBagQuantity: row.vacuum_bag_quantity !== null ? Number(row.vacuum_bag_quantity) : null,
-		parchmentPaperQuantity:
-			row.parchment_paper_quantity !== null ? Number(row.parchment_paper_quantity) : null,
-	};
+  return {
+    id: row.packaging_id as string,
+    packagingId: row.packaging_id as string,
+    processingBatchId: row.batch_id as string,
+    batchNumber: row.batch_number as string,
+    productType: row.product_type as string,
+    scheduledDate:
+      row.scheduled_date instanceof Date
+        ? row.scheduled_date.toISOString()
+        : (row.scheduled_date as string | null),
+    startedAt:
+      row.started_at instanceof Date
+        ? row.started_at.toISOString()
+        : (row.started_at as string | null),
+    updatedAt:
+      row.packaging_updated_at instanceof Date
+        ? row.packaging_updated_at.toISOString()
+        : (row.packaging_updated_at as string | null),
+    packagingStatus: row.packaging_status as string,
+    processingStatus: row.processing_status as string,
+    notes: row.packaging_notes as string | null,
+    canCount: Number(row.can_count ?? 0),
+    totalQuantity: Number(row.total_quantity ?? 0),
+    totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
+    finishedQuantity: row.finished_quantity !== null ? Number(row.finished_quantity) : null,
+    bottleQuantity: row.bottle_quantity !== null ? Number(row.bottle_quantity) : null,
+    lidQuantity: row.lid_quantity !== null ? Number(row.lid_quantity) : null,
+    alufoilQuantity: row.alufoil_quantity !== null ? Number(row.alufoil_quantity) : null,
+    vacuumBagQuantity: row.vacuum_bag_quantity !== null ? Number(row.vacuum_bag_quantity) : null,
+    parchmentPaperQuantity:
+      row.parchment_paper_quantity !== null ? Number(row.parchment_paper_quantity) : null,
+  };
 }
 
 const PACKAGING_STATUSES = ["pending", "in-progress", "completed", "on-hold"] as const;
 
+// Validation schemas guarding packaging batch mutations.
 const createPackagingSchema = z.object({
-	processingBatchId: z.string().min(1, "Processing batch id is required"),
+  processingBatchId: z.string().min(1, "Processing batch id is required"),
 });
 
 const numericQuantity = z
-	.number()
-	.min(0, "Quantity must be greater than or equal to 0")
-	.nullable()
-	.optional();
+  .number()
+  .min(0, "Quantity must be greater than or equal to 0")
+  .nullable()
+  .optional();
 
 const updatePackagingSchema = z.object({
-	status: z.enum(PACKAGING_STATUSES).optional(),
-	notes: z
-		.string()
-		.trim()
-		.max(2000, "Notes must be 2000 characters or fewer")
-		.optional(),
-	finishedQuantity: z
-		.number()
-		.min(0, "Finished quantity must be greater than or equal to 0")
-		.optional(),
-	bottleQuantity: numericQuantity,
-	lidQuantity: numericQuantity,
-	alufoilQuantity: numericQuantity,
-	vacuumBagQuantity: numericQuantity,
-	parchmentPaperQuantity: numericQuantity,
+  status: z.enum(PACKAGING_STATUSES).optional(),
+  notes: z.string().trim().max(2000, "Notes must be 2000 characters or fewer").optional(),
+  finishedQuantity: z
+    .number()
+    .min(0, "Finished quantity must be greater than or equal to 0")
+    .optional(),
+  bottleQuantity: numericQuantity,
+  lidQuantity: numericQuantity,
+  alufoilQuantity: numericQuantity,
+  vacuumBagQuantity: numericQuantity,
+  parchmentPaperQuantity: numericQuantity,
 });
 
+// Helper queries for enriching packaging batch responses.
 async function fetchPackagingBatchByPackagingId(packagingId: string) {
   const context = await resolvePackagingContext(packagingId);
   if (!context) {
@@ -142,82 +142,91 @@ async function fetchPackagingBatchByPackagingId(packagingId: string) {
   if (rows.length === 0) {
     return null;
   }
-	return mapPackagingRow(rows[0]);
+  return mapPackagingRow(rows[0]);
 }
 
 type PackagingContext = {
-	productType: ProductSlug;
-	packagingTable: string;
-	processingBatchTable: string;
-	batchCanTable: string;
-	canTable: string;
-	row: any;
+  productType: ProductSlug;
+  packagingTable: string;
+  processingBatchTable: string;
+  batchCanTable: string;
+  canTable: string;
+  row: any;
 };
 
 type ProcessingContext = {
-	productType: ProductSlug;
-	processingTable: string;
-	packagingTable: string;
-	batchCanTable: string;
-	canTable: string;
-	row: any;
+  productType: ProductSlug;
+  processingTable: string;
+  packagingTable: string;
+  batchCanTable: string;
+  canTable: string;
+  row: any;
 };
 
 async function resolvePackagingContext(packagingId: string): Promise<PackagingContext | null> {
-	for (const productType of SUPPORTED_PRODUCTS) {
-		const packagingTable = getTableName("packagingBatches", productType);
-		const { rows } = await pool.query(`SELECT * FROM ${packagingTable} WHERE packaging_id = $1`, [packagingId]);
-		if (rows.length > 0) {
-			return {
-				productType,
-				packagingTable,
-				processingBatchTable: getTableName("processingBatches", productType),
-				batchCanTable: getTableName("processingBatchCans", productType),
-				canTable: getTableName("cans", productType),
-				row: rows[0],
-			};
-		}
-	}
-	return null;
+  // Search product tables until the matching packaging batch is found.
+  for (const productType of SUPPORTED_PRODUCTS) {
+    const packagingTable = getTableName("packagingBatches", productType);
+    const { rows } = await pool.query(`SELECT * FROM ${packagingTable} WHERE packaging_id = $1`, [
+      packagingId,
+    ]);
+    if (rows.length > 0) {
+      return {
+        productType,
+        packagingTable,
+        processingBatchTable: getTableName("processingBatches", productType),
+        batchCanTable: getTableName("processingBatchCans", productType),
+        canTable: getTableName("cans", productType),
+        row: rows[0],
+      };
+    }
+  }
+  return null;
 }
 
-async function resolveProcessingContextByBatchId(batchId: string): Promise<ProcessingContext | null> {
-	for (const productType of SUPPORTED_PRODUCTS) {
-		const processingTable = getTableName("processingBatches", productType);
-		const { rows } = await pool.query(`SELECT * FROM ${processingTable} WHERE batch_id = $1`, [batchId]);
-		if (rows.length > 0) {
-			return {
-				productType,
-				processingTable,
-				packagingTable: getTableName("packagingBatches", productType),
-				batchCanTable: getTableName("processingBatchCans", productType),
-				canTable: getTableName("cans", productType),
-				row: rows[0],
-			};
-		}
-	}
-	return null;
+async function resolveProcessingContextByBatchId(
+  batchId: string,
+): Promise<ProcessingContext | null> {
+  // Provide packaging creation workflows with processing batch metadata.
+  for (const productType of SUPPORTED_PRODUCTS) {
+    const processingTable = getTableName("processingBatches", productType);
+    const { rows } = await pool.query(`SELECT * FROM ${processingTable} WHERE batch_id = $1`, [
+      batchId,
+    ]);
+    if (rows.length > 0) {
+      return {
+        productType,
+        processingTable,
+        packagingTable: getTableName("packagingBatches", productType),
+        batchCanTable: getTableName("processingBatchCans", productType),
+        canTable: getTableName("cans", productType),
+        row: rows[0],
+      };
+    }
+  }
+  return null;
 }
 
 async function fetchEligibleProcessingBatches(productType?: ProductSlug) {
-	const products = productType ? [productType] : [...SUPPORTED_PRODUCTS];
-	const eligible: Array<{
-		processingBatchId: string;
-		batchNumber: string;
-		productType: string;
-		scheduledDate: string | null;
-		totalSapOutput: number | null;
-		totalQuantity: number;
-		canCount: number;
-	}> = [];
+  // Collect completed processing batches that have not been packaged yet.
+  const products = productType ? [productType] : [...SUPPORTED_PRODUCTS];
+  const eligible: Array<{
+    processingBatchId: string;
+    batchNumber: string;
+    productType: string;
+    scheduledDate: string | null;
+    totalSapOutput: number | null;
+    totalQuantity: number;
+    canCount: number;
+  }> = [];
 
-	for (const product of products) {
-		const processingTable = getTableName("processingBatches", product);
-		const packagingTable = getTableName("packagingBatches", product);
-		const batchCanTable = getTableName("processingBatchCans", product);
-		const canTable = getTableName("cans", product);
+  for (const product of products) {
+    const processingTable = getTableName("processingBatches", product);
+    const packagingTable = getTableName("packagingBatches", product);
+    const batchCanTable = getTableName("processingBatchCans", product);
+    const canTable = getTableName("cans", product);
 
-		const query = `
+    const query = `
 			SELECT
 				pb.id,
 				pb.batch_id,
@@ -236,33 +245,34 @@ async function fetchEligibleProcessingBatches(productType?: ProductSlug) {
 			ORDER BY pb.scheduled_date DESC, pb.batch_number ASC
 		`;
 
-		const { rows } = await pool.query(query);
-		for (const row of rows) {
-			eligible.push({
-				processingBatchId: row.batch_id as string,
-				batchNumber: row.batch_number as string,
-				productType: row.product_type as string,
-				scheduledDate:
-					row.scheduled_date instanceof Date
-						? row.scheduled_date.toISOString()
-						: (row.scheduled_date as string | null),
-				totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
-				totalQuantity: Number(row.total_quantity ?? 0),
-				canCount: Number(row.can_count ?? 0),
-			});
-		}
-	}
+    const { rows } = await pool.query(query);
+    for (const row of rows) {
+      eligible.push({
+        processingBatchId: row.batch_id as string,
+        batchNumber: row.batch_number as string,
+        productType: row.product_type as string,
+        scheduledDate:
+          row.scheduled_date instanceof Date
+            ? row.scheduled_date.toISOString()
+            : (row.scheduled_date as string | null),
+        totalSapOutput: row.total_sap_output !== null ? Number(row.total_sap_output) : null,
+        totalQuantity: Number(row.total_quantity ?? 0),
+        canCount: Number(row.can_count ?? 0),
+      });
+    }
+  }
 
-	return eligible;
+  return eligible;
 }
 
 async function fetchPackagingSummaries(productType: ProductSlug) {
-	const packagingTable = getTableName("packagingBatches", productType);
-	const processingBatchTable = getTableName("processingBatches", productType);
-	const batchCanTable = getTableName("processingBatchCans", productType);
-	const canTable = getTableName("cans", productType);
+  // Produce summary cards for UI dashboards across packaging batches.
+  const packagingTable = getTableName("packagingBatches", productType);
+  const processingBatchTable = getTableName("processingBatches", productType);
+  const batchCanTable = getTableName("processingBatchCans", productType);
+  const canTable = getTableName("cans", productType);
 
-	const query = `
+  const query = `
 		SELECT
 			pkg.packaging_id,
 			pkg.status AS packaging_status,
@@ -307,45 +317,51 @@ async function fetchPackagingSummaries(productType: ProductSlug) {
 			pkg.finished_quantity
 		ORDER BY pkg.started_at DESC, pkg.packaging_id ASC
 	`;
-	const { rows } = await pool.query(query);
-	return rows.map(mapPackagingRow);
+  const { rows } = await pool.query(query);
+  return rows.map(mapPackagingRow);
 }
 
+// REST endpoints for packaging batch availability and management.
 router.get(
-    "/batches/available-processing",
-    auth,
-    requireRole("Packaging", "Processing", "Administrator"),
-    availableProcessing as any
+  "/batches/available-processing",
+  auth,
+  requireRole("Packaging", "Processing", "Administrator"),
+  availableProcessing as any,
 );
 
 router.get(
-    "/batches",
-    auth,
-    requireRole("Packaging", "Processing", "Administrator"),
-    listBatches as any
+  "/batches",
+  auth,
+  requireRole("Packaging", "Processing", "Administrator"),
+  listBatches as any,
 );
 
-router.post("/batches", auth, requireRole("Packaging", "Administrator"), createPackagingBatch as any);
+router.post(
+  "/batches",
+  auth,
+  requireRole("Packaging", "Administrator"),
+  createPackagingBatch as any,
+);
 
 router.get(
-    "/batches/:packagingId",
-    auth,
-    requireRole("Packaging", "Processing", "Administrator"),
-    getPackagingBatch as any
+  "/batches/:packagingId",
+  auth,
+  requireRole("Packaging", "Processing", "Administrator"),
+  getPackagingBatch as any,
 );
 
 router.patch(
-    "/batches/:packagingId",
-    auth,
-    requireRole("Packaging", "Administrator"),
-    updatePackagingBatch as any
+  "/batches/:packagingId",
+  auth,
+  requireRole("Packaging", "Administrator"),
+  updatePackagingBatch as any,
 );
 
 router.delete(
-    "/batches/:packagingId",
-    auth,
-    requireRole("Packaging", "Administrator"),
-    deletePackagingBatch as any
+  "/batches/:packagingId",
+  auth,
+  requireRole("Packaging", "Administrator"),
+  deletePackagingBatch as any,
 );
 
 export default router;

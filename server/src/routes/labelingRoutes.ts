@@ -17,6 +17,7 @@ import {
   type ProductSlug,
 } from "./utils/productTables.js";
 
+// Routes connecting packaging output with labeling accessory workflows.
 const router = express.Router();
 
 function mapLabelingRow(row: any) {

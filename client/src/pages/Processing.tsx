@@ -23,9 +23,12 @@ import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
 import { ProductTypeSelector } from "@/components/ProductTypeSelector";
 
 function normalizeStatus(status: string | null | undefined) {
-  return String(status ?? "").trim().toLowerCase();
+  return String(status ?? "")
+    .trim()
+    .toLowerCase();
 }
 
+// Processing dashboard for managing batches prior to packaging.
 export default function Processing() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -37,10 +40,13 @@ export default function Processing() {
   const [reopeningBatchId, setReopeningBatchId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [productTypeFilter, setProductTypeFilter] = useState<"treacle" | "jaggery">(() => {
-    const saved = typeof window !== "undefined" ? window.localStorage.getItem("processing.productType") : null;
+    const saved =
+      typeof window !== "undefined" ? window.localStorage.getItem("processing.productType") : null;
     return saved === "jaggery" || saved === "treacle" ? saved : "treacle";
   });
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; batchNumber: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; batchNumber: string } | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const userRole = user?.role || "Guest";
@@ -50,7 +56,9 @@ export default function Processing() {
     const raw = import.meta.env.VITE_API_URL || "";
     return raw.endsWith("/") ? raw.slice(0, -1) : raw;
   }, []);
-  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
+  const userAvatar = user?.profileImage
+    ? new URL(user.profileImage, apiBase).toString()
+    : undefined;
   const selectedProductLabel = productTypeFilter === "treacle" ? "Treacle" : "Jaggery";
 
   const handleLogout = () => {
@@ -148,7 +156,7 @@ export default function Processing() {
 
   const formatVolumeByProduct = (
     value: number | null | undefined,
-    productType: ProcessingBatchDto["productType"]
+    productType: ProcessingBatchDto["productType"],
   ) => {
     if (value === null || value === undefined) {
       return "—";
@@ -219,7 +227,12 @@ export default function Processing() {
       return true;
     }
     const term = searchQuery.trim().toLowerCase();
-    const composite = [batch.batchNumber, batch.productType, normalizedStatus, formatDate(batch.scheduledDate)]
+    const composite = [
+      batch.batchNumber,
+      batch.productType,
+      normalizedStatus,
+      formatDate(batch.scheduledDate),
+    ]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -230,7 +243,9 @@ export default function Processing() {
     const status = normalizeStatus(batch.status);
     return status !== "completed" && status !== "cancelled";
   });
-  const completedBatches = filteredBatches.filter((batch) => normalizeStatus(batch.status) === "completed");
+  const completedBatches = filteredBatches.filter(
+    (batch) => normalizeStatus(batch.status) === "completed",
+  );
   const displayBatchNumbers = useMemo(() => {
     const map = new Map<string, number>();
     filteredBatches.forEach((batch, index) => {
@@ -259,11 +274,18 @@ export default function Processing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+      <Navbar
+        userRole={userRole}
+        userName={userName}
+        userAvatar={userAvatar}
+        onLogout={handleLogout}
+      />
       <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="space-y-6 sm:space-y-8">
           <div className="space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">Processing Batches</h1>
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">
+              Processing Batches
+            </h1>
             <p className="text-sm text-muted-foreground">
               Track, submit, and reopen batches as they move through processing.
             </p>
@@ -337,10 +359,12 @@ export default function Processing() {
             <div className="mt-4 flex items-center gap-4 rounded-xl bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
               <span className="font-medium text-foreground">{selectedProductLabel} Overview</span>
               <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-red-600" /> Active: {selectedMetrics.active}
+                <span className="h-2 w-2 rounded-full bg-red-600" /> Active:{" "}
+                {selectedMetrics.active}
               </span>
               <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-green-600" /> Completed: {selectedMetrics.completed}
+                <span className="h-2 w-2 rounded-full bg-green-600" /> Completed:{" "}
+                {selectedMetrics.completed}
               </span>
             </div>
           </div>
@@ -380,13 +404,17 @@ export default function Processing() {
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
                           <span>
-                            Batch ID: <span className="font-semibold text-foreground">{displayBatchNumbers.get(batch.id) ?? batch.batchNumber}</span>
+                            Batch ID:{" "}
+                            <span className="font-semibold text-foreground">
+                              {displayBatchNumbers.get(batch.id) ?? batch.batchNumber}
+                            </span>
                           </span>
                           <span className="px-2 text-muted-foreground/40">|</span>
                           <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
                           <span className="px-2 text-muted-foreground/40">|</span>
                           <span>
-                            Total quantity: {formatVolumeByProduct(batch.totalQuantity, batch.productType)}
+                            Total quantity:{" "}
+                            {formatVolumeByProduct(batch.totalQuantity, batch.productType)}
                           </span>
                           <span className="px-2 text-muted-foreground/40">|</span>
                           <span>Cans: {batch.canCount}</span>
@@ -427,12 +455,16 @@ export default function Processing() {
                             variant="destructive"
                             size="sm"
                             className="sm:flex-none"
-                            onClick={() => setDeleteTarget({ id: batch.id, batchNumber: batch.batchNumber })}
+                            onClick={() =>
+                              setDeleteTarget({ id: batch.id, batchNumber: batch.batchNumber })
+                            }
                             disabled={isDeleting && deleteTarget?.id === batch.id}
                             aria-label={`Delete batch ${batch.batchNumber}`}
                             title={`Delete batch ${batch.batchNumber}`}
                           >
-                            <span className="inline-flex items-center gap-1"><Trash2 className="h-4 w-4" /> Delete</span>
+                            <span className="inline-flex items-center gap-1">
+                              <Trash2 className="h-4 w-4" /> Delete
+                            </span>
                           </Button>
                         </div>
                       </div>
@@ -458,7 +490,10 @@ export default function Processing() {
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
                               <span>
-                                Batch ID: <span className="font-semibold text-foreground">{displayBatchNumbers.get(batch.id) ?? batch.batchNumber}</span>
+                                Batch ID:{" "}
+                                <span className="font-semibold text-foreground">
+                                  {displayBatchNumbers.get(batch.id) ?? batch.batchNumber}
+                                </span>
                               </span>
                               <span className="px-2 text-muted-foreground/40">|</span>
                               <span className="font-medium">{formatDate(batch.scheduledDate)}</span>
@@ -466,7 +501,9 @@ export default function Processing() {
                               <span>{`Output quantity: ${formatOutputQuantity(batch)}`}</span>
                               <span className="px-2 text-muted-foreground/40">|</span>
                               <span className="text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">
-                                {normalizeStatus(batch.status) === "completed" ? "Submitted" : formatStatusLabel(batch.status)}
+                                {normalizeStatus(batch.status) === "completed"
+                                  ? "Submitted"
+                                  : formatStatusLabel(batch.status)}
                               </span>
                             </div>
 
@@ -479,7 +516,7 @@ export default function Processing() {
                               >
                                 View
                               </Button>
-                              
+
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -536,11 +573,11 @@ export default function Processing() {
         </div>
       </main>
 
-  <ReportGenerationDialog
-    stage="processing"
-    open={reportDialogOpen}
-    onOpenChange={setReportDialogOpen}
-  />
+      <ReportGenerationDialog
+        stage="processing"
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+      />
 
       <AlertDialog
         open={deleteTarget !== null}
@@ -554,8 +591,8 @@ export default function Processing() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete processing batch?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove processing batch {deleteTarget?.batchNumber}. You can recreate it from the
-              appropriate drafting stage later.
+              This will permanently remove processing batch {deleteTarget?.batchNumber}. You can
+              recreate it from the appropriate drafting stage later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

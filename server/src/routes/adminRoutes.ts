@@ -14,12 +14,16 @@ import {
   deleteCenter,
 } from "../controllers/adminController.js";
 
+// Administrative management endpoints covering roles, users, and centers.
 const router = Router();
 
+// Ensure every route below is accessed by authenticated administrators.
 router.use(auth, requireRole("Administrator"));
 
+// Role catalogue for building the user-role UI.
 router.get("/roles", getRoles);
 
+// User management CRUD endpoints.
 router.get("/users", listUsers);
 
 router.get("/users/:userId", getUser);
@@ -30,7 +34,7 @@ router.patch("/users/:userId", updateUser);
 
 router.delete("/users/:userId", deleteUser);
 
-// Collection Centers Management
+// Collection center CRUD endpoints.
 router.get("/centers", listCenters);
 
 router.get("/centers/:centerId", getCenter);

@@ -6,11 +6,14 @@ import fs from "fs";
 import { auth } from "../middleware/authMiddleware.js";
 import { patchProfile } from "../controllers/profileController.js";
 
+// Routes handling profile updates, including avatar uploads.
 const router = Router();
 
+// Resolve upload destinations for profile images.
 const uploadRoot = path.resolve(process.cwd(), "uploads");
 const profileDir = path.join(uploadRoot, "profiles");
 
+// Ensure storage directories exist before saving files.
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -19,6 +22,7 @@ function ensureDir(dir: string) {
 
 ensureDir(profileDir);
 
+// Resolve an upload path relative to the application root.
 function resolveUploadPath(relative: string) {
   const sanitized = relative.replace(/^\/+/, "");
   return path.resolve(process.cwd(), sanitized);
@@ -53,12 +57,14 @@ const upload = multer({
   },
 });
 
+// Trim user-provided strings and ignore empty values.
 function sanitizeInput(value: unknown) {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : undefined;
 }
 
+// Accept profile detail updates with an optional avatar image.
 router.patch("/", auth, upload.single("avatar"), patchProfile as any);
 
 export default router;

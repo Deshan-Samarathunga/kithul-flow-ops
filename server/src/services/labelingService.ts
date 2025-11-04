@@ -1,5 +1,9 @@
 import { pool } from "../db.js";
-import { SUPPORTED_PRODUCTS, getTableName, type ProductSlug } from "../routes/utils/productTables.js";
+import {
+  SUPPORTED_PRODUCTS,
+  getTableName,
+  type ProductSlug,
+} from "../routes/utils/productTables.js";
 
 export type LabelingContext = {
   productType: ProductSlug;
@@ -16,12 +20,14 @@ export async function resolveLabelingContext(packagingId: string): Promise<Label
   for (const productType of SUPPORTED_PRODUCTS) {
     const packagingTable = getTableName("packagingBatches", productType);
     const labelingTable = getTableName("labelingBatches", productType);
-    const { rows } = await pool.query(`SELECT id FROM ${packagingTable} WHERE packaging_id = $1`, [packagingId]);
+    const { rows } = await pool.query(`SELECT id FROM ${packagingTable} WHERE packaging_id = $1`, [
+      packagingId,
+    ]);
     if (rows.length > 0) {
       const packagingPk = Number(rows[0].id);
       const { rows: labelRows } = await pool.query(
         `SELECT id FROM ${labelingTable} WHERE packaging_batch_id = $1`,
-        [packagingPk]
+        [packagingPk],
       );
       return {
         productType,

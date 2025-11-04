@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +19,7 @@ import { adminGetUser, adminUpdateUser } from "@/lib/api";
 
 const ROLE_OPTIONS = ["Field Collection", "Processing", "Packaging", "Labeling"];
 
+// Page for editing an existing employee's role and status.
 export default function EditEmployee() {
   const navigate = useNavigate();
   const { userId } = useParams();
@@ -25,7 +32,9 @@ export default function EditEmployee() {
 
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
-  const userAvatar = user?.profileImage ? new URL(user.profileImage, apiBase).toString() : undefined;
+  const userAvatar = user?.profileImage
+    ? new URL(user.profileImage, apiBase).toString()
+    : undefined;
 
   const handleLogout = () => {
     logout();
@@ -72,7 +81,9 @@ export default function EditEmployee() {
         setRoles(rolesResponse.length ? rolesResponse : ROLE_OPTIONS);
         setForm({
           name: employee.name || "",
-          role: rolesResponse.includes(employee.role) ? employee.role : rolesResponse[0] ?? ROLE_OPTIONS[0],
+          role: rolesResponse.includes(employee.role)
+            ? employee.role
+            : (rolesResponse[0] ?? ROLE_OPTIONS[0]),
           isActive: employee.isActive,
         });
       } catch (error: unknown) {
@@ -92,7 +103,6 @@ export default function EditEmployee() {
       cancelled = true;
     };
   }, [userId, token, navigate, logout]);
-
 
   const handleSave = async () => {
     if (!userId) return;
@@ -119,12 +129,19 @@ export default function EditEmployee() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={userRole} userName={userName} userAvatar={userAvatar} onLogout={handleLogout} />
+      <Navbar
+        userRole={userRole}
+        userName={userName}
+        userAvatar={userAvatar}
+        onLogout={handleLogout}
+      />
 
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-xl">
         <Card className="p-6 sm:p-8 shadow-lg border">
           <h1 className="text-xl sm:text-2xl font-semibold mb-1">Edit Employee</h1>
-          <p className="text-sm text-muted-foreground mb-6">Update the employee&apos;s details and access status.</p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Update the employee&apos;s details and access status.
+          </p>
 
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
@@ -142,7 +159,10 @@ export default function EditEmployee() {
 
               <div className="space-y-2">
                 <Label htmlFor="employee-role">Role</Label>
-                <Select value={form.role} onValueChange={(value) => setForm((prev) => ({ ...prev, role: value }))}>
+                <Select
+                  value={form.role}
+                  onValueChange={(value) => setForm((prev) => ({ ...prev, role: value }))}
+                >
                   <SelectTrigger id="employee-role">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
@@ -170,10 +190,19 @@ export default function EditEmployee() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <Button variant="outline" className="flex-1" onClick={() => navigate("/admin")} disabled={saving}>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => navigate("/admin")}
+                  disabled={saving}
+                >
                   Cancel
                 </Button>
-                <Button className="flex-1 bg-cta hover:bg-cta-hover text-cta-foreground" onClick={handleSave} disabled={saving}>
+                <Button
+                  className="flex-1 bg-cta hover:bg-cta-hover text-cta-foreground"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
                   {saving ? "Saving..." : "Save Changes"}
                 </Button>
               </div>

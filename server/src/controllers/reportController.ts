@@ -1,7 +1,11 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { pool } from "../db.js";
-import { SUPPORTED_PRODUCTS, getTableName, type ProductSlug } from "../routes/utils/productTables.js";
+import {
+  SUPPORTED_PRODUCTS,
+  getTableName,
+  type ProductSlug,
+} from "../routes/utils/productTables.js";
 import {
   fetchFieldCollectionMetrics as svcFetchFieldCollectionMetrics,
   fetchProcessingMetrics as svcFetchProcessingMetrics,
@@ -9,9 +13,7 @@ import {
   fetchLabelingMetrics as svcFetchLabelingMetrics,
 } from "../services/reportsService.js";
 
-const dateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format");
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format");
 
 const toNumber = (value: unknown) => {
   if (value === null || value === undefined) {
@@ -71,7 +73,12 @@ type ReportTotals = {
   labeling: LabelingMetrics;
 };
 
-const emptyFieldCollection = (): FieldCollectionMetrics => ({ drafts: 0, cans: 0, quantity: 0, draftIds: [] });
+const emptyFieldCollection = (): FieldCollectionMetrics => ({
+  drafts: 0,
+  cans: 0,
+  quantity: 0,
+  draftIds: [],
+});
 
 const emptyProcessing = (): ProcessingMetrics => ({
   totalBatches: 0,
@@ -124,7 +131,10 @@ const toStringArray = (value: unknown): string[] => {
     .filter((item): item is string => item !== null);
 };
 
-async function fetchFieldCollectionMetrics(product: ProductSlug, targetDate: string): Promise<FieldCollectionMetrics> {
+async function fetchFieldCollectionMetrics(
+  product: ProductSlug,
+  targetDate: string,
+): Promise<FieldCollectionMetrics> {
   const row = await svcFetchFieldCollectionMetrics(product, targetDate);
   return {
     drafts: toNumber(row.draft_count),
@@ -134,7 +144,10 @@ async function fetchFieldCollectionMetrics(product: ProductSlug, targetDate: str
   };
 }
 
-async function fetchProcessingMetrics(product: ProductSlug, targetDate: string): Promise<ProcessingMetrics> {
+async function fetchProcessingMetrics(
+  product: ProductSlug,
+  targetDate: string,
+): Promise<ProcessingMetrics> {
   const row = await svcFetchProcessingMetrics(product, targetDate);
   return {
     totalBatches: toNumber(row.total_batches),
@@ -145,7 +158,10 @@ async function fetchProcessingMetrics(product: ProductSlug, targetDate: string):
   };
 }
 
-async function fetchPackagingMetrics(product: ProductSlug, targetDate: string): Promise<PackagingMetrics> {
+async function fetchPackagingMetrics(
+  product: ProductSlug,
+  targetDate: string,
+): Promise<PackagingMetrics> {
   const row = await svcFetchPackagingMetrics(product, targetDate);
   return {
     totalBatches: toNumber(row.total_batches),
@@ -159,7 +175,10 @@ async function fetchPackagingMetrics(product: ProductSlug, targetDate: string): 
   };
 }
 
-async function fetchLabelingMetrics(product: ProductSlug, targetDate: string): Promise<LabelingMetrics> {
+async function fetchLabelingMetrics(
+  product: ProductSlug,
+  targetDate: string,
+): Promise<LabelingMetrics> {
   const row = await svcFetchLabelingMetrics(product, targetDate);
   return {
     totalBatches: toNumber(row.total_batches),
@@ -173,7 +192,8 @@ async function fetchLabelingMetrics(product: ProductSlug, targetDate: string): P
 
 export async function dailyReport(req: Request, res: Response) {
   try {
-    const rawDate = typeof req.query.date === "string" && req.query.date.trim() ? req.query.date.trim() : null;
+    const rawDate =
+      typeof req.query.date === "string" && req.query.date.trim() ? req.query.date.trim() : null;
     const targetDate = rawDate ? dateSchema.parse(rawDate) : new Date().toISOString().slice(0, 10);
 
     const perProduct: Record<ProductSlug, ProductReport> = {
@@ -221,7 +241,7 @@ export async function dailyReport(req: Request, res: Response) {
       totals.fieldCollection.cans += report.fieldCollection.cans;
       totals.fieldCollection.quantity += report.fieldCollection.quantity;
       totals.fieldCollection.draftIds = Array.from(
-        new Set([...totals.fieldCollection.draftIds, ...report.fieldCollection.draftIds])
+        new Set([...totals.fieldCollection.draftIds, ...report.fieldCollection.draftIds]),
       );
 
       totals.processing.totalBatches += report.processing.totalBatches;
@@ -244,7 +264,8 @@ export async function dailyReport(req: Request, res: Response) {
       totals.labeling.totalStickerQuantity += report.labeling.totalStickerQuantity;
       totals.labeling.totalShrinkSleeveQuantity += report.labeling.totalShrinkSleeveQuantity;
       totals.labeling.totalNeckTagQuantity += report.labeling.totalNeckTagQuantity;
-      totals.labeling.totalCorrugatedCartonQuantity += report.labeling.totalCorrugatedCartonQuantity;
+      totals.labeling.totalCorrugatedCartonQuantity +=
+        report.labeling.totalCorrugatedCartonQuantity;
     }
 
     res.json({

@@ -3,7 +3,7 @@ const API = import.meta.env.VITE_API_URL;
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
-  token?: string | null
+  token?: string | null,
 ): Promise<T> {
   const saved = localStorage.getItem("auth");
   const fallbackToken = saved ? (JSON.parse(saved).token as string) : null;
@@ -57,7 +57,7 @@ export async function adminGetUser(id: number) {
 
 export async function adminUpdateUser(
   id: number,
-  payload: { name?: string; role?: string; isActive?: boolean }
+  payload: { name?: string; role?: string; isActive?: boolean },
 ) {
   return apiFetch<AdminUser>(`/api/admin/users/${id}`, {
     method: "PATCH",
@@ -113,7 +113,7 @@ export async function adminUpdateCenter(
     centerAgent?: string;
     contactPhone?: string;
     isActive?: boolean;
-  }
+  },
 ) {
   return apiFetch<AdminCenter>(`/api/admin/centers/${id}`, {
     method: "PATCH",
