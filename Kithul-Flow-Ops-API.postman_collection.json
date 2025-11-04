@@ -478,9 +478,18 @@
                   "type": "text"
                 },
                 {
-                  "key": "email",
-                  "value": "newemail@example.com",
-                  "type": "text"
+                  "key": "currentPassword",
+                  "value": "12345678",
+                  "type": "text",
+                  "disabled": true,
+                  "description": "Required when changing password"
+                },
+                {
+                  "key": "newPassword",
+                  "value": "newstrongpass",
+                  "type": "text",
+                  "disabled": true,
+                  "description": "Optional password update (min 8 chars)"
                 },
                 {
                   "key": "avatar",

@@ -9,7 +9,7 @@
 const axios = require('axios');
 
 const BASE_URL = 'http://localhost:5000/api';
-let authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjIiLCJ1c2VySWQiOiJmaWVsZDAxIiwicm9sZSI6IkZpZWxkIENvbGxlY3Rpb24iLCJpYXQiOjE3NjIyNDgwMDQsImV4cCI6MTc2Mjg1MjgwNH0.hA3BRzRxdbNKhHicSZlg1-EgzSFVceAo3Xr64ghdGgM';
+let authToken = '';
 
 // Color codes for console output
 const colors = {
@@ -150,16 +150,17 @@ async function testCRUDOperations() {
   });
   
   if (createDraft.success) {
-    console.log(`${colors.green}✓ Draft created: ${createDraft.data.draft.draft_id}${colors.reset}`);
+    const createdDraft = createDraft.data;
+    console.log(`${colors.green}✓ Draft created: ${createdDraft.draft_id}${colors.reset}`);
     
     // Get the draft
-    const getDraft = await apiCall('GET', `/field-collection/drafts/${createDraft.data.draft.draft_id}`);
+    const getDraft = await apiCall('GET', `/field-collection/drafts/${createdDraft.draft_id}`);
     if (getDraft.success) {
       console.log(`${colors.green}✓ Draft retrieved successfully${colors.reset}`);
     }
 
     // Update the draft
-    const updateDraft = await apiCall('PUT', `/field-collection/drafts/${createDraft.data.draft.draft_id}`, {
+    const updateDraft = await apiCall('PUT', `/field-collection/drafts/${createdDraft.draft_id}`, {
       status: 'draft'
     });
     if (updateDraft.success) {
@@ -167,7 +168,7 @@ async function testCRUDOperations() {
     }
 
     // Delete the draft
-    const deleteDraft = await apiCall('DELETE', `/field-collection/drafts/${createDraft.data.draft.draft_id}`);
+    const deleteDraft = await apiCall('DELETE', `/field-collection/drafts/${createdDraft.draft_id}`);
     if (deleteDraft.success) {
       console.log(`${colors.green}✓ Draft deleted successfully${colors.reset}`);
     }
