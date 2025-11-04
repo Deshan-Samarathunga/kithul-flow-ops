@@ -165,10 +165,10 @@ const extractDraftId = (input: unknown): string | null => {
   return toIdString(record.draft_id) ?? toIdString(record.draftId);
 };
 
+// Field collection dashboard showing drafts, metrics, and actions.
 export default function FieldCollection() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-
   const userRole = user?.role || "Guest";
   const userName = user?.name || user?.userId || "User";
   const apiBase = useMemo(() => {

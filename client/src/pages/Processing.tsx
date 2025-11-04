@@ -28,6 +28,7 @@ function normalizeStatus(status: string | null | undefined) {
     .toLowerCase();
 }
 
+// Processing dashboard for managing batches prior to packaging.
 export default function Processing() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();

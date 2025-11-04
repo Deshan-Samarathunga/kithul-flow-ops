@@ -17,6 +17,7 @@ import {
   type ProductSlug,
 } from "./utils/productTables.js";
 
+// Routes connecting packaging output with labeling accessory workflows.
 const router = express.Router();
 
 function mapLabelingRow(row: any) {
@@ -27,9 +28,7 @@ function mapLabelingRow(row: any) {
     batchNumber: row.batch_number as string,
     productType: row.product_type as string,
     scheduledDate:
-      row.scheduled_date instanceof Date
-        ? row.scheduled_date.toISOString()
-        : (row.scheduled_date as string | null),
+      row.scheduled_date instanceof Date ? row.scheduled_date.toISOString() : (row.scheduled_date as string | null),
     startedAt:
       row.packaging_started_at instanceof Date
         ? row.packaging_started_at.toISOString()
@@ -49,15 +48,10 @@ function mapLabelingRow(row: any) {
     stickerQuantity:
       row.labeling_sticker_quantity !== null ? Number(row.labeling_sticker_quantity) : null,
     shrinkSleeveQuantity:
-      row.labeling_shrink_sleeve_quantity !== null
-        ? Number(row.labeling_shrink_sleeve_quantity)
-        : null,
-    neckTagQuantity:
-      row.labeling_neck_tag_quantity !== null ? Number(row.labeling_neck_tag_quantity) : null,
+      row.labeling_shrink_sleeve_quantity !== null ? Number(row.labeling_shrink_sleeve_quantity) : null,
+    neckTagQuantity: row.labeling_neck_tag_quantity !== null ? Number(row.labeling_neck_tag_quantity) : null,
     corrugatedCartonQuantity:
-      row.labeling_corrugated_carton_quantity !== null
-        ? Number(row.labeling_corrugated_carton_quantity)
-        : null,
+      row.labeling_corrugated_carton_quantity !== null ? Number(row.labeling_corrugated_carton_quantity) : null,
   };
 }
 
@@ -70,7 +64,11 @@ const numericQuantity = z
 
 const updateLabelingSchema = z.object({
   status: z.enum(LABELING_STATUSES).optional(),
-  notes: z.string().trim().max(2000, "Notes must be 2000 characters or fewer").optional(),
+  notes: z
+    .string()
+    .trim()
+    .max(2000, "Notes must be 2000 characters or fewer")
+    .optional(),
   stickerQuantity: numericQuantity,
   shrinkSleeveQuantity: numericQuantity,
   neckTagQuantity: numericQuantity,
@@ -174,14 +172,12 @@ async function resolveLabelingContext(packagingId: string): Promise<LabelingCont
   for (const productType of SUPPORTED_PRODUCTS) {
     const packagingTable = getTableName("packagingBatches", productType);
     const labelingTable = getTableName("labelingBatches", productType);
-    const { rows } = await pool.query(`SELECT id FROM ${packagingTable} WHERE packaging_id = $1`, [
-      packagingId,
-    ]);
+    const { rows } = await pool.query(`SELECT id FROM ${packagingTable} WHERE packaging_id = $1`, [packagingId]);
     if (rows.length > 0) {
       const packagingPk = Number(rows[0].id);
       const { rows: labelRows } = await pool.query(
         `SELECT id FROM ${labelingTable} WHERE packaging_batch_id = $1`,
-        [packagingPk],
+        [packagingPk]
       );
       return {
         productType,
@@ -263,9 +259,7 @@ async function fetchLabelingRow(packagingId: string) {
   return { context, row: rows[0] ?? null } as const;
 }
 
-async function fetchLabelingBatchByPackagingId(
-  packagingId: string,
-): Promise<LabelingDetails | null> {
+async function fetchLabelingBatchByPackagingId(packagingId: string): Promise<LabelingDetails | null> {
   const { context, row } = await fetchLabelingRow(packagingId);
   if (!context || !row) {
     return null;
@@ -349,21 +343,21 @@ router.get(
   "/batches/:packagingId",
   auth,
   requireRole("Labeling", "Packaging", "Administrator"),
-  getLabelingBatch as any,
+  getLabelingBatch as any
 );
 
 router.get(
   "/batches",
   auth,
   requireRole("Labeling", "Packaging", "Administrator"),
-  listLabelingBatches as any,
+  listLabelingBatches as any
 );
 
 router.get(
   "/available-packaging",
   auth,
   requireRole("Labeling", "Packaging", "Administrator"),
-  availableLabelingPackaging as any,
+  availableLabelingPackaging as any
 );
 
 router.post("/batches", auth, requireRole("Labeling", "Administrator"), createLabelingBatch as any);
@@ -372,14 +366,14 @@ router.patch(
   "/batches/:packagingId",
   auth,
   requireRole("Labeling", "Packaging", "Administrator"),
-  updateLabelingBatch as any,
+  updateLabelingBatch as any
 );
 
 router.delete(
   "/batches/:packagingId",
   auth,
   requireRole("Labeling", "Administrator"),
-  deleteLabelingBatch as any,
+  deleteLabelingBatch as any
 );
 
 export default router;

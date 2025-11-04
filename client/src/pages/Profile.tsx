@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Camera } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
+// Profile settings page for updating personal details and password.
 export default function Profile() {
   const navigate = useNavigate();
   const { user, token, logout, updateUser } = useAuth();

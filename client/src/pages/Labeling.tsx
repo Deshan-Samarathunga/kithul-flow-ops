@@ -51,6 +51,7 @@ const formatVolumeByProduct = (
   return `${Number(value).toFixed(1)} ${unit}`;
 };
 
+// Labeling workflow dashboard for active and completed packaging batches.
 export default function Labeling() {
   const navigate = useNavigate();
   const location = useLocation();

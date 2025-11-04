@@ -19,6 +19,7 @@ import { adminGetUser, adminUpdateUser } from "@/lib/api";
 
 const ROLE_OPTIONS = ["Field Collection", "Processing", "Packaging", "Labeling"];
 
+// Page for editing an existing employee's role and status.
 export default function EditEmployee() {
   const navigate = useNavigate();
   const { userId } = useParams();

@@ -16,6 +16,7 @@ function normalizeStatus(status: string | null | undefined) {
     .toLowerCase();
 }
 
+// Detail page for capturing packaging outputs and accessory usage.
 export default function PackagingBatchDetail() {
   const { packagingId } = useParams();
   const navigate = useNavigate();

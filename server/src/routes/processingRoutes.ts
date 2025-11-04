@@ -20,11 +20,14 @@ import {
   type ProductSlug,
 } from "./utils/productTables.js";
 
+// Routes governing processing batches and their assigned cans.
 const router = express.Router();
 
+// Shared constants for processing batch validation.
 const PRODUCT_TYPES = SUPPORTED_PRODUCTS;
 const BATCH_STATUSES = ["draft", "in-progress", "completed", "cancelled"] as const;
 
+// Validation schemas shaping allowed payloads for processing operations.
 const createBatchSchema = z.object({
   scheduledDate: z
     .string()
@@ -55,6 +58,7 @@ const updateBatchCansSchema = z.object({
   canIds: z.array(z.string()).max(15, "A batch can contain at most 15 cans"),
 });
 
+// Normalize raw can rows for the API response model.
 const mapCanRow = (row: any) => ({
   id: row.can_id as string,
   quantity: row.quantity !== null ? Number(row.quantity) : 0,
@@ -95,6 +99,7 @@ type ProcessingBatchContext = {
   row: any;
 };
 
+// Helper conversions for consistent JSON serialization.
 const toIsoString = (value: Date | string | null | undefined) => {
   if (!value) return null;
   if (value instanceof Date) return value.toISOString();
@@ -107,6 +112,7 @@ const toNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+// Data access helpers powering the processing routes below.
 async function resolveProcessingBatchContext(
   batchId: string,
 ): Promise<ProcessingBatchContext | null> {
@@ -133,6 +139,7 @@ async function fetchCansForProduct(
   statusFilter?: string,
   forBatch?: string,
 ) {
+  // Build a dynamic query of cans filtered by draft status and batch assignment.
   const canTable = getTableName("cans", productType);
   const draftTable = getTableName("drafts", productType);
   const batchCanTable = getTableName("processingBatchCans", productType);
@@ -186,6 +193,7 @@ async function fetchCansForProduct(
 }
 
 async function fetchProcessingBatchSummaries(productType: ProductSlug) {
+  // Summaries used for list views of processing batches.
   const batchTable = getTableName("processingBatches", productType);
   const batchCanTable = getTableName("processingBatchCans", productType);
   const canTable = getTableName("cans", productType);

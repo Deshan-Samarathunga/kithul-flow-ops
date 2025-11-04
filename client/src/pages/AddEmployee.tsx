@@ -29,6 +29,7 @@ const initialState: FormState = {
   password: "",
 };
 
+// Page for administrators to create new employee user accounts.
 export default function AddEmployee() {
   const navigate = useNavigate();
   const { user, token, logout } = useAuth();

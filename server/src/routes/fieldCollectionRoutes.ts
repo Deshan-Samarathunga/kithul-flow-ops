@@ -23,8 +23,10 @@ import {
   type ProductSlug,
 } from "./utils/productTables.js";
 
+// Routes for managing field collection drafts, centers, and can records.
 const router = express.Router();
 
+// Database sources shared across multiple field-collection queries.
 const DRAFTS_TABLE = "field_collection_drafts";
 const CENTER_COMPLETIONS_TABLE = "field_collection_center_completions";
 const CAN_TOTALS_SOURCE = SUPPORTED_PRODUCTS.map(
@@ -35,6 +37,7 @@ const CANS_SOURCE = SUPPORTED_PRODUCTS.map(
     `SELECT id, can_id, draft_id, collection_center_id, product_type, brix_value, ph_value, quantity, created_at, updated_at FROM ${getTableName("cans", product)}`,
 ).join(" UNION ALL ");
 
+// Validation schemas for draft and can lifecycle operations.
 const createDraftSchema = z.object({
   date: z.string().optional(),
 });
@@ -58,6 +61,7 @@ const updateCanSchema = z.object({
   quantity: z.number().positive().optional(),
 });
 
+// Translate API field names to their SQL column counterparts when updating cans.
 const CAN_UPDATE_FIELD_MAP: Record<keyof z.infer<typeof updateCanSchema>, string> = {
   brixValue: "brix_value",
   phValue: "ph_value",
@@ -86,6 +90,7 @@ type CanContext = {
   row: any;
 };
 
+// Helpers for normalizing typed values returned from PostgreSQL.
 const toIsoString = (value: Date | string | null | undefined) => {
   if (!value) return null;
   if (value instanceof Date) return value.toISOString();
@@ -100,6 +105,7 @@ const toNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+// Role utilities that ensure only the owning user or admins can mutate drafts.
 const ADMIN_ROLE = "administrator";
 
 const normalizeUserId = (value: unknown): string | null => {
@@ -144,6 +150,7 @@ const canAccessDraft = (user: unknown, draftRow: unknown): boolean => {
   return Boolean(createdBy && createdBy === userId);
 };
 
+// Data access helpers shared by the route handlers below.
 async function fetchDraftRowByInternalId(id: unknown): Promise<Record<string, unknown> | null> {
   if (typeof id !== "number" && typeof id !== "string") {
     return null;
@@ -246,6 +253,9 @@ async function resolveCanContext(canId: string): Promise<CanContext | null> {
   return null;
 }
 
+// Draft lifecycle endpoints (list, fetch, create, update, delete).
+// Retrieve individual can records for a draft-center combination.
+// Center submission workflows tied to drafts.
 router.get(
   "/drafts",
   auth,
@@ -260,6 +270,7 @@ router.get(
   getFieldDraft as any,
 );
 
+// Draft submission and reopening endpoints with additional validation.
 router.post(
   "/drafts",
   auth,
@@ -395,6 +406,7 @@ router.get(
   },
 );
 
+// CRUD endpoints for individual can records.
 router.post("/cans", auth, requireRole("Field Collection", "Administrator"), createFieldCan as any);
 
 router.put(

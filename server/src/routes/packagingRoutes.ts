@@ -17,8 +17,10 @@ import {
   type ProductSlug,
 } from "./utils/productTables.js";
 
+// Routes that expose packaging batch lifecycle operations.
 const router = express.Router();
 
+// Convert raw database rows to the typed DTO returned by the API.
 function mapPackagingRow(row: any) {
   return {
     id: row.packaging_id as string,
@@ -56,6 +58,7 @@ function mapPackagingRow(row: any) {
 
 const PACKAGING_STATUSES = ["pending", "in-progress", "completed", "on-hold"] as const;
 
+// Validation schemas guarding packaging batch mutations.
 const createPackagingSchema = z.object({
   processingBatchId: z.string().min(1, "Processing batch id is required"),
 });
@@ -80,6 +83,7 @@ const updatePackagingSchema = z.object({
   parchmentPaperQuantity: numericQuantity,
 });
 
+// Helper queries for enriching packaging batch responses.
 async function fetchPackagingBatchByPackagingId(packagingId: string) {
   const context = await resolvePackagingContext(packagingId);
   if (!context) {
@@ -160,6 +164,7 @@ type ProcessingContext = {
 };
 
 async function resolvePackagingContext(packagingId: string): Promise<PackagingContext | null> {
+  // Search product tables until the matching packaging batch is found.
   for (const productType of SUPPORTED_PRODUCTS) {
     const packagingTable = getTableName("packagingBatches", productType);
     const { rows } = await pool.query(`SELECT * FROM ${packagingTable} WHERE packaging_id = $1`, [
@@ -182,6 +187,7 @@ async function resolvePackagingContext(packagingId: string): Promise<PackagingCo
 async function resolveProcessingContextByBatchId(
   batchId: string,
 ): Promise<ProcessingContext | null> {
+  // Provide packaging creation workflows with processing batch metadata.
   for (const productType of SUPPORTED_PRODUCTS) {
     const processingTable = getTableName("processingBatches", productType);
     const { rows } = await pool.query(`SELECT * FROM ${processingTable} WHERE batch_id = $1`, [
@@ -202,6 +208,7 @@ async function resolveProcessingContextByBatchId(
 }
 
 async function fetchEligibleProcessingBatches(productType?: ProductSlug) {
+  // Collect completed processing batches that have not been packaged yet.
   const products = productType ? [productType] : [...SUPPORTED_PRODUCTS];
   const eligible: Array<{
     processingBatchId: string;
@@ -259,6 +266,7 @@ async function fetchEligibleProcessingBatches(productType?: ProductSlug) {
 }
 
 async function fetchPackagingSummaries(productType: ProductSlug) {
+  // Produce summary cards for UI dashboards across packaging batches.
   const packagingTable = getTableName("packagingBatches", productType);
   const processingBatchTable = getTableName("processingBatches", productType);
   const batchCanTable = getTableName("processingBatchCans", productType);
@@ -313,6 +321,7 @@ async function fetchPackagingSummaries(productType: ProductSlug) {
   return rows.map(mapPackagingRow);
 }
 
+// REST endpoints for packaging batch availability and management.
 router.get(
   "/batches/available-processing",
   auth,

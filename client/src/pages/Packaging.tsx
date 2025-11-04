@@ -38,6 +38,7 @@ function normalizePackagingStatus(status: string | null | undefined) {
     .toLowerCase();
 }
 
+// Packaging dashboard for managing batches and accessory quantities.
 export default function Packaging() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();

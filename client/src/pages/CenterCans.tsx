@@ -33,6 +33,7 @@ type CanListItem = {
   total_amount: number | null;
 };
 
+// Center-level view of cans within a field collection draft.
 export default function CenterCans() {
   const navigate = useNavigate();
   const { draftId, centerId } = useParams();

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { DataService } from "@/lib/dataService";
 
+// Form for adding cans into a field collection draft.
 export default function CanForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

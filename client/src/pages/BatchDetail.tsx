@@ -22,6 +22,7 @@ import { ChevronRight, Loader2 } from "lucide-react";
 
 const MAX_CAN_SELECTION = 15;
 
+// Processing batch detail page for assigning cans and recording outputs.
 export default function BatchDetail() {
   const navigate = useNavigate();
   const { batchId } = useParams();

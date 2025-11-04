@@ -34,6 +34,7 @@ function routeForRole(role?: string | null) {
   }
 }
 
+// Authentication entry page for the entire application.
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();

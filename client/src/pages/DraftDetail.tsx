@@ -15,6 +15,7 @@ type DraftDetailData = {
   can_count?: number;
 } & Record<string, unknown>;
 
+// Field collection draft summary with navigation into center cans.
 export default function DraftDetail() {
   const navigate = useNavigate();
   const { draftId } = useParams();

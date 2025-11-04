@@ -33,6 +33,7 @@ import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
 
 const ROLES_FOR_EMPLOYEES = ["Field Collection", "Processing", "Packaging", "Labeling"];
 
+// Admin dashboard for managing users, centers, and reporting tools.
 export default function Admin() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();

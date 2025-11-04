@@ -27,6 +27,7 @@ function formatStatusLabelText(status: string | null | undefined) {
     .join(" ");
 }
 
+// Detail page for recording labeling accessory quantities for a packaging batch.
 export default function LabelingBatchDetail() {
   const { packagingId } = useParams();
   const navigate = useNavigate();
