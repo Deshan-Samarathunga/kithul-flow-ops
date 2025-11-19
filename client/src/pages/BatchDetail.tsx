@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar.lazy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,11 +14,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import type { ProcessingBatchDto, ProcessingCanDto } from "@/lib/apiClient";
 import { ChevronRight, Loader2 } from "lucide-react";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 const MAX_CAN_SELECTION = 15;
 
@@ -405,7 +406,7 @@ export default function BatchDetail() {
         breadcrumb={breadcrumbContent}
       />
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <PageContainer className="py-6 sm:py-8">
         {isBatchLoading ? (
           <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
             Loading batch…
@@ -416,12 +417,12 @@ export default function BatchDetail() {
           </div>
         ) : batch ? (
           <>
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full min-w-0">
               <div>
                 <h1 className="text-xl sm:text-2xl font-semibold">Batch {batch.batchNumber}</h1>
-                <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                <p className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span>Scheduled for {formatDate(batch.scheduledDate)}</span>
-                  <span className="px-2 text-muted-foreground/40">|</span>
+                  <span className="text-muted-foreground/40">|</span>
                   {batch.status === "completed" ? (
                     <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">
                       Submitted
@@ -432,7 +433,7 @@ export default function BatchDetail() {
                 </p>
               </div>
               {isEditable ? (
-                <div className="flex w-full sm:w-auto sm:justify-end justify-stretch gap-2">
+                <div className="flex flex-col sm:flex-row w-full sm:w-auto sm:justify-end gap-2">
                   <Button
                     onClick={() => setProductionDialogOpen(true)}
                     variant="outline"
@@ -495,7 +496,7 @@ export default function BatchDetail() {
                 {isEditable ? "Available Cans" : "Selected Cans"}
               </h2>
 
-              <div className="max-w-md w-full md:w-1/2">
+              <div className="max-w-md w-full md:w-1/2 min-w-0">
                 <Input
                   value={canSearch}
                   onChange={(event) => setCanSearch(event.target.value)}
@@ -539,7 +540,7 @@ export default function BatchDetail() {
               )}
 
               {isEditable && !isCanLoading && !canError && cansToRender.length > 0 && (
-                <div className="flex items-start gap-4 pl-4">
+                <div className="flex flex-wrap items-start gap-4 pl-4">
                   <Checkbox
                     id="select-all-cans"
                     checked={selectAllState}
@@ -776,7 +777,7 @@ export default function BatchDetail() {
             Batch not found.
           </div>
         )}
-      </div>
+  </PageContainer>
     </div>
   );
 }

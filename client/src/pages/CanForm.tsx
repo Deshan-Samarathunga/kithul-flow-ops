@@ -1,13 +1,14 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar.lazy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { DataService } from "@/lib/dataService";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 // Form for adding cans into a field collection draft.
 export default function CanForm() {
@@ -202,7 +203,7 @@ export default function CanForm() {
         }
       />
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
+      <PageContainer className="py-6 sm:py-8 max-w-4xl">
         <Card className="rounded-2xl border shadow-sm">
           <CardContent className="p-4 sm:p-6">
             <h2 className="text-xl sm:text-2xl font-semibold">
@@ -304,7 +305,7 @@ export default function CanForm() {
             </form>
           </CardContent>
         </Card>
-      </div>
+  </PageContainer>
     </div>
   );
 }

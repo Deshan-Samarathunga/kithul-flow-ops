@@ -4,6 +4,8 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ResponsiveToolbar } from "@/components/layout/ResponsiveToolbar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,12 +18,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { FileText, Loader2, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
 
 type DraftStatus = "draft" | "submitted" | "completed" | string;
+type ListTab = "all" | "active" | "submitted";
 
 type DraftSummary = {
   id: string;
@@ -190,7 +193,7 @@ export default function FieldCollection() {
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [completedCounts, setCompletedCounts] = useState<Record<string, number>>({});
-  const [listTab, setListTab] = useState<"all" | "active" | "submitted">("all");
+  const [listTab, setListTab] = useState<ListTab>("all");
 
   const handleLogout = () => {
     logout();
@@ -398,72 +401,72 @@ export default function FieldCollection() {
           </div>
 
           <div className="rounded-2xl border bg-card/95 p-4 sm:p-6 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 w-full">
-              <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
-                <button
-                  type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "all" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
-                  aria-pressed={listTab === "all"}
-                  onClick={() => setListTab("all")}
-                >
-                  All
-                </button>
-                <button
-                  type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "active" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
-                  aria-pressed={listTab === "active"}
-                  onClick={() => setListTab("active")}
-                >
-                  Active
-                </button>
-                <button
-                  type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${listTab === "submitted" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
-                  aria-pressed={listTab === "submitted"}
-                  onClick={() => setListTab("submitted")}
-                >
-                  Submitted
-                </button>
-              </div>
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search drafts"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  className="pl-10"
-                />
-              </div>
+            <ResponsiveToolbar stackAt="lg">
+              <ResponsiveToolbar.Leading>
+                <Tabs value={listTab} onValueChange={(value) => setListTab((value as ListTab) ?? "all")}>
+                  <TabsList className="flex h-auto w-full flex-col gap-2 rounded-2xl bg-muted/40 p-1 text-sm sm:flex-row sm:flex-nowrap sm:gap-0 sm:rounded-full">
+                    <TabsTrigger value="all" className="flex-1 rounded-full px-4 py-1.5 text-sm">
+                      All
+                    </TabsTrigger>
+                    <TabsTrigger value="active" className="flex-1 rounded-full px-4 py-1.5 text-sm">
+                      Active
+                    </TabsTrigger>
+                    <TabsTrigger value="submitted" className="flex-1 rounded-full px-4 py-1.5 text-sm">
+                      Submitted
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </ResponsiveToolbar.Leading>
 
-              <Button
-                variant="secondary"
-                onClick={handleOpenReportDialog}
-                className="w-full sm:w-auto"
-              >
-                <FileText className="h-4 w-4 mr-2" /> Generate report
-              </Button>
+              <ResponsiveToolbar.Content>
+                <div className="relative flex-1 min-w-0">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search drafts"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </ResponsiveToolbar.Content>
 
-              <Button
-                variant="outline"
-                onClick={handleRefresh}
-                className="w-full sm:w-auto"
-                disabled={isLoading || isRefreshing}
-              >
-                <RefreshCcw
-                  className={isLoading || isRefreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"}
-                />
-                <span className="ml-2">Refresh</span>
-              </Button>
+              <ResponsiveToolbar.Actions>
+                <div className="flex flex-col gap-2 w-full sm:flex-row">
+                  <Button
+                    variant="secondary"
+                    onClick={handleOpenReportDialog}
+                    className="w-full sm:w-auto"
+                  >
+                    <FileText className="h-4 w-4 mr-2" /> Generate report
+                  </Button>
 
-              <Button
-                onClick={handleCreateDraft}
-                disabled={isCreating}
-                className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto sm:ml-auto"
-              >
-                {isCreating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                {isCreating ? "Creating…" : "Add New"}
-              </Button>
-            </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleRefresh}
+                    className="w-full sm:w-auto"
+                    disabled={isLoading || isRefreshing}
+                  >
+                    <RefreshCcw
+                      className={isLoading || isRefreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"}
+                    />
+                    <span className="ml-2">Refresh</span>
+                  </Button>
+
+                  <Button
+                    onClick={handleCreateDraft}
+                    disabled={isCreating}
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                  >
+                    {isCreating ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4 mr-2" />
+                    )}
+                    {isCreating ? "Creating…" : "Add New"}
+                  </Button>
+                </div>
+              </ResponsiveToolbar.Actions>
+            </ResponsiveToolbar>
             <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Overview</span>
               <span className="inline-flex items-center gap-1">

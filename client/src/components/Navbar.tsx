@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 
-interface NavbarProps {
+export interface NavbarProps {
   userRole?: string;
   userName?: string;
   userAvatar?: string | null;

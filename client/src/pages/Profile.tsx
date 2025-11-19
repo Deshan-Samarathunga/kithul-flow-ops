@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar.lazy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { Camera } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 // Profile settings page for updating personal details and password.
 export default function Profile() {
@@ -164,7 +165,7 @@ export default function Profile() {
         onLogout={handleLogout}
       />
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-2xl">
+      <PageContainer className="py-6 sm:py-8 max-w-2xl">
         <h1 className="text-xl sm:text-2xl font-semibold mb-6">Profile Settings</h1>
 
         <Card className="p-6">
@@ -282,7 +283,7 @@ export default function Profile() {
             </div>
           </div>
         </Card>
-      </div>
+      </PageContainer>
     </div>
   );
 }

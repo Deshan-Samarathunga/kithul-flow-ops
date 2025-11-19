@@ -1,14 +1,17 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar.lazy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import type { LabelingBatchDto } from "@/lib/apiClient";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { ResponsiveToolbar } from "@/components/layout/ResponsiveToolbar";
 
 function normalizeStatus(status: string | null | undefined) {
   return String(status ?? "")
@@ -252,7 +255,9 @@ export default function LabelingBatchDetail() {
         })} ${isTreacle ? "L" : "kg"}`
       : "—";
   const statusLabelText = isCompleted ? "Submitted" : formatStatusLabelText(batch?.labelingStatus);
-  const statusBadgeClass = isCompleted ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700";
+  const statusBadgeClass = isCompleted
+    ? "bg-emerald-100 text-emerald-800"
+    : "bg-amber-100 text-amber-800";
 
   return (
     <div className="min-h-screen bg-background">
@@ -264,72 +269,91 @@ export default function LabelingBatchDetail() {
         breadcrumb={breadcrumb}
       />
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <PageContainer as="main" className="py-6 sm:py-8 space-y-6">
         {isLoading ? (
-          <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
+          <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
             Loading labeling batch…
           </div>
         ) : error ? (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive">
+          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive shadow-sm">
             {error}
           </div>
         ) : batch ? (
           <>
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-semibold text-foreground">
-                  Batch {batch.batchNumber}
-                </h1>
-                <p className="text-sm text-muted-foreground mt-1 flex items-center gap-4">
-                  <span>Batch ID: {batch.batchNumber}</span>
-                  <span className="text-muted-foreground/40">|</span>
-                  <span>{scheduledDate}</span>
-                  <span className="text-muted-foreground/40">|</span>
-                  <span>Finished Qty: {finishedQuantityDisplay}</span>
-                  <span className="text-muted-foreground/40">|</span>
-                  <span>Cans: {canCountDisplay}</span>
-                  <span className="text-muted-foreground/40">|</span>
-                  {isCompleted ? (
-                    <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">
-                      Submitted
-                    </span>
-                  ) : (
-                    <span className="inline-block text-xs uppercase bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
-                      In Progress
-                    </span>
-                  )}
-                </p>
-              </div>
-              {!isCompleted || isReopening ? (
-                <div className="flex w-full sm:w-auto sm:justify-end justify-stretch gap-2">
-                  <Button
-                    onClick={() => navigate("/labeling")}
-                    variant="outline"
-                    className="w-full sm:w-auto"
-                  >
-                    Back to Labeling
-                  </Button>
-                  <Button
-                    type="submit"
-                    form="labeling-form"
-                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
-                    disabled={isSaving}
-                  >
-                    {isSaving ? "Saving…" : "Save Labeling Data"}
-                  </Button>
-                </div>
-              ) : null}
-            </div>
+            <section className="rounded-2xl border bg-card/95 p-4 sm:p-6 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+              <ResponsiveToolbar stackAt="lg">
+                <ResponsiveToolbar.Leading>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Badge className={`border-0 px-3 py-1 text-xs font-semibold uppercase ${statusBadgeClass}`}>
+                        {statusLabelText}
+                      </Badge>
+                      {productLabel && (
+                        <span className="text-sm text-muted-foreground">{productLabel} batch</span>
+                      )}
+                    </div>
+                    <h1 className="text-2xl font-semibold text-foreground">
+                      Labeling batch · {batch.batchNumber}
+                    </h1>
+                    <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-2">
+                      <span>Scheduled: {scheduledDate}</span>
+                      <span className="text-muted-foreground/40">|</span>
+                      <span>Finished Qty: {finishedQuantityDisplay}</span>
+                      <span className="text-muted-foreground/40">|</span>
+                      <span>Cans: {canCountDisplay}</span>
+                    </p>
+                  </div>
+                </ResponsiveToolbar.Leading>
+                <ResponsiveToolbar.Actions>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      onClick={() => navigate("/labeling")}
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                    >
+                      Back to Labeling
+                    </Button>
+                    <Button
+                      type="submit"
+                      form="labeling-form"
+                      className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                      disabled={isSaving || (isCompleted && !isReopening)}
+                    >
+                      {isSaving ? "Saving…" : "Save Labeling Data"}
+                    </Button>
+                  </div>
+                </ResponsiveToolbar.Actions>
+              </ResponsiveToolbar>
 
-            <form id="labeling-form" onSubmit={handleSaveLabeling} className="mt-6 space-y-6">
-              <section className="rounded-xl border bg-white shadow-sm p-6">
+              <dl className="mt-6 grid grid-cols-1 gap-4 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-xl border bg-white/70 p-4 shadow-sm dark:bg-muted/30">
+                  <dt className="text-xs uppercase font-medium tracking-wide">Finished quantity</dt>
+                  <dd className="mt-2 text-2xl font-semibold text-foreground">{finishedQuantityDisplay}</dd>
+                </div>
+                <div className="rounded-xl border bg-white/70 p-4 shadow-sm dark:bg-muted/30">
+                  <dt className="text-xs uppercase font-medium tracking-wide">Can count</dt>
+                  <dd className="mt-2 text-2xl font-semibold text-foreground">{canCountDisplay}</dd>
+                </div>
+                <div className="rounded-xl border bg-white/70 p-4 shadow-sm dark:bg-muted/30">
+                  <dt className="text-xs uppercase font-medium tracking-wide">Product type</dt>
+                  <dd className="mt-2 text-xl font-semibold text-foreground">{productLabel || "—"}</dd>
+                </div>
+                <div className="rounded-xl border bg-white/70 p-4 shadow-sm dark:bg-muted/30">
+                  <dt className="text-xs uppercase font-medium tracking-wide">Status</dt>
+                  <dd className="mt-2 text-xl font-semibold text-foreground">{statusLabelText}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <form id="labeling-form" onSubmit={handleSaveLabeling} className="space-y-6">
+              <section className="rounded-2xl border bg-white p-6 shadow-sm">
                 <div className="mb-4">
                   <h2 className="text-base font-medium text-foreground">Batch Snapshot</h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     Review the key details for this batch before recording accessory usage.
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <div>
                     <p className="text-xs font-medium text-muted-foreground uppercase">
                       Finished Quantity
@@ -345,7 +369,7 @@ export default function LabelingBatchDetail() {
                 </div>
               </section>
 
-              <section className="rounded-xl border bg-white shadow-sm p-6">
+              <section className="rounded-2xl border bg-white p-6 shadow-sm">
                 <div className="mb-4">
                   <h2 className="text-base font-medium text-foreground">Labeling Accessories</h2>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -353,7 +377,7 @@ export default function LabelingBatchDetail() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="stickerQuantity">Sticker Quantity</Label>
                     <Input
@@ -392,7 +416,7 @@ export default function LabelingBatchDetail() {
                 </div>
 
                 {isTreacle && (
-                  <div className="grid grid-cols-2 gap-6 mt-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
                     <div className="space-y-2">
                       <Label htmlFor="shrinkSleeveQuantity">Shrink Sleeve Quantity</Label>
                       <Input
@@ -431,13 +455,13 @@ export default function LabelingBatchDetail() {
             </form>
 
             {isCompleted && (
-              <div className="mt-6 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                <span>Submitted batches are read-only. Reopen the batch to make adjustments.</span>
-                <div>
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4 text-sm text-amber-900">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span>Submitted batches are read-only. Reopen the batch to make adjustments.</span>
                   <Button
                     onClick={handleReopenBatch}
                     disabled={isReopening}
-                    className="bg-cta hover:bg-cta-hover text-cta-foreground"
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
                   >
                     {isReopening ? (
                       <>
@@ -456,7 +480,7 @@ export default function LabelingBatchDetail() {
             Labeling batch not found.
           </div>
         )}
-      </div>
+  </PageContainer>
     </div>
   );
 }
