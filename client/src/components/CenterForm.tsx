@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, X } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { adminCreateCenter, adminUpdateCenter, AdminCenter } from "@/lib/api";
 
 interface CenterFormProps {

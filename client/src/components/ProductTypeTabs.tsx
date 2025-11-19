@@ -1,40 +1,37 @@
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
+type ProductType = "treacle" | "jaggery";
+
 interface ProductTypeTabsProps {
-  value: "treacle" | "jaggery";
-  onChange: (value: "treacle" | "jaggery") => void;
+  value: ProductType;
+  onChange: (value: ProductType) => void;
   className?: string;
 }
 
+const PRODUCT_TYPE_OPTIONS: Array<{ value: ProductType; label: string }> = [
+  { value: "treacle", label: "Treacle" },
+  { value: "jaggery", label: "Jaggery" },
+];
+
 export function ProductTypeTabs({ value, onChange, className }: ProductTypeTabsProps) {
   return (
-    <div className={cn("inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto", className)}>
-      <button
-        type="button"
-        className={cn(
-          "px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150",
-          value === "treacle"
-            ? "bg-cta hover:bg-cta-hover text-cta-foreground"
-            : "text-foreground hover:bg-gray-200",
-        )}
-        aria-pressed={value === "treacle"}
-        onClick={() => onChange("treacle")}
-      >
-        Treacle
-      </button>
-      <button
-        type="button"
-        className={cn(
-          "px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150",
-          value === "jaggery"
-            ? "bg-cta hover:bg-cta-hover text-cta-foreground"
-            : "text-foreground hover:bg-gray-200",
-        )}
-        aria-pressed={value === "jaggery"}
-        onClick={() => onChange("jaggery")}
-      >
-        Jaggery
-      </button>
-    </div>
+    <Tabs
+      value={value}
+      onValueChange={(next) => onChange((next as ProductType) ?? "treacle")}
+      className={cn("w-full sm:w-auto", className)}
+    >
+      <TabsList className="flex h-auto w-full flex-col gap-2 rounded-2xl bg-muted/40 p-1 sm:inline-flex sm:flex-row sm:flex-nowrap sm:gap-0 sm:rounded-full">
+        {PRODUCT_TYPE_OPTIONS.map((option) => (
+          <TabsTrigger
+            key={option.value}
+            value={option.value}
+            className="flex-1 rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-150 data-[state=active]:bg-cta data-[state=active]:text-cta-foreground data-[state=inactive]:text-foreground data-[state=inactive]:hover:bg-gray-200 sm:flex-none"
+          >
+            {option.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }

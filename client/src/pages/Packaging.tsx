@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar.lazy";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,12 +25,16 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { FileText, Loader2, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import type { EligibleProcessingBatchDto, PackagingBatchDto } from "@/lib/apiClient";
-import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
+import { ReportGenerationDialog } from "@/components/ReportGenerationDialog.lazy";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { ProductTypeTabs } from "@/components/ProductTypeTabs";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { ResponsiveToolbar } from "@/components/layout/ResponsiveToolbar";
+import { StatChipGroup } from "@/components/layout/StatChipGroup";
 
 function normalizePackagingStatus(status: string | null | undefined) {
   return String(status ?? "")
@@ -591,7 +595,7 @@ export default function Packaging() {
         userAvatar={userAvatar}
         onLogout={handleLogout}
       />
-      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <PageContainer as="main" className="py-6 sm:py-10">
         <div className="space-y-6 sm:space-y-8">
           <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">Packaging</h1>
@@ -601,28 +605,13 @@ export default function Packaging() {
           </div>
 
           <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
-                <button
-                  type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "treacle" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
-                  aria-pressed={productTypeFilter === "treacle"}
-                  onClick={() => setProductTypeFilter("treacle")}
-                >
-                  Treacle
-                </button>
-                <button
-                  type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "jaggery" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
-                  aria-pressed={productTypeFilter === "jaggery"}
-                  onClick={() => setProductTypeFilter("jaggery")}
-                >
-                  Jaggery
-                </button>
-              </div>
+            <ResponsiveToolbar stackAt="lg">
+              <ResponsiveToolbar.Leading>
+                <ProductTypeTabs value={productTypeFilter} onChange={setProductTypeFilter} />
+              </ResponsiveToolbar.Leading>
 
-              <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-                <div className="relative flex-1 w-full">
+              <ResponsiveToolbar.Content>
+                <div className="relative flex-1 w-full min-w-0">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search Batches"
@@ -631,7 +620,9 @@ export default function Packaging() {
                     className="pl-10"
                   />
                 </div>
+              </ResponsiveToolbar.Content>
 
+              <ResponsiveToolbar.Actions className="gap-3">
                 <Button
                   variant="secondary"
                   onClick={handleOpenReportDialog}
@@ -642,7 +633,7 @@ export default function Packaging() {
                 <Button
                   variant="outline"
                   onClick={handleRefresh}
-                  className="w-full sm:w-auto md:mr-4"
+                  className="w-full sm:w-auto"
                   disabled={isLoading}
                 >
                   <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
@@ -661,22 +652,27 @@ export default function Packaging() {
                     <span className="font-medium">Add New</span>
                   )}
                 </Button>
-              </div>
-            </div>
+              </ResponsiveToolbar.Actions>
+            </ResponsiveToolbar>
 
-            <div className="mt-4 flex items-center gap-4 rounded-xl bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{selectedProductLabel} Overview</span>
-              <span className="px-2 text-muted-foreground/40">·</span>
-              <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#e74c3c" }} />{" "}
-                Active: {selectedMetrics.active}
-              </span>
-              <span className="px-2 text-muted-foreground/40">·</span>
-              <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#2ecc71" }} />{" "}
-                Completed: {selectedMetrics.completed}
-              </span>
-            </div>
+            <StatChipGroup
+              className="mt-4"
+              heading={`${selectedProductLabel} Overview`}
+              items={[
+                {
+                  id: "active",
+                  label: "Active",
+                  value: selectedMetrics.active,
+                  indicatorColor: "#e74c3c",
+                },
+                {
+                  id: "completed",
+                  label: "Completed",
+                  value: selectedMetrics.completed,
+                  indicatorColor: "#2ecc71",
+                },
+              ]}
+            />
           </div>
 
           <div className="space-y-4">
@@ -727,13 +723,15 @@ export default function Packaging() {
             )}
           </div>
         </div>
-      </main>
+  </PageContainer>
 
-      <ReportGenerationDialog
-        stage="packaging"
-        open={reportDialogOpen}
-        onOpenChange={setReportDialogOpen}
-      />
+      {reportDialogOpen ? (
+        <ReportGenerationDialog
+          stage="packaging"
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+        />
+      ) : null}
 
       <Dialog
         open={createDialog.open}
@@ -794,7 +792,7 @@ export default function Packaging() {
                       type="button"
                       onClick={() => setSelectedProcessingId(batch.processingBatchId)}
                       className={cn(
-                        "w-full rounded-lg border p-4 text-left transition-colors",
+                        "w-full rounded-full border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                         isSelected
                           ? "border-cta bg-cta/10 text-foreground"
                           : "hover:border-cta hover:bg-muted",

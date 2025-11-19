@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar.lazy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,7 +10,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { usePersistentTab } from "@/hooks/usePersistentTab";
 import { DataService } from "@/lib/dataService";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { ResponsiveToolbar } from "@/components/layout/ResponsiveToolbar";
 
 import {
   AlertDialog,
@@ -62,6 +64,28 @@ export default function CenterCans() {
   const [error, setError] = useState<string | null>(null);
   const [draftStatus, setDraftStatus] = useState<string | null>(null);
   const [draftDate, setDraftDate] = useState<string>("");
+  const formattedDraftDate = useMemo(() => {
+    if (!draftDate) {
+      return "—";
+    }
+    const parsed = Date.parse(draftDate);
+    if (Number.isNaN(parsed)) {
+      return draftDate;
+    }
+    return new Date(parsed).toLocaleDateString();
+  }, [draftDate]);
+  const productCounts = useMemo(() => {
+    return cans.reduce(
+      (acc, can) => {
+        const key = can.product_type?.toLowerCase() === "treacle" ? "treacle" : "sap";
+        acc[key] += 1;
+        acc.total += 1;
+        return acc;
+      },
+      { sap: 0, treacle: 0, total: 0 },
+    );
+  }, [cans]);
+  const isDraftStatus = draftStatus === "draft";
 
   // Update active tab when productType parameter changes
   useEffect(() => {
@@ -212,6 +236,110 @@ export default function CenterCans() {
     }
   };
 
+  const handleAddCan = () => {
+    if (!draftId || !centerId) {
+      return;
+    }
+    navigate(
+      `/field-collection/can/new?productType=${activeTab}&draftId=${draftId}&centerId=${centerId}`,
+    );
+  };
+
+  const addButtonLabel = activeTab === "sap" ? "Add Sap Can" : "Add Treacle Can";
+
+  const renderCanList = () => {
+    if (loading) {
+      return (
+        <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
+          Loading cans…
+        </div>
+      );
+    }
+    if (error) {
+      return (
+        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center text-sm text-destructive shadow-sm">
+          Error: {error}
+        </div>
+      );
+    }
+    if (filteredCans.length === 0) {
+      return (
+        <div className="rounded-2xl border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+          No cans found for this product type.
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {filteredCans.map((can) => (
+          <div
+            key={can.can_id}
+            className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm transition-shadow hover:shadow-md"
+          >
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span>
+                  Can ID: <span className="font-semibold text-foreground">{can.can_id}</span>
+                </span>
+                <span className="text-muted-foreground/40">|</span>
+                <span>Product: {can.product_type}</span>
+                <span className="text-muted-foreground/40">|</span>
+                <span>Quantity: {can.quantity} L</span>
+                {can.brix_value !== null && (
+                  <>
+                    <span className="text-muted-foreground/40">|</span>
+                    <span>Brix: {can.brix_value}</span>
+                  </>
+                )}
+                {can.ph_value !== null && (
+                  <>
+                    <span className="text-muted-foreground/40">|</span>
+                    <span>pH: {can.ph_value}</span>
+                  </>
+                )}
+                {can.total_amount !== null && (
+                  <>
+                    <span className="text-muted-foreground/40">|</span>
+                    <span>Amount: Rs. {can.total_amount}</span>
+                  </>
+                )}
+              </div>
+              {isDraftStatus && (
+                <div className="flex w-full gap-2 sm:w-auto sm:justify-end">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" disabled={loading} className="w-full sm:w-10">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete can?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action will permanently remove can {can.can_id}. This cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteCan(can.can_id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar
@@ -234,19 +362,41 @@ export default function CenterCans() {
         }
       />
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-semibold">
-              {centerName} - {!loading && draftStatus === "draft" ? "Cans List" : "View Cans"}
-            </h1>
-            <p className="text-sm text-muted-foreground">Draft: {draftDate}</p>
-            <p className="text-sm text-muted-foreground">Center Agent: {centerInfo.agent}</p>
+      <PageContainer as="main" className="py-6 sm:py-8 space-y-6">
+        <section className="rounded-2xl border bg-card/95 p-4 sm:p-6 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Collection center</p>
+              <h1 className="text-2xl font-semibold text-foreground">{centerName} cans</h1>
+              <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-2">
+                <span>Draft date: {formattedDraftDate}</span>
+                <span className="text-muted-foreground/40">|</span>
+                <span>Center agent: {centerInfo.agent}</span>
+              </div>
+            </div>
+            <div className="grid w-full grid-cols-2 gap-3 text-center text-sm text-muted-foreground sm:w-auto sm:grid-cols-4">
+              <div className="rounded-xl border bg-white/60 px-3 py-2 shadow-sm dark:bg-muted/30">
+                <p className="text-xs uppercase tracking-wide">Total cans</p>
+                <p className="text-lg font-semibold text-foreground">{productCounts.total}</p>
+              </div>
+              <div className="rounded-xl border bg-white/60 px-3 py-2 shadow-sm dark:bg-muted/30">
+                <p className="text-xs uppercase tracking-wide">Sap</p>
+                <p className="text-lg font-semibold text-foreground">{productCounts.sap}</p>
+              </div>
+              <div className="rounded-xl border bg-white/60 px-3 py-2 shadow-sm dark:bg-muted/30">
+                <p className="text-xs uppercase tracking-wide">Treacle</p>
+                <p className="text-lg font-semibold text-foreground">{productCounts.treacle}</p>
+              </div>
+              <div className="rounded-xl border bg-white/60 px-3 py-2 shadow-sm dark:bg-muted/30">
+                <p className="text-xs uppercase tracking-wide">Status</p>
+                <p className="text-lg font-semibold text-foreground">{draftStatus ?? "—"}</p>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val)} className="w-full">
-          <TabsList className="mb-6 w-full sm:w-auto">
+        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val)} className="space-y-6">
+          <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="sap" className="flex-1 sm:flex-none">
               Sap Collection
             </TabsTrigger>
@@ -256,212 +406,70 @@ export default function CenterCans() {
           </TabsList>
 
           <TabsContent value="sap" className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3 flex-1 w-full">
-                <Input
-                  placeholder="Search Cans"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 w-full"
-                />
-              </div>
-              {!loading && draftStatus === "draft" ? (
-                <Button
-                  className="bg-cta hover:bg-cta-hover text-cta-foreground"
-                  onClick={() => {
-                    navigate(
-                      `/field-collection/can/new?productType=sap&draftId=${draftId}&centerId=${centerId}`,
-                    );
-                  }}
-                >
-                  Add New
-                </Button>
-              ) : null}
-            </div>
-            <div className="space-y-4">
-              {loading ? (
-                <div className="text-muted-foreground text-sm text-center py-4">
-                  Loading cans...
+            <ResponsiveToolbar stackAt="lg">
+              <ResponsiveToolbar.Leading>
+                <h2 className="text-lg font-semibold text-foreground">Sap cans</h2>
+                <p className="text-sm text-muted-foreground">{productCounts.sap} total cans recorded</p>
+              </ResponsiveToolbar.Leading>
+              <ResponsiveToolbar.Content>
+                <div className="relative w-full">
+                  <Input
+                    placeholder="Search cans"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full"
+                  />
                 </div>
-              ) : error ? (
-                <div className="text-destructive text-sm text-center py-4">Error: {error}</div>
-              ) : filteredCans.length === 0 ? (
-                <div className="text-muted-foreground text-sm text-center py-4">No cans found.</div>
-              ) : (
-                filteredCans.map((can) => (
-                  <div
-                    key={can.can_id}
-                    className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+              </ResponsiveToolbar.Content>
+              {isDraftStatus && (
+                <ResponsiveToolbar.Actions>
+                  <Button
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                    onClick={handleAddCan}
+                    disabled={loading}
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="flex items-center gap-4 text-sm">
-                        <span>
-                          Can ID:{" "}
-                          <span className="font-semibold text-foreground">{can.can_id}</span>
-                        </span>
-                        <span className="px-2 text-muted-foreground/40">|</span>
-                        <span>Product: {can.product_type}</span>
-                        <span className="px-2 text-muted-foreground/40">|</span>
-                        <span>Quantity: {can.quantity} L</span>
-                        {can.brix_value !== null && (
-                          <>
-                            <span className="px-2 text-muted-foreground/40">|</span>
-                            <span>Brix: {can.brix_value}</span>
-                          </>
-                        )}
-                        {can.ph_value !== null && (
-                          <>
-                            <span className="px-2 text-muted-foreground/40">|</span>
-                            <span>pH: {can.ph_value}</span>
-                          </>
-                        )}
-                        {can.total_amount !== null && (
-                          <>
-                            <span className="px-2 text-muted-foreground/40">|</span>
-                            <span>Amount: Rs. {can.total_amount}</span>
-                          </>
-                        )}
-                      </div>
-                      {!loading && draftStatus === "draft" ? (
-                        <div className="flex items-center gap-2">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" disabled={loading}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete can?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action will permanently remove can {can.can_id}. This cannot
-                                  be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteCan(can.can_id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                ))
+                    {addButtonLabel}
+                  </Button>
+                </ResponsiveToolbar.Actions>
               )}
-            </div>
+            </ResponsiveToolbar>
+
+            {renderCanList()}
           </TabsContent>
 
           <TabsContent value="treacle" className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3 flex-1 w-full">
-                <Input
-                  placeholder="Search Cans"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 w-full"
-                />
-              </div>
-              {!loading && draftStatus === "draft" ? (
-                <Button
-                  className="bg-cta hover:bg-cta-hover text-cta-foreground"
-                  onClick={() => {
-                    navigate(
-                      `/field-collection/can/new?productType=treacle&draftId=${draftId}&centerId=${centerId}`,
-                    );
-                  }}
-                >
-                  Add New
-                </Button>
-              ) : null}
-            </div>
-            <div className="space-y-4">
-              {loading ? (
-                <div className="text-muted-foreground text-sm text-center py-4">
-                  Loading cans...
+            <ResponsiveToolbar stackAt="lg">
+              <ResponsiveToolbar.Leading>
+                <h2 className="text-lg font-semibold text-foreground">Treacle cans</h2>
+                <p className="text-sm text-muted-foreground">{productCounts.treacle} total cans recorded</p>
+              </ResponsiveToolbar.Leading>
+              <ResponsiveToolbar.Content>
+                <div className="relative w-full">
+                  <Input
+                    placeholder="Search cans"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full"
+                  />
                 </div>
-              ) : error ? (
-                <div className="text-destructive text-sm text-center py-4">Error: {error}</div>
-              ) : filteredCans.length === 0 ? (
-                <div className="text-muted-foreground text-sm text-center py-4">No cans found.</div>
-              ) : (
-                filteredCans.map((can) => (
-                  <div
-                    key={can.can_id}
-                    className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+              </ResponsiveToolbar.Content>
+              {isDraftStatus && (
+                <ResponsiveToolbar.Actions>
+                  <Button
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                    onClick={handleAddCan}
+                    disabled={loading}
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="flex items-center gap-4 text-sm">
-                        <span>
-                          Can ID:{" "}
-                          <span className="font-semibold text-foreground">{can.can_id}</span>
-                        </span>
-                        <span className="px-2 text-muted-foreground/40">|</span>
-                        <span>Product: {can.product_type}</span>
-                        <span className="px-2 text-muted-foreground/40">|</span>
-                        <span>Quantity: {can.quantity} L</span>
-                        {can.brix_value && (
-                          <>
-                            <span className="px-2 text-muted-foreground/40">|</span>
-                            <span>Brix: {can.brix_value}</span>
-                          </>
-                        )}
-                        {can.ph_value && (
-                          <>
-                            <span className="px-2 text-muted-foreground/40">|</span>
-                            <span>pH: {can.ph_value}</span>
-                          </>
-                        )}
-                        {can.total_amount && (
-                          <>
-                            <span className="px-2 text-muted-foreground/40">|</span>
-                            <span>Amount: Rs. {can.total_amount}</span>
-                          </>
-                        )}
-                      </div>
-                      {!loading && draftStatus === "draft" ? (
-                        <div className="flex items-center gap-2">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" disabled={loading}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete can?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action will permanently remove can {can.can_id}. This cannot
-                                  be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteCan(can.can_id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                ))
+                    {addButtonLabel}
+                  </Button>
+                </ResponsiveToolbar.Actions>
               )}
-            </div>
+            </ResponsiveToolbar>
+
+            {renderCanList()}
           </TabsContent>
         </Tabs>
-      </div>
+  </PageContainer>
     </div>
   );
 }

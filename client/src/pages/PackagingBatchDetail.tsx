@@ -1,14 +1,15 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar.lazy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import type { PackagingBatchDto } from "@/lib/apiClient";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 function normalizeStatus(status: string | null | undefined) {
   return String(status ?? "")
@@ -277,7 +278,7 @@ export default function PackagingBatchDetail() {
         breadcrumb={breadcrumb}
       />
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <PageContainer className="py-6 sm:py-8">
         {isLoading ? (
           <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
             Loading packaging batch…
@@ -288,12 +289,12 @@ export default function PackagingBatchDetail() {
           </div>
         ) : batch ? (
           <>
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full min-w-0">
               <div>
                 <h1 className="text-xl sm:text-2xl font-semibold">Batch {batch.batchNumber}</h1>
-                <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                <p className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span>Scheduled for {formatDate(batch.scheduledDate ?? batch.startedAt)}</span>
-                  <span className="px-2 text-muted-foreground/40">|</span>
+                  <span className="text-muted-foreground/40">|</span>
                   {isCompleted ? (
                     <span className="inline-block text-xs font-medium uppercase tracking-wide bg-green-50 text-green-700 px-2 py-1 rounded">
                       Submitted
@@ -304,7 +305,7 @@ export default function PackagingBatchDetail() {
                 </p>
               </div>
               {isEditable ? (
-                <div className="flex w-full sm:w-auto sm:justify-end justify-stretch gap-2">
+                <div className="flex flex-col sm:flex-row w-full sm:w-auto sm:justify-end gap-2">
                   <Button
                     onClick={() => navigate("/packaging")}
                     variant="outline"
@@ -474,7 +475,7 @@ export default function PackagingBatchDetail() {
             Packaging batch not found.
           </div>
         )}
-      </div>
+  </PageContainer>
     </div>
   );
 }

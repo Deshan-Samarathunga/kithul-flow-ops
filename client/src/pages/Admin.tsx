@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar.lazy";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { Plus, FileText, Loader2, Search, Edit, Trash2, MapPin } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
   adminListUsers,
@@ -29,9 +31,13 @@ import { CenterForm } from "@/components/CenterForm";
 import { ToggleSelector } from "@/components/ToggleSelector";
 import { usePersistentTab } from "@/hooks/usePersistentTab";
 import { usePersistentState } from "@/hooks/usePersistentState";
-import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
+import { ReportGenerationDialog } from "@/components/ReportGenerationDialog.lazy";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { ResponsiveToolbar } from "@/components/layout/ResponsiveToolbar";
+import { StatChipGroup } from "@/components/layout/StatChipGroup";
 
 const ROLES_FOR_EMPLOYEES = ["Field Collection", "Processing", "Packaging", "Labeling"];
+type ReportStage = "field" | "processing" | "packaging" | "labeling";
 
 // Admin dashboard for managing users, centers, and reporting tools.
 export default function Admin() {
@@ -79,9 +85,7 @@ export default function Admin() {
   const [editingCenter, setEditingCenter] = useState<AdminCenter | null>(null);
   const [deleteCenterTarget, setDeleteCenterTarget] = useState<AdminCenter | null>(null);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [reportStage, setReportStage] = useState<"field" | "processing" | "packaging" | "labeling">(
-    "field",
-  );
+  const [reportStage, setReportStage] = useState<ReportStage | null>(null);
 
   const toAbsolute = useCallback(
     (path?: string | null) => {
@@ -206,6 +210,32 @@ export default function Admin() {
     return filtered;
   }, [displayEmployees, employeeSearchQuery, employeeRoleFilter]);
 
+  const employeeRoleCounts = useMemo(() => {
+    const counts = {
+      field: 0,
+      processing: 0,
+      packaging: 0,
+      labeling: 0,
+    };
+
+    employees.forEach((employee) => {
+      if (employee.role === "Field Collection") {
+        counts.field += 1;
+      } else if (employee.role === "Processing") {
+        counts.processing += 1;
+      } else if (employee.role === "Packaging") {
+        counts.packaging += 1;
+      } else if (employee.role === "Labeling") {
+        counts.labeling += 1;
+      }
+    });
+
+    return {
+      total: employees.length,
+      ...counts,
+    };
+  }, [employees]);
+
   const filteredCenters = useMemo(() => {
     let filtered = centers;
 
@@ -231,8 +261,17 @@ export default function Admin() {
     return filtered;
   }, [centers, centerSearchQuery, centerStatusFilter]);
 
+  const centerStatusCounts = useMemo(() => {
+    const active = centers.filter((center) => center.isActive).length;
+    return {
+      total: centers.length,
+      active,
+      inactive: centers.length - active,
+    };
+  }, [centers]);
+
   const handleOpenReportDialog = (module: string) => {
-    const stageMap: Record<string, "field" | "processing" | "packaging" | "labeling"> = {
+    const stageMap: Record<string, ReportStage> = {
       "Field Collection": "field",
       Processing: "processing",
       Packaging: "packaging",
@@ -241,6 +280,13 @@ export default function Admin() {
     const stage = stageMap[module] || "field";
     setReportStage(stage);
     setReportDialogOpen(true);
+  };
+
+  const handleReportDialogChange = (open: boolean) => {
+    setReportDialogOpen(open);
+    if (!open) {
+      setReportStage(null);
+    }
   };
 
   return (
@@ -252,7 +298,7 @@ export default function Admin() {
         onLogout={handleLogout}
       />
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <PageContainer className="py-6 sm:py-10">
         <div className="space-y-6 sm:space-y-8">
           <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">Administrator</h1>
@@ -263,96 +309,97 @@ export default function Admin() {
 
           <Tabs value={adminTab} onValueChange={setAdminTab} className="w-full">
             <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6 mb-6">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 w-full">
-                <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
-                  <button
-                    type="button"
-                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "employees" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-muted"}`}
-                    onClick={() => setAdminTab("employees")}
-                  >
-                    Employees
-                  </button>
-                  <button
-                    type="button"
-                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "centers" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-muted"}`}
-                    onClick={() => setAdminTab("centers")}
-                  >
-                    Centers
-                  </button>
-                  <button
-                    type="button"
-                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "monitoring" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-muted"}`}
-                    onClick={() => setAdminTab("monitoring")}
-                  >
-                    Monitoring
-                  </button>
-                  <button
-                    type="button"
-                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 ${adminTab === "reports" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-muted"}`}
-                    onClick={() => setAdminTab("reports")}
-                  >
-                    Reports
-                  </button>
-                </div>
-              </div>
+              <TabsList
+                aria-label="Admin sections"
+                className="flex h-auto w-full flex-col gap-2 rounded-2xl bg-muted/40 p-1 text-sm sm:flex-row sm:flex-wrap sm:gap-0 sm:rounded-full"
+              >
+                <TabsTrigger
+                  value="employees"
+                  className="flex-1 whitespace-nowrap rounded-full px-4 py-1.5 text-sm sm:flex-none"
+                >
+                  Employees
+                </TabsTrigger>
+                <TabsTrigger
+                  value="centers"
+                  className="flex-1 whitespace-nowrap rounded-full px-4 py-1.5 text-sm sm:flex-none"
+                >
+                  Centers
+                </TabsTrigger>
+                <TabsTrigger
+                  value="monitoring"
+                  className="flex-1 whitespace-nowrap rounded-full px-4 py-1.5 text-sm sm:flex-none"
+                >
+                  Monitoring
+                </TabsTrigger>
+                <TabsTrigger
+                  value="reports"
+                  className="flex-1 whitespace-nowrap rounded-full px-4 py-1.5 text-sm sm:flex-none"
+                >
+                  Reports
+                </TabsTrigger>
+              </TabsList>
             </div>
 
             <TabsContent value="employees" className="space-y-6">
               <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 w-full">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search Employees"
-                      value={employeeSearchQuery}
-                      onChange={(e) => setEmployeeSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Button
-                    onClick={() => navigate("/admin/add-employee")}
-                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto sm:ml-auto"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Employee
-                  </Button>
-                </div>
+                <ResponsiveToolbar stackAt="md">
+                  <ResponsiveToolbar.Content>
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search Employees"
+                        value={employeeSearchQuery}
+                        onChange={(e) => setEmployeeSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </ResponsiveToolbar.Content>
+                  <ResponsiveToolbar.Actions>
+                    <Button
+                      onClick={() => navigate("/admin/add-employee")}
+                      className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Employee
+                    </Button>
+                  </ResponsiveToolbar.Actions>
+                </ResponsiveToolbar>
 
-                <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">Overview</span>
-                  <span>All: {employees.length}</span>
-                  <span>
-                    Field Collection:{" "}
-                    {employees.filter((e) => e.role === "Field Collection").length}
-                  </span>
-                  <span>Processing: {employees.filter((e) => e.role === "Processing").length}</span>
-                  <span>Packaging: {employees.filter((e) => e.role === "Packaging").length}</span>
-                  <span>Labeling: {employees.filter((e) => e.role === "Labeling").length}</span>
-                </div>
+                <StatChipGroup
+                  className="mt-4"
+                  heading="Overview"
+                  items={[
+                    { id: "all", label: "All", value: employeeRoleCounts.total },
+                    { id: "field", label: "Field Collection", value: employeeRoleCounts.field },
+                    { id: "processing", label: "Processing", value: employeeRoleCounts.processing },
+                    { id: "packaging", label: "Packaging", value: employeeRoleCounts.packaging },
+                    { id: "labeling", label: "Labeling", value: employeeRoleCounts.labeling },
+                  ]}
+                />
 
                 <div className="mt-4">
                   <ToggleSelector
                     options={[
-                      { value: "all", label: "All", count: employees.length },
+                      { value: "all", label: "All", count: employeeRoleCounts.total },
                       {
                         value: "Field Collection",
                         label: "Field Collection",
-                        count: employees.filter((e) => e.role === "Field Collection").length,
+                        count: employeeRoleCounts.field,
                       },
                       {
                         value: "Processing",
                         label: "Processing",
-                        count: employees.filter((e) => e.role === "Processing").length,
+                        count: employeeRoleCounts.processing,
                       },
                       {
                         value: "Packaging",
                         label: "Packaging",
-                        count: employees.filter((e) => e.role === "Packaging").length,
+                        count: employeeRoleCounts.packaging,
                       },
                       {
                         value: "Labeling",
                         label: "Labeling",
-                        count: employees.filter((e) => e.role === "Labeling").length,
+                        count: employeeRoleCounts.labeling,
                       },
                     ]}
                     value={employeeRoleFilter}
@@ -378,41 +425,50 @@ export default function Admin() {
                       key={employee.id}
                       className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex flex-col gap-3">
                         <div className="flex flex-col space-y-1">
-                          <h3 className="text-sm font-semibold text-foreground">
+                          <h3 className="text-base font-semibold text-foreground">
                             {employee.name || employee.userId}
                           </h3>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span>{employee.role}</span>
-                            <span className="text-muted-foreground/40">|</span>
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                            <span className="font-medium text-foreground/80">
+                              {employee.role || "Employee"}
+                            </span>
+                            <span className="text-muted-foreground/40">•</span>
                             <span>ID: {employee.userId}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <span
-                            className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "w-fit rounded-full border px-3 py-1 text-xs font-semibold",
                               employee.isActive
-                                ? "bg-green-100 text-green-700"
-                                : "bg-muted text-muted-foreground"
-                            }`}
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                : "border-muted bg-muted text-muted-foreground",
+                            )}
                           >
                             {employee.isActive ? "Active" : "Inactive"}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/admin/employees/${employee.id}/edit`)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => setDeleteTarget(employee)}
-                          >
-                            Delete
-                          </Button>
+                          </Badge>
+                          <div className="flex flex-wrap items-center gap-3 justify-end ml-auto">
+                            <Button
+                              size="sm"
+                              className="bg-cta text-cta-foreground hover:bg-cta-hover px-5 h-9 rounded-full"
+                              onClick={() => navigate(`/admin/employees/${employee.id}/edit`)}
+                            >
+                              <Edit className="h-4 w-4" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="text-sm px-5 h-9 rounded-full"
+                              onClick={() => setDeleteTarget(employee)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -431,46 +487,45 @@ export default function Admin() {
               ) : (
                 <>
                   <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 w-full">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search Centers"
-                          value={centerSearchQuery}
-                          onChange={(e) => setCenterSearchQuery(e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
-                      <Button
-                        onClick={() => setShowCenterForm(true)}
-                        className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto sm:ml-auto"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Center
-                      </Button>
-                    </div>
+                    <ResponsiveToolbar stackAt="md">
+                      <ResponsiveToolbar.Leading>
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Search Centers"
+                            value={centerSearchQuery}
+                            onChange={(e) => setCenterSearchQuery(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+                      </ResponsiveToolbar.Leading>
+                      <ResponsiveToolbar.Actions>
+                        <Button
+                          onClick={() => setShowCenterForm(true)}
+                          className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Center
+                        </Button>
+                      </ResponsiveToolbar.Actions>
+                    </ResponsiveToolbar>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
-                      <span className="font-medium text-foreground">Overview</span>
-                      <span>All: {centers.length}</span>
-                      <span>Active: {centers.filter((c) => c.isActive).length}</span>
-                      <span>Inactive: {centers.filter((c) => !c.isActive).length}</span>
-                    </div>
+                    <StatChipGroup
+                      className="mt-4"
+                      heading="Overview"
+                      items={[
+                        { id: "all", label: "All", value: centerStatusCounts.total },
+                        { id: "active", label: "Active", value: centerStatusCounts.active },
+                        { id: "inactive", label: "Inactive", value: centerStatusCounts.inactive },
+                      ]}
+                    />
 
                     <div className="mt-4">
                       <ToggleSelector
                         options={[
-                          { value: "all", label: "All", count: centers.length },
-                          {
-                            value: "active",
-                            label: "Active",
-                            count: centers.filter((c) => c.isActive).length,
-                          },
-                          {
-                            value: "inactive",
-                            label: "Inactive",
-                            count: centers.filter((c) => !c.isActive).length,
-                          },
+                          { value: "all", label: "All", count: centerStatusCounts.total },
+                          { value: "active", label: "Active", count: centerStatusCounts.active },
+                          { value: "inactive", label: "Inactive", count: centerStatusCounts.inactive },
                         ]}
                         value={centerStatusFilter}
                         onChange={(v) => setCenterStatusFilter(v as typeof centerStatusFilter)}
@@ -494,51 +549,56 @@ export default function Admin() {
                           key={center.id}
                           className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm"
                         >
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div className="flex flex-col space-y-1">
-                              <h3 className="text-sm font-semibold text-foreground">
+                          <div className="flex flex-col gap-3">
+                            <div className="space-y-1">
+                              <h3 className="text-base font-semibold text-foreground">
                                 {center.centerName}
                               </h3>
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                                 <span>ID: {center.centerId}</span>
-                                <span className="text-muted-foreground/40">|</span>
+                                <span className="text-muted-foreground/40">•</span>
                                 <span>Location: {center.location}</span>
-                                <span className="text-muted-foreground/40">|</span>
+                                <span className="text-muted-foreground/40">•</span>
                                 <span>Agent: {center.centerAgent}</span>
                                 {center.contactPhone && (
                                   <>
-                                    <span className="text-muted-foreground/40">|</span>
+                                    <span className="text-muted-foreground/40">•</span>
                                     <span>Phone: {center.contactPhone}</span>
                                   </>
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <span
-                                className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <Badge
+                                variant="secondary"
+                                className={cn(
+                                  "w-fit rounded-full border px-3 py-1 text-xs font-semibold",
                                   center.isActive
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-muted text-muted-foreground"
-                                }`}
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                    : "border-muted bg-muted text-muted-foreground",
+                                )}
                               >
                                 {center.isActive ? "Active" : "Inactive"}
-                              </span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditCenter(center)}
-                              >
-                                <Edit className="h-4 w-4 mr-1" />
-                                Edit
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => setDeleteCenterTarget(center)}
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete
-                              </Button>
+                              </Badge>
+                              <div className="flex flex-wrap items-center gap-3 justify-end ml-auto">
+                                <Button
+                                  size="sm"
+                                  className="bg-cta text-cta-foreground hover:bg-cta-hover px-5 h-9 rounded-full"
+                                  onClick={() => handleEditCenter(center)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="text-sm px-5 h-9 rounded-full"
+                                  onClick={() => setDeleteCenterTarget(center)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -626,7 +686,7 @@ export default function Admin() {
             </TabsContent>
           </Tabs>
         </div>
-      </div>
+  </PageContainer>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
@@ -674,11 +734,13 @@ export default function Admin() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <ReportGenerationDialog
-        open={reportDialogOpen}
-        onOpenChange={setReportDialogOpen}
-        stage={reportStage}
-      />
+      {reportDialogOpen && reportStage ? (
+        <ReportGenerationDialog
+          open={reportDialogOpen}
+          onOpenChange={handleReportDialogChange}
+          stage={reportStage}
+        />
+      ) : null}
     </div>
   );
 }

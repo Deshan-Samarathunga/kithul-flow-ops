@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar.lazy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,10 +17,13 @@ import { FileText, Loader2, Plus, RefreshCcw, Search, Trash2 } from "lucide-reac
 import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import type { ProcessingBatchDto } from "@/lib/apiClient";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
-import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
-import { ProductTypeSelector } from "@/components/ProductTypeSelector";
+import { ReportGenerationDialog } from "@/components/ReportGenerationDialog.lazy";
+import { ProductTypeTabs } from "@/components/ProductTypeTabs";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { ResponsiveToolbar } from "@/components/layout/ResponsiveToolbar";
+import { StatChipGroup } from "@/components/layout/StatChipGroup";
 
 function normalizeStatus(status: string | null | undefined) {
   return String(status ?? "")
@@ -280,7 +283,7 @@ export default function Processing() {
         userAvatar={userAvatar}
         onLogout={handleLogout}
       />
-      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <PageContainer as="main" className="py-6 sm:py-10">
         <div className="space-y-6 sm:space-y-8">
           <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">
@@ -292,71 +295,77 @@ export default function Processing() {
           </div>
 
           <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="inline-flex bg-muted/40 rounded-full p-1 w-full sm:w-auto">
-                <button
-                  type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "treacle" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
-                  aria-pressed={productTypeFilter === "treacle"}
-                  onClick={() => setProductTypeFilter("treacle")}
-                >
-                  Treacle
-                </button>
-                <button
-                  type="button"
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full ${productTypeFilter === "jaggery" ? "bg-cta hover:bg-cta-hover text-cta-foreground" : "text-foreground hover:bg-gray-200 transition-colors duration-150"}`}
-                  aria-pressed={productTypeFilter === "jaggery"}
-                  onClick={() => setProductTypeFilter("jaggery")}
-                >
-                  Jaggery
-                </button>
-              </div>
+              <ResponsiveToolbar stackAt="lg">
+                <ResponsiveToolbar.Leading>
+                  <ProductTypeTabs value={productTypeFilter} onChange={setProductTypeFilter} />
+                </ResponsiveToolbar.Leading>
 
-              <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-                <div className="relative flex-1 w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search Batches"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+                <ResponsiveToolbar.Content>
+                  <div className="relative flex-1 w-full min-w-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search Batches"
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </ResponsiveToolbar.Content>
 
-                <Button
-                  variant="secondary"
-                  onClick={handleOpenReportDialog}
-                  className="w-full sm:w-auto"
-                >
-                  <FileText className="mr-2 h-4 w-4" /> Generate Report
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleRefresh}
-                  className="w-full sm:w-auto md:mr-4"
-                  disabled={isLoading}
-                >
-                  <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-                  <span className="ml-2">Refresh</span>
-                </Button>
-                <Button
-                  onClick={handleCreateBatch}
-                  className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
-                  disabled={isCreating}
-                >
-                  {isCreating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating…
-                    </>
-                  ) : (
-                    <span className="font-medium">Add New</span>
-                  )}
-                </Button>
-              </div>
-            </div>
+                <ResponsiveToolbar.Actions className="gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={handleOpenReportDialog}
+                    className="w-full sm:w-auto"
+                  >
+                    <FileText className="mr-2 h-4 w-4" /> Generate Report
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleRefresh}
+                    className="w-full sm:w-auto"
+                    disabled={isLoading}
+                  >
+                    <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                    <span className="ml-2">Refresh</span>
+                  </Button>
+                  <Button
+                    onClick={handleCreateBatch}
+                    className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                    disabled={isCreating}
+                  >
+                    {isCreating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating…
+                      </>
+                    ) : (
+                      <span className="font-medium">Add New</span>
+                    )}
+                  </Button>
+                </ResponsiveToolbar.Actions>
+              </ResponsiveToolbar>
 
-            <div className="mt-4 flex items-center gap-4 rounded-xl bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+              <StatChipGroup
+                className="mt-4"
+                heading={`${selectedProductLabel} Overview`}
+                items={[
+                  {
+                    id: "active",
+                    label: "Active",
+                    value: selectedMetrics.active,
+                    indicatorColor: "#dc2626",
+                  },
+                  {
+                    id: "completed",
+                    label: "Completed",
+                    value: selectedMetrics.completed,
+                    indicatorColor: "#16a34a",
+                  },
+                ]}
+              />
+
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-muted/40 px-3 py-3 text-xs sm:text-sm text-muted-foreground">
               <span className="font-medium text-foreground">{selectedProductLabel} Overview</span>
               <span className="inline-flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-red-600" /> Active:{" "}
@@ -571,13 +580,15 @@ export default function Processing() {
             </div>
           )}
         </div>
-      </main>
+  </PageContainer>
 
-      <ReportGenerationDialog
-        stage="processing"
-        open={reportDialogOpen}
-        onOpenChange={setReportDialogOpen}
-      />
+      {reportDialogOpen ? (
+        <ReportGenerationDialog
+          stage="processing"
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+        />
+      ) : null}
 
       <AlertDialog
         open={deleteTarget !== null}

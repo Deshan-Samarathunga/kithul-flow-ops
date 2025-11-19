@@ -1,11 +1,13 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar.lazy";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Plus, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { DataService } from "@/lib/dataService";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 type DraftDetailData = {
   cans?: Array<Record<string, unknown>>;
@@ -14,6 +16,17 @@ type DraftDetailData = {
   canCount?: number;
   can_count?: number;
 } & Record<string, unknown>;
+
+const formatDraftDate = (value: string | null | undefined) => {
+  if (!value) {
+    return "—";
+  }
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) {
+    return value;
+  }
+  return new Date(parsed).toLocaleDateString();
+};
 
 // Field collection draft summary with navigation into center cans.
 export default function DraftDetail() {
@@ -227,9 +240,9 @@ export default function DraftDetail() {
           userAvatar={userAvatar}
           onLogout={handleLogout}
         />
-        <div className="container mx-auto px-4 sm:px-6 py-10">
+        <PageContainer className="py-10">
           <p className="text-sm text-muted-foreground">Loading draft...</p>
-        </div>
+        </PageContainer>
       </div>
     );
   }
@@ -243,9 +256,9 @@ export default function DraftDetail() {
           userAvatar={userAvatar}
           onLogout={handleLogout}
         />
-        <div className="container mx-auto px-4 sm:px-6 py-10">
+        <PageContainer className="py-10">
           <p className="text-sm text-destructive">Error: {error}</p>
-        </div>
+        </PageContainer>
       </div>
     );
   }
@@ -259,9 +272,9 @@ export default function DraftDetail() {
           userAvatar={userAvatar}
           onLogout={handleLogout}
         />
-        <div className="container mx-auto px-4 sm:px-6 py-10">
+        <PageContainer className="py-10">
           <p className="text-sm text-muted-foreground">Draft not found.</p>
-        </div>
+        </PageContainer>
       </div>
     );
   }
@@ -298,6 +311,27 @@ export default function DraftDetail() {
     },
   ];
 
+  const activeCenters = collectionCenters.filter((center) => !completedCenters.has(center.id));
+  const completedCenterList = collectionCenters.filter((center) => completedCenters.has(center.id));
+  const totalCenters = collectionCenters.length;
+  const completedCount = completedCenterList.length;
+  const activeCount = totalCenters - completedCount;
+  const totalCans = draft.canCount ?? draft.can_count ?? 0;
+  const normalizedStatus = (draft.status ?? "").toLowerCase();
+  const isDraftStatus = normalizedStatus === "draft";
+  const isSubmittedStatus = normalizedStatus === "submitted" || normalizedStatus === "completed";
+  const draftDateLabel = formatDraftDate(draft.date);
+  const statusDisplay = (() => {
+    switch (normalizedStatus) {
+      case "submitted":
+      case "completed":
+        return { label: "Submitted", className: "bg-emerald-100 text-emerald-800" };
+      case "draft":
+      default:
+        return { label: "In progress", className: "bg-amber-100 text-amber-800" };
+    }
+  })();
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar
@@ -316,197 +350,100 @@ export default function DraftDetail() {
         }
       />
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-semibold">
-              Draft {new Date(draft.date).toISOString().split("T")[0]}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Cans: {draft.canCount ?? draft.can_count ?? 0}
-            </p>
+      <PageContainer as="main" className="py-6 sm:py-8 space-y-6">
+        <section className="rounded-2xl border bg-card/95 p-4 sm:p-6 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Draft date</p>
+              <h1 className="text-2xl font-semibold text-foreground">
+                Field collection draft · {draftDateLabel}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground/80">
+                <span>Total cans: {totalCans}</span>
+                <span className="text-muted-foreground/40">|</span>
+                <span>Total centers: {totalCenters}</span>
+                <span className="text-muted-foreground/40">|</span>
+                <span>Completed centers: {completedCount}</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto">
+              <Badge
+                className={`w-fit border-0 px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusDisplay.className}`}
+              >
+                {statusDisplay.label}
+              </Badge>
+              {isDraftStatus ? (
+                <Button
+                  className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                  onClick={handleSaveDraft}
+                  disabled={loading || completedCenters.size === 0}
+                >
+                  Save draft
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("/field-collection")}
+                  className="w-full sm:w-auto"
+                >
+                  Back to Field Collection
+                </Button>
+              )}
+            </div>
           </div>
-          {draft.status === "draft" && (
-            <div className="flex gap-2">
-              <Button
-                className="bg-cta hover:bg-cta-hover text-cta-foreground"
-                onClick={handleSaveDraft}
-                disabled={loading || completedCenters.size === 0}
-              >
-                Save draft
-              </Button>
+          <dl className="mt-6 grid grid-cols-1 gap-4 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border bg-white/60 p-4 shadow-sm dark:bg-muted/30">
+              <dt className="text-xs font-medium uppercase tracking-wide">Total centers</dt>
+              <dd className="mt-2 text-2xl font-semibold text-foreground">{totalCenters}</dd>
             </div>
-          )}
-          {(draft.status === "submitted" || draft.status === "completed") && (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => navigate("/field-collection")}
-                className="sm:flex-none"
-              >
-                Back to Field Collection
-              </Button>
+            <div className="rounded-xl border bg-white/60 p-4 shadow-sm dark:bg-muted/30">
+              <dt className="text-xs font-medium uppercase tracking-wide">Completed</dt>
+              <dd className="mt-2 text-2xl font-semibold text-foreground">{completedCount}</dd>
             </div>
-          )}
-        </div>
+            <div className="rounded-xl border bg-white/60 p-4 shadow-sm dark:bg-muted/30">
+              <dt className="text-xs font-medium uppercase tracking-wide">Remaining</dt>
+              <dd className="mt-2 text-2xl font-semibold text-foreground">{activeCount}</dd>
+            </div>
+            <div className="rounded-xl border bg-white/60 p-4 shadow-sm dark:bg-muted/30">
+              <dt className="text-xs font-medium uppercase tracking-wide">Status</dt>
+              <dd className="mt-2 text-lg font-semibold text-foreground">{statusDisplay.label}</dd>
+            </div>
+          </dl>
+        </section>
 
         <div className="space-y-6">
-          {/* Always show both Active and Completed Centers for draft status */}
-          {draft.status === "draft" && (
-            <>
-              {/* Active Centers */}
-              <div>
-                <h2 className="text-lg sm:text-xl font-semibold mb-4">Active Centers</h2>
-                <div className="space-y-4">
-                  {collectionCenters
-                    .filter((center) => !completedCenters.has(center.id))
-                    .map((center) => {
-                      // Find if this center has any cans
-                      const canCount = centerCanCounts[center.id] ?? 0;
-
-                      return (
-                        <div
-                          key={center.id}
-                          className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div className="space-y-1">
-                              <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
-                              <p className="text-xs sm:text-sm text-muted-foreground">
-                                {center.location}
-                              </p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">
-                                Center Agent: {center.centerAgent}
-                              </p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">
-                                Active cans: {canCount}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  navigate(
-                                    `/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`,
-                                  );
-                                }}
-                                className="flex-1 sm:flex-none"
-                              >
-                                Continue
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleSubmitCenter(center.id)}
-                                disabled={loading}
-                                className="bg-cta hover:bg-cta-hover text-cta-foreground flex-1 sm:flex-none"
-                              >
-                                Submit
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+          {isDraftStatus && (
+            <section className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-semibold">Active centers</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Finish reviews and submit completed centers.
+                  </p>
                 </div>
+                <span className="text-sm font-medium text-muted-foreground">{activeCount} remaining</span>
               </div>
-
-              {/* Completed Centers */}
-              <div className="pt-8 border-t">
-                <h2 className="text-lg sm:text-xl font-semibold mb-4">Completed Centers</h2>
-                <div className="space-y-4">
-                  {collectionCenters
-                    .filter((center) => completedCenters.has(center.id))
-                    .map((center) => {
-                      // Find if this center has any cans
-                      const canCount = centerCanCounts[center.id] ?? 0;
-
-                      return (
-                        <div
-                          key={`completed-${center.id}`}
-                          className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div className="space-y-1">
-                              <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
-                              <p className="text-xs sm:text-sm text-muted-foreground">
-                                {center.location}
-                              </p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">
-                                Center Agent: {center.centerAgent}
-                              </p>
-                              <p className="text-xs sm:text-sm text-muted-foreground">
-                                Completed cans: {canCount}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  navigate(
-                                    `/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`,
-                                  );
-                                }}
-                                className="flex-1 sm:flex-none"
-                              >
-                                View
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleReopenCenter(center.id)}
-                                disabled={loading}
-                                className="flex-1 sm:flex-none"
-                              >
-                                Reopen
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  {collectionCenters.filter((center) => completedCenters.has(center.id)).length ===
-                    0 && (
-                    <div className="text-center text-muted-foreground py-8">
-                      No completed centers yet
-                    </div>
-                  )}
+              {activeCenters.length === 0 ? (
+                <div className="mt-6 rounded-xl border border-dashed bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+                  All centers have been submitted.
                 </div>
-              </div>
-            </>
-          )}
-
-          {/* Show only Completed Centers for submitted/completed drafts */}
-          {(draft.status === "submitted" || draft.status === "completed") && (
-            <div>
-              <h2 className="text-lg sm:text-xl font-semibold mb-4">Completed Centers</h2>
-              <div className="space-y-4">
-                {collectionCenters
-                  .filter((center) => completedCenters.has(center.id))
-                  .map((center) => {
-                    // Find if this center has any cans
+              ) : (
+                <div className="mt-6 space-y-4">
+                  {activeCenters.map((center) => {
                     const canCount = centerCanCounts[center.id] ?? 0;
-
                     return (
                       <div
                         key={center.id}
-                        className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+                        className="rounded-xl border bg-card/95 p-4 sm:p-6 shadow-sm transition-shadow hover:shadow-md"
                       >
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                          <div className="space-y-1">
-                            <h3 className="font-semibold text-sm sm:text-base">{center.name}</h3>
-                            <p className="text-xs sm:text-sm text-muted-foreground">
-                              {center.location}
-                            </p>
-                            <p className="text-xs sm:text-sm text-muted-foreground">
-                              Center Agent: {center.centerAgent}
-                            </p>
-                            <p className="text-xs sm:text-sm text-muted-foreground">
-                              Completed cans: {canCount}
-                            </p>
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="space-y-1 text-sm">
+                            <h3 className="font-semibold text-foreground">{center.name}</h3>
+                            <p className="text-muted-foreground">{center.location}</p>
+                            <p className="text-muted-foreground">Center Agent: {center.centerAgent}</p>
+                            <p className="text-muted-foreground">Active cans: {canCount}</p>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:items-center sm:justify-end">
                             <Button
                               variant="outline"
                               size="sm"
@@ -515,46 +452,117 @@ export default function DraftDetail() {
                                   `/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`,
                                 );
                               }}
-                              className="flex-1 sm:flex-none"
+                              className="w-full sm:w-auto"
                             >
-                              View
+                              Continue
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleSubmitCenter(center.id)}
+                              disabled={loading}
+                              className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                            >
+                              Submit
                             </Button>
                           </div>
                         </div>
                       </div>
                     );
                   })}
-                {collectionCenters.filter((center) => completedCenters.has(center.id)).length ===
-                  0 && (
-                  <div className="text-center text-muted-foreground py-8">
-                    No completed centers yet
-                  </div>
-                )}
-              </div>
-
-              {/* Reopen Draft Button */}
-              <div className="mt-6 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                <span>Submitted drafts are read-only. Reopen the draft to make adjustments.</span>
-                <div>
-                  <Button
-                    onClick={handleReopenDraft}
-                    disabled={isReopening}
-                    className="bg-cta hover:bg-cta-hover text-cta-foreground"
-                  >
-                    {isReopening ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Reopening…
-                      </>
-                    ) : (
-                      "Reopen Draft"
-                    )}
-                  </Button>
                 </div>
+              )}
+            </section>
+          )}
+
+          <section className="rounded-2xl border bg-card p-4 sm:p-6 shadow-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg sm:text-xl font-semibold">Completed centers</h2>
+                <p className="text-sm text-muted-foreground">
+                  {isDraftStatus
+                    ? "Review submitted centers or reopen to make edits."
+                    : "Submitted centers are view-only."}
+                </p>
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">
+                {completedCount}/{totalCenters} completed
+              </span>
+            </div>
+            {completedCenterList.length === 0 ? (
+              <div className="mt-6 rounded-xl border border-dashed bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+                No completed centers yet.
+              </div>
+            ) : (
+              <div className="mt-6 space-y-4">
+                {completedCenterList.map((center) => {
+                  const canCount = centerCanCounts[center.id] ?? 0;
+                  return (
+                    <div
+                      key={`completed-${center.id}`}
+                      className="rounded-xl border bg-card/95 p-4 sm:p-6 shadow-sm transition-shadow hover:shadow-md"
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="space-y-1 text-sm">
+                          <h3 className="font-semibold text-foreground">{center.name}</h3>
+                          <p className="text-muted-foreground">{center.location}</p>
+                          <p className="text-muted-foreground">Center Agent: {center.centerAgent}</p>
+                          <p className="text-muted-foreground">Completed cans: {canCount}</p>
+                        </div>
+                        <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              navigate(
+                                `/field-collection/draft/${draftId}/center/${encodeURIComponent(center.id)}`,
+                              );
+                            }}
+                            className="w-full sm:w-auto"
+                          >
+                            View
+                          </Button>
+                          {isDraftStatus && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReopenCenter(center.id)}
+                              disabled={loading}
+                              className="w-full sm:w-auto"
+                            >
+                              Reopen
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {isSubmittedStatus && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4 text-sm text-amber-900">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p>Submitted drafts are read-only. Reopen the draft to make adjustments.</p>
+                <Button
+                  onClick={handleReopenDraft}
+                  disabled={isReopening}
+                  className="bg-cta hover:bg-cta-hover text-cta-foreground w-full sm:w-auto"
+                >
+                  {isReopening ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Reopening…
+                    </>
+                  ) : (
+                    "Reopen Draft"
+                  )}
+                </Button>
               </div>
             </div>
           )}
         </div>
-      </div>
+      </PageContainer>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar.lazy";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,9 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { adminGetUser, adminUpdateUser } from "@/lib/api";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 const ROLE_OPTIONS = ["Field Collection", "Processing", "Packaging", "Labeling"];
 
@@ -136,7 +137,7 @@ export default function EditEmployee() {
         onLogout={handleLogout}
       />
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-xl">
+      <PageContainer className="py-6 sm:py-8 max-w-xl">
         <Card className="p-6 sm:p-8 shadow-lg border">
           <h1 className="text-xl sm:text-2xl font-semibold mb-1">Edit Employee</h1>
           <p className="text-sm text-muted-foreground mb-6">
@@ -209,7 +210,7 @@ export default function EditEmployee() {
             </div>
           )}
         </Card>
-      </div>
+  </PageContainer>
     </div>
   );
 }

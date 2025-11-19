@@ -1,5 +1,5 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -8,22 +8,28 @@ import { AuthProvider } from "@/lib/auth";
 import RequireAuth from "@/lib/RequireAuth";
 import RequireRole from "@/lib/RequireRole";
 
-import Login from "./pages/Login";
-import FieldCollection from "./pages/FieldCollection";
-import DraftDetail from "./pages/DraftDetail";
-import CenterCans from "./pages/CenterCans";
-import CanForm from "./pages/CanForm";
-import Processing from "./pages/Processing";
-import BatchDetail from "./pages/BatchDetail";
-import Packaging from "./pages/Packaging";
-import Labeling from "./pages/Labeling";
-import PackagingBatchDetail from "./pages/PackagingBatchDetail";
-import LabelingBatchDetail from "./pages/LabelingBatchDetail";
-import Admin from "./pages/Admin";
-import Profile from "./pages/Profile";
-import AddEmployee from "./pages/AddEmployee";
-import EditEmployee from "./pages/EditEmployee";
-import NotFound from "./pages/NotFound";
+const Login = lazy(() => import("./pages/Login"));
+const FieldCollection = lazy(() => import("./pages/FieldCollection"));
+const DraftDetail = lazy(() => import("./pages/DraftDetail"));
+const CenterCans = lazy(() => import("./pages/CenterCans"));
+const CanForm = lazy(() => import("./pages/CanForm"));
+const Processing = lazy(() => import("./pages/Processing"));
+const BatchDetail = lazy(() => import("./pages/BatchDetail"));
+const Packaging = lazy(() => import("./pages/Packaging"));
+const Labeling = lazy(() => import("./pages/Labeling"));
+const PackagingBatchDetail = lazy(() => import("./pages/PackagingBatchDetail"));
+const LabelingBatchDetail = lazy(() => import("./pages/LabelingBatchDetail"));
+const Admin = lazy(() => import("./pages/Admin"));
+const Profile = lazy(() => import("./pages/Profile"));
+const AddEmployee = lazy(() => import("./pages/AddEmployee"));
+const EditEmployee = lazy(() => import("./pages/EditEmployee"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+const LoadingScreen = () => (
+  <div className="flex min-h-[60vh] items-center justify-center px-4 text-sm text-muted-foreground">
+    Loading…
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -31,10 +37,10 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <Toaster />
-        <Sonner />
+  <Toaster />
         <BrowserRouter>
-          <Routes>
+          <Suspense fallback={<LoadingScreen />}>
+            <Routes>
             {/* public */}
             <Route path="/" element={<Login />} />
 
@@ -199,6 +205,7 @@ const App = () => (
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>

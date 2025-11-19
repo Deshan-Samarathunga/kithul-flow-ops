@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar.lazy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,15 +24,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FileText, Loader2, RefreshCcw, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import DataService from "@/lib/dataService";
 import type { EligiblePackagingBatchDto, LabelingBatchDto } from "@/lib/apiClient";
-import { ReportGenerationDialog } from "@/components/ReportGenerationDialog";
+import { ReportGenerationDialog } from "@/components/ReportGenerationDialog.lazy";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { BatchSearchBar } from "@/components/BatchSearchBar";
 import { BatchOverview } from "@/components/BatchOverview";
 import { ProductTypeTabs } from "@/components/ProductTypeTabs";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { ResponsiveToolbar } from "@/components/layout/ResponsiveToolbar";
 
 const formatStatusLabel = (status: string) =>
   status
@@ -529,7 +531,7 @@ export default function Labeling() {
         onLogout={handleLogout}
       />
 
-      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <PageContainer as="main" className="py-6 sm:py-10">
         <div className="space-y-6 sm:space-y-8">
           <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">Labeling</h1>
@@ -540,12 +542,16 @@ export default function Labeling() {
           </div>
 
           <div className="rounded-2xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 p-4 sm:p-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <ProductTypeTabs value={productTypeFilter} onChange={setProductTypeFilter} />
+            <ResponsiveToolbar stackAt="lg">
+              <ResponsiveToolbar.Leading>
+                <ProductTypeTabs value={productTypeFilter} onChange={setProductTypeFilter} />
+              </ResponsiveToolbar.Leading>
 
-              <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+              <ResponsiveToolbar.Content>
                 <BatchSearchBar value={searchQuery} onChange={setSearchQuery} />
+              </ResponsiveToolbar.Content>
 
+              <ResponsiveToolbar.Actions className="gap-3">
                 <Button
                   variant="secondary"
                   onClick={handleOpenReportDialog}
@@ -556,7 +562,7 @@ export default function Labeling() {
                 <Button
                   variant="outline"
                   onClick={handleRefresh}
-                  className="w-full sm:w-auto md:mr-4"
+                  className="w-full sm:w-auto"
                   disabled={isLoading}
                 >
                   <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
@@ -575,8 +581,8 @@ export default function Labeling() {
                     <span className="font-medium">Add New</span>
                   )}
                 </Button>
-              </div>
-            </div>
+              </ResponsiveToolbar.Actions>
+            </ResponsiveToolbar>
 
             <BatchOverview
               label={selectedProductLabel}
@@ -629,13 +635,15 @@ export default function Labeling() {
             </div>
           )}
         </div>
-      </main>
+  </PageContainer>
 
-      <ReportGenerationDialog
-        stage="labeling"
-        open={reportDialogOpen}
-        onOpenChange={setReportDialogOpen}
-      />
+      {reportDialogOpen ? (
+        <ReportGenerationDialog
+          stage="labeling"
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+        />
+      ) : null}
 
       <Dialog
         open={createDialog.open}
@@ -697,7 +705,7 @@ export default function Labeling() {
                       type="button"
                       onClick={() => setSelectedPackagingId(batch.packagingId)}
                       className={cn(
-                        "w-full rounded-lg border p-4 text-left transition-colors",
+                        "w-full rounded-full border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                         isSelected
                           ? "border-cta bg-cta/10 text-foreground"
                           : "hover:border-cta hover:bg-muted",
