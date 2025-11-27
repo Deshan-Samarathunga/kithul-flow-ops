@@ -1,11 +1,26 @@
-npm i
-npm run build
-cd server && npm i &&  npm run dev
+## Prerequisites
+- Install dependencies for both workspaces:
+	- `cd server && npm install`
+	- `cd client && npm install`
+- Configure `server/.env` with your Postgres connection and JWT secret (these values are baked into packaged builds).
 
-npm i
-npm run build
-cd client && npm i && npm run dev
+## Local API server (development)
+cd server && npm run dev
 
+## Web (Vite) build only
+cd client && npm run build
+
+## Electron development shell
+cd client && npm run electron:dev
+
+> The dev shell expects the API server from `server/npm run dev` to already be running on `http://localhost:5000`.
+
+## Electron production build (bundled client + server)
+cd client && npm run electron:build
+
+> This command builds the Vite bundle, compiles `server/dist`, and packages everything into `release/`. The installed desktop app automatically boots the embedded server (using the credentials from `server/.env`) and stores uploads under `%APPDATA%/Kithul Flow Ops/storage/`.
+> Close any running copy of the installed desktop app before rebuilding, otherwise Windows will keep `release/win-unpacked/resources/app.asar` locked and electron-builder will fail to overwrite it.
+
+## Seed scripts (run from server folder)
 npm run seed:admin
-
 npm run seed:centers

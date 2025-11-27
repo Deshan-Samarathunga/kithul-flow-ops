@@ -4,13 +4,16 @@ import fs from "fs";
 import bcrypt from "bcrypt";
 import { pool } from "../db.js";
 import type { JwtUser } from "../middleware/authMiddleware.js";
+import { ensureAppDataDir, resolveAppData } from "../config/paths.js";
 
-const uploadRoot = path.resolve(process.cwd(), "uploads");
-const profileDir = path.join(uploadRoot, "profiles");
+const uploadRoot = resolveAppData("uploads");
+const profileDir = resolveAppData("uploads", "profiles");
+
+ensureAppDataDir(profileDir);
 
 function resolveUploadPath(relative: string) {
   const sanitized = relative.replace(/^\/+/, "");
-  return path.resolve(process.cwd(), sanitized);
+  return resolveAppData(sanitized);
 }
 
 type ProfileRequest = Request & { file?: Express.Multer.File };

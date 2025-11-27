@@ -1,9 +1,10 @@
 import "dotenv/config";
+import type { Server } from "http";
+import { pathToFileURL } from "url";
 import express, { NextFunction, Request, Response } from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cors from "cors";
-import path from "path";
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
@@ -14,20 +15,20 @@ import labelingRoutes from "./routes/labelingRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import { auth, requireRole } from "./middleware/authMiddleware.js";
 import { pool, initializeDatabase } from "./db.js";
+import { ensureAppDataDir, resolveAppData } from "./config/paths.js";
 
 const app = express();
+const uploadsDir = resolveAppData("uploads");
+ensureAppDataDir(uploadsDir);
 
-// ---- config
-const PORT = Number(process.env.PORT ?? 5000);
-const ORIGIN = process.env.CLIENT_ORIGIN ?? "http://localhost:8080";
+let configuredOrigin = process.env.CLIENT_ORIGIN ?? "http://localhost:8080";
 
 // ---- CORS (dev friendly)
 app.use(
   cors({
     origin(origin, cb) {
-      // allow no-origin (curl/Postman) and common local dev origins
       const allow = new Set([
-        ORIGIN,
+        configuredOrigin,
         "http://localhost:8080",
         "http://127.0.0.1:8080",
         "http://[::1]:8080",
@@ -45,13 +46,9 @@ app.use(
         "http://[::1]:5173",
       ]);
 
-      // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return cb(null, true);
-
-      // Check if origin is in allowed list
       if (allow.has(origin)) return cb(null, true);
 
-      // In development, allow any localhost/local network origin
       const isLocalDev =
         origin.startsWith("http://localhost:") ||
         origin.startsWith("http://127.0.0.1:") ||
@@ -89,7 +86,7 @@ const authLimiter = rateLimit({
 app.use("/api/auth/", authLimiter);
 
 app.use(express.json());
-app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
+app.use("/uploads", express.static(uploadsDir));
 
 // ---- diagnostics
 app.all("/api/db-ping", async (_req, res) => {
@@ -128,18 +125,60 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: "Server error" });
 });
 
-// ---- start
-async function start() {
+type StartOptions = {
+  port?: number;
+  clientOrigin?: string;
+};
+
+let httpServer: Server | null = null;
+
+export async function startServer(options: StartOptions = {}) {
+  if (httpServer) {
+    return httpServer;
+  }
+
+  const port = options.port ?? Number(process.env.PORT ?? 5000);
+  configuredOrigin = options.clientOrigin ?? configuredOrigin;
+
   try {
     await initializeDatabase();
-    app.listen(PORT, () => {
-      console.log(`[server] http://localhost:${PORT}`);
-      console.log(`[cors] allowing origin: ${ORIGIN}`);
+    await new Promise<void>((resolve) => {
+      httpServer = app.listen(port, () => {
+        console.log(`[server] http://localhost:${port}`);
+        console.log(`[cors] allowing origin: ${configuredOrigin}`);
+        resolve();
+      });
     });
+    return httpServer;
   } catch (error) {
     console.error("Failed to start server", error);
-    process.exit(1);
+    throw error;
   }
 }
 
-void start();
+export async function stopServer() {
+  if (!httpServer) return;
+  await new Promise<void>((resolve, reject) => {
+    httpServer?.close((err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+  httpServer = null;
+}
+
+const isCliEntry = (() => {
+  try {
+    const cliUrl = pathToFileURL(process.argv[1] ?? "");
+    return cliUrl.href === import.meta.url;
+  } catch (error) {
+    return false;
+  }
+})();
+
+if (isCliEntry) {
+  startServer().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

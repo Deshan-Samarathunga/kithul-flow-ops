@@ -2,7 +2,7 @@ import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route } from "react-router-dom";
 
 import { AuthProvider } from "@/lib/auth";
 import RequireAuth from "@/lib/RequireAuth";
@@ -33,12 +33,15 @@ const LoadingScreen = () => (
 
 const queryClient = new QueryClient();
 
+const isElectron = navigator.userAgent.toLowerCase().includes("electron/");
+const Router = isElectron ? HashRouter : BrowserRouter;
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
   <Toaster />
-        <BrowserRouter>
+        <Router>
           <Suspense fallback={<LoadingScreen />}>
             <Routes>
             {/* public */}
@@ -206,7 +209,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>
-        </BrowserRouter>
+          </Router>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

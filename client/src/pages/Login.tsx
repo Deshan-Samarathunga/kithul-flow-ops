@@ -79,14 +79,16 @@ export default function Login() {
     }
   }
 
+  const logoUrl = new URL("/logo/kitul-flow-logo-black.png", import.meta.url).toString();
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-cta/10 p-4 sm:p-6">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-2 pb-6">
           <div className="login-logo-wrapper mx-auto w-full max-w-xs text-center pt-6">
             <img
-              src="/logo/kitul-flow-logo-black.png"
-              srcSet="/logo/kitul-flow-logo-black.png 1x, /logo/kitul-flow-logo-black.png 2x"
+              src={logoUrl}
+              srcSet={`${logoUrl} 1x, ${logoUrl} 2x`}
               alt="Kithul Flow logo"
               width="224"
               height="224"

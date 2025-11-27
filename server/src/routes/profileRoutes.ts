@@ -2,37 +2,23 @@ import { Router } from "express";
 import type { Request } from "express";
 import multer, { FileFilterCallback } from "multer";
 import path from "path";
-import fs from "fs";
 import { auth } from "../middleware/authMiddleware.js";
 import { patchProfile } from "../controllers/profileController.js";
+import { ensureAppDataDir, resolveAppData } from "../config/paths.js";
 
 // Routes handling profile updates, including avatar uploads.
 const router = Router();
 
 // Resolve upload destinations for profile images.
-const uploadRoot = path.resolve(process.cwd(), "uploads");
-const profileDir = path.join(uploadRoot, "profiles");
+const profileDir = resolveAppData("uploads", "profiles");
 
-// Ensure storage directories exist before saving files.
-function ensureDir(dir: string) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-}
-
-ensureDir(profileDir);
-
-// Resolve an upload path relative to the application root.
-function resolveUploadPath(relative: string) {
-  const sanitized = relative.replace(/^\/+/, "");
-  return path.resolve(process.cwd(), sanitized);
-}
+ensureAppDataDir(profileDir);
 
 type ProfileRequest = Request & { file?: Express.Multer.File };
 
 const storage = multer.diskStorage({
   destination: (_req: Request, _file: Express.Multer.File, cb) => {
-    ensureDir(profileDir);
+    ensureAppDataDir(profileDir);
     cb(null, profileDir);
   },
   filename: (_req: Request, file: Express.Multer.File, cb) => {
